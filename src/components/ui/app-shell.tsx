@@ -162,7 +162,7 @@ const AppShell = React.forwardRef<HTMLDivElement, AppShellProps>(
       <Sidebar>
         {brandIcon || brandName ? (
           <SidebarHeader>
-            <div className="flex items-center gap-2.5 p-2 font-semibold">
+            <div className="flex items-center gap-2.5 p-2 font-semibold group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0">
               {brandIcon ? <span className="flex shrink-0 items-center">{brandIcon}</span> : null}
               {brandName ? (
                 <span className="truncate group-data-[collapsible=icon]:hidden">{brandName}</span>

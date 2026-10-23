@@ -73,6 +73,12 @@ const DialogHeader = ({ className, children, hideCloseButton, ...props }: Dialog
 );
 DialogHeader.displayName = "DialogHeader";
 
+/** The dialog's body: padded to line up with the header and footer, and scrolls when it is tall. */
+const DialogBody = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+  <div className={cn("min-h-0 flex-1 overflow-y-auto px-4 pb-2 pt-1", className)} {...props} />
+);
+DialogBody.displayName = "DialogBody";
+
 const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
@@ -116,6 +122,7 @@ export {
   DialogClose,
   DialogContent,
   DialogHeader,
+  DialogBody,
   DialogFooter,
   DialogTitle,
   DialogDescription,
