@@ -9,6 +9,8 @@ export {
   SidebarHeader,
   SidebarInput,
   SidebarInset,
+  SidebarInsetContent,
+  SidebarInsetHeader,
   SidebarMenu,
   SidebarMenuAction,
   SidebarMenuBadge,

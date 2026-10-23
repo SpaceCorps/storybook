@@ -130,15 +130,21 @@ const Sidebar = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<"div"> & {
     side?: "left" | "right";
+    /** `inset` is the floating island layout and the default: the sidebar sits on the shell
+     *  background and the page lives in a rounded panel beside it (see `SidebarInset`). */
     variant?: "sidebar" | "floating" | "inset";
+    /** `icon` is the default so the corner trigger stays reachable when the sidebar is collapsed. */
     collapsible?: "offcanvas" | "icon" | "none";
+    /** Show the collapse toggle inside the sidebar, in its top corner. Defaults to true. */
+    showTrigger?: boolean;
   }
 >(
   (
     {
       side = "left",
-      variant = "sidebar",
-      collapsible = "offcanvas",
+      variant = "inset",
+      collapsible = "icon",
+      showTrigger = true,
       className,
       children,
       ...props
@@ -216,11 +222,34 @@ const Sidebar = React.forwardRef<
         >
           <div
             data-sidebar="sidebar"
-            className="flex h-full w-full flex-col bg-secondary group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-border group-data-[variant=floating]:shadow"
+            className={cn(
+              "relative flex h-full w-full flex-col bg-secondary group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-border group-data-[variant=floating]:shadow",
+              // Keep header content clear of the corner trigger.
+              showTrigger &&
+                "[&_[data-sidebar=header]]:pr-10 group-data-[collapsible=icon]:[&_[data-sidebar=header]]:pr-2 group-data-[collapsible=icon]:[&_[data-sidebar=header]]:pt-12",
+            )}
           >
+            {showTrigger && (
+              <SidebarTrigger
+                data-sidebar="corner-trigger"
+                className={cn(
+                  "absolute top-3 z-20",
+                  side === "left" ? "right-2" : "left-2",
+                  // Collapsed to the icon rail: centre it in the rail, above the header.
+                  "group-data-[collapsible=icon]:left-1/2 group-data-[collapsible=icon]:right-auto group-data-[collapsible=icon]:-translate-x-1/2",
+                )}
+              />
+            )}
             {children}
           </div>
         </div>
+        {/* Offcanvas hides the whole panel, so a collapsed sidebar needs a trigger of its own. */}
+        {showTrigger && collapsible === "offcanvas" && state === "collapsed" && (
+          <SidebarTrigger
+            data-sidebar="floating-trigger"
+            className={cn("fixed top-3 z-20", side === "left" ? "left-3" : "right-3")}
+          />
+        )}
       </div>
     );
   },
@@ -287,8 +316,12 @@ const SidebarInset = React.forwardRef<HTMLDivElement, React.ComponentProps<"main
       <main
         ref={ref}
         className={cn(
-          "relative flex min-h-svh flex-1 flex-col bg-secondary overflow-hidden",
-          "peer-data-[variant=inset]:min-h-[calc(100svh-theme(spacing.4))] md:peer-data-[variant=inset]:m-2 md:peer-data-[state=collapsed]:peer-data-[variant=inset]:ml-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow",
+          "relative flex min-h-svh min-w-0 flex-1 flex-col bg-secondary overflow-hidden",
+          // The floating island: a rounded, bordered panel on the shell background. It is exactly the
+          // viewport minus its margin, so a header stays put and the page scrolls inside it.
+          "peer-data-[variant=inset]:bg-background md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:h-[calc(100svh-1rem)] md:peer-data-[variant=inset]:min-h-0 md:peer-data-[variant=inset]:rounded-2xl md:peer-data-[variant=inset]:border md:peer-data-[variant=inset]:border-border md:peer-data-[variant=inset]:shadow-sm",
+          // An offcanvas sidebar that is collapsed leaves no rail, so the island needs its left margin back.
+          "md:peer-data-[collapsible=offcanvas]:peer-data-[variant=inset]:ml-2",
           className,
         )}
         {...props}
@@ -297,6 +330,35 @@ const SidebarInset = React.forwardRef<HTMLDivElement, React.ComponentProps<"main
   },
 );
 SidebarInset.displayName = "SidebarInset";
+
+/** The island's header: one fixed row that stays put while `SidebarInsetContent` scrolls. */
+const SidebarInsetHeader = React.forwardRef<HTMLElement, React.ComponentProps<"header">>(
+  ({ className, ...props }, ref) => (
+    <header
+      ref={ref}
+      data-sidebar="inset-header"
+      className={cn(
+        "flex h-14 shrink-0 items-center gap-3 border-b bg-background/90 px-6 backdrop-blur-sm max-md:px-4",
+        className,
+      )}
+      {...props}
+    />
+  ),
+);
+SidebarInsetHeader.displayName = "SidebarInsetHeader";
+
+/** The island's scrolling page area, below `SidebarInsetHeader`. */
+const SidebarInsetContent = React.forwardRef<HTMLDivElement, React.ComponentProps<"div">>(
+  ({ className, ...props }, ref) => (
+    <div
+      ref={ref}
+      data-sidebar="inset-content"
+      className={cn("min-h-0 flex-1 overflow-y-auto", className)}
+      {...props}
+    />
+  ),
+);
+SidebarInsetContent.displayName = "SidebarInsetContent";
 
 const SidebarInput = React.forwardRef<
   React.ElementRef<typeof Input>,
@@ -702,6 +764,8 @@ export {
   SidebarHeader,
   SidebarInput,
   SidebarInset,
+  SidebarInsetContent,
+  SidebarInsetHeader,
   SidebarMenu,
   SidebarMenuAction,
   SidebarMenuBadge,
