@@ -1,0 +1,10 @@
+node_modules
+.git
+dist
+dist-storybook
+storybook-static
+.pnpm-store
+.storybook/__image_snapshots__/__diff_output__
+*.log
+.env
+.env.*

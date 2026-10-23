@@ -1,0 +1,29 @@
+# Standalone repo: this file used to be a symlink to a parent monorepo's workspace file.
+# The `catalog:` entries below are what `package.json` resolves `vite` and `vite-plus` through,
+# so they must stay in lockstep with the versions the lockfile already pins.
+allowBuilds:
+  "@swc/core": false
+  esbuild: false
+
+catalog:
+  vite: npm:@voidzero-dev/vite-plus-core@0.3.0
+  vite-plus: 0.3.0
+
+minimumReleaseAgeExclude:
+  - playwright-core@1.63.0
+  - playwright@1.63.0
+  - "@tanstack/react-virtual@3.14.13"
+  - "@tanstack/virtual-core@3.17.11"
+
+overrides:
+  playwright@*: 1.63.0
+  playwright-core@*: 1.63.0
+  vite@*: "catalog:"
+
+peerDependencyRules:
+  allowAny:
+    - vite
+  allowedVersions:
+    vite: "*"
+
+virtualStoreDirMaxLength: 40

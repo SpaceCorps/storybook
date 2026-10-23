@@ -1,0 +1,129 @@
+name: Release
+
+# Publishes `@spacecorps/components` to GitHub Packages.
+#
+# GitHub Packages rather than npmjs.com: this repository is private, and the built-in GITHUB_TOKEN
+# is already scoped to publish a package owned by the same org. Publishing privately to npmjs.com
+# would need a paid org plus a separately-managed NPM_TOKEN.
+#
+# Two ways in:
+#   * push a `v*` tag  -> publishes that version for real
+#   * workflow_dispatch -> dry run by default; untick `dry-run` to publish
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: "Build and pack, but do not publish"
+        type: boolean
+        default: true
+      version:
+        description: "Version override (e.g. 0.2.0). Defaults to package.json."
+        type: string
+        required: false
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  release:
+    name: Publish to GitHub Packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.25.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+          registry-url: "https://npm.pkg.github.com"
+          scope: "@spacecorps"
+
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@v1
+        with:
+          # `run-install` defaults to true, and that install is not frozen: left alone it would
+          # repair a drifted lockfile in the runner moments before the drift check below, and the
+          # release would publish from a tree nobody committed. The install happens once, next.
+          run-install: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # A stripped leading lockfile document is a one-way loss (see AGENTS.md); fail rather than
+      # publish from a repaired tree.
+      - name: Check lockfile drift
+        run: |
+          if ! git diff --exit-code -- pnpm-lock.yaml; then
+            echo "ERROR: pnpm-lock.yaml was modified during install"
+            echo "See AGENTS.md 'Multi-Document Lockfile' section for details"
+            exit 1
+          fi
+
+      - name: Lint & type check
+        run: vp check
+
+      # Both values arrive through `env`, never through `${{ }}` inside the script. GitHub expands
+      # `${{ }}` into the shell source before bash sees it, and git accepts `$(...)` and backticks
+      # in a tag name — so pushing `v1.0$(...)` would have run that substitution as a command in the
+      # job holding the Packages publish token. Through `env` the value is only ever data.
+      #
+      # This is also what lets actionlint check the script at all: with `${{ }}` inline, shellcheck
+      # cannot parse the text as bash and reports on a string that will not exist at runtime.
+      - name: Resolve version
+        id: version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          REF: ${{ github.ref }}
+        run: |
+          if [ -n "$INPUT_VERSION" ]; then
+            VERSION="$INPUT_VERSION"
+            npm version --no-git-tag-version --allow-same-version "$VERSION"
+          elif [[ "$REF" == refs/tags/v* ]]; then
+            VERSION="${REF#refs/tags/v}"
+            npm version --no-git-tag-version --allow-same-version "$VERSION"
+          else
+            VERSION=$(node -p "require('./package.json').version")
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Releasing $VERSION"
+
+      - name: Build package
+        run: vp pack
+
+      - name: Run tests
+        run: vp test
+
+      - name: Pack tarball
+        run: |
+          mkdir -p dist-pack
+          pnpm pack --pack-destination dist-pack
+
+      - name: Upload tarball artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: components-${{ steps.version.outputs.version }}
+          path: dist-pack/*.tgz
+
+      - name: Publish
+        if: github.event_name == 'push' || inputs.dry-run == false
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm publish
+
+      - name: Dry run notice
+        if: github.event_name == 'workflow_dispatch' && inputs.dry-run
+        run: echo "Dry run — tarball built and uploaded as an artifact, nothing published."
