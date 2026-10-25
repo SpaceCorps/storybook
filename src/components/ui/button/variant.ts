@@ -2,19 +2,30 @@ import { cva } from "class-variance-authority";
 
 import { controlHeight, controlSize, densityText } from "../density-scale";
 
+/**
+ * Disabled look for the solid (filled) variants. Dimming them with `opacity-50` pulls the fill and
+ * the label toward the page colour together, which left the label at 3.3:1 on a white page for the
+ * default button (and 2.0:1 for destructive) — grey text on a grey pill. A flat muted surface keeps
+ * the label above 5:1 in both themes and still reads as unavailable next to its live twin. The
+ * transparent variants (outline, ghost, link...) keep dimming, at 60% instead of 50% so their label
+ * clears 4.5:1 on both pages.
+ */
+const solidDisabled =
+  "disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 disabled:shadow-none";
+
 export const buttonVariant = cva(
-  "inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-field font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background cursor-pointer disabled:cursor-not-allowed disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-field font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background cursor-pointer disabled:cursor-not-allowed disabled:pointer-events-none disabled:opacity-60 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground shadow-sm hover:brightness-90",
-        destructive: "bg-destructive text-destructive-foreground shadow-sm hover:brightness-90",
+        default: `bg-primary text-primary-foreground shadow-sm hover:brightness-90 ${solidDisabled}`,
+        destructive: `bg-destructive text-destructive-foreground shadow-sm hover:brightness-90 ${solidDisabled}`,
         outline:
           "border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground",
-        secondary: "bg-secondary text-secondary-foreground shadow-sm hover:brightness-90",
-        success: "bg-success text-success-foreground shadow-sm hover:brightness-90",
-        warning: "bg-warning text-warning-foreground shadow-sm hover:brightness-90",
-        info: "bg-info text-info-foreground shadow-sm hover:brightness-90",
+        secondary: `bg-secondary text-secondary-foreground shadow-sm hover:brightness-90 ${solidDisabled}`,
+        success: `bg-success text-success-foreground shadow-sm hover:brightness-90 ${solidDisabled}`,
+        warning: `bg-warning text-warning-foreground shadow-sm hover:brightness-90 ${solidDisabled}`,
+        info: `bg-info text-info-foreground shadow-sm hover:brightness-90 ${solidDisabled}`,
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline brightness-90 hover:brightness-100",
         inline: "text-primary underline hover:no-underline !p-0 !h-auto",
