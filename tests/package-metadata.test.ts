@@ -32,8 +32,10 @@ describe("Package Metadata", () => {
     });
   });
 
-  it("sets initial semver version", () => {
-    expect(packageJson.version).toBe("0.1.0");
+  // Not pinned to a value: the Release workflow stamps the tag's version into package.json before it
+  // runs the suite, so an exact-version assertion made every release fail its own tests.
+  it("sets a semver version", () => {
+    expect(packageJson.version).toMatch(/^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/);
   });
 
   it("configures bump script using bumpp", () => {
