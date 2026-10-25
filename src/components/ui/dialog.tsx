@@ -5,6 +5,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { overlayVariant } from "./overlay-variant";
 
 const Dialog = DialogPrimitive.Root;
 
@@ -18,14 +19,7 @@ const DialogOverlay = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
 >(({ className, ...props }, ref) => (
-  <DialogPrimitive.Overlay
-    ref={ref}
-    className={cn(
-      "fixed inset-0 z-50 bg-black/30  data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-      className,
-    )}
-    {...props}
-  />
+  <DialogPrimitive.Overlay ref={ref} className={cn(overlayVariant(), className)} {...props} />
 ));
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
@@ -57,14 +51,17 @@ type DialogHeaderProps = React.HTMLAttributes<HTMLDivElement> & {
 const DialogHeader = ({ className, children, hideCloseButton, ...props }: DialogHeaderProps) => (
   <div
     className={cn(
-      "sticky top-0 z-10 bg-background p-4 flex-shrink-0 flex items-center justify-between",
+      "sticky top-0 z-10 bg-background p-4 flex-shrink-0 flex items-start justify-between gap-2",
       className,
     )}
     {...props}
   >
-    <div className="flex-1">{children}</div>
+    <div className="min-w-0 flex-1">{children}</div>
     {!hideCloseButton && (
-      <DialogPrimitive.Close className="p-1 rounded-selector text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors focus:outline-none cursor-pointer">
+      // Pinned to the title row, not centred on the whole header: with a description under the
+      // title, `items-center` floated the X halfway down. The -mt-1 centres the 24px button on
+      // the 16px `leading-none` title line, and -mr-1 puts the icon on the content's right edge.
+      <DialogPrimitive.Close className="-mr-1 -mt-1 shrink-0 p-1 rounded-selector text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors focus:outline-none cursor-pointer">
         <X className="size-4" />
         <span className="sr-only">Close</span>
       </DialogPrimitive.Close>

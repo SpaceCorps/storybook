@@ -53,4 +53,43 @@ describe("Dialog component", () => {
     expect(icon?.getAttribute("class")).not.toContain("text-muted-foreground");
     expect(icon?.getAttribute("class")).not.toContain("hover:text-foreground");
   });
+  it("dims and blurs the page behind it with a scrim that shows up on a dark page too", () => {
+    render(
+      <Dialog open>
+        <DialogContent>
+          <DialogTitle>Scrim</DialogTitle>
+          <DialogDescription>Scrim description</DialogDescription>
+        </DialogContent>
+      </Dialog>,
+    );
+
+    const overlay = document.querySelector("[data-state='open'].fixed.inset-0");
+    expect(overlay).not.toBeNull();
+    const classes = overlay!.className;
+    // 30% black was imperceptible over a near-black page.
+    expect(classes).toContain("bg-black/50");
+    expect(classes).toContain("dark:bg-black/70");
+    expect(classes).toContain("backdrop-blur");
+    expect(classes).not.toContain("bg-black/30");
+  });
+
+  it("pins the close button to the title row rather than centring it on the whole header", () => {
+    render(
+      <Dialog open>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Book payment</DialogTitle>
+            <DialogDescription>Match it against an invoice.</DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>,
+    );
+
+    const closeButton = screen.getByText("Close").closest("button")!;
+    const header = closeButton.parentElement!;
+    expect(header.className).toContain("items-start");
+    expect(header.className).not.toContain("items-center");
+    // -mt-1 centres the 24px button on the 16px title line.
+    expect(closeButton.className).toContain("-mt-1");
+  });
 });
