@@ -129,17 +129,31 @@ jobs:
           name: components-${{ steps.version.outputs.version }}
           path: dist-pack/*.tgz
 
+      # A dry run goes through the same steps with `npm publish --dry-run`, so the manifest handling
+      # and registry config are exercised without anything reaching the registry.
       - name: Publish
-        if: github.event_name == 'push' || inputs.dry-run == false
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        # From inside dist-pack so npm sees no package.json: it would otherwise stop on devEngines
-        # (see the version step). The tarball carries its own publishConfig, and setup-node's user
-        # .npmrc supplies the registry login.
+          PUBLISH_FLAGS: ${{ (github.event_name == 'workflow_dispatch' && inputs.dry-run) && '--dry-run' || '' }}
+        # npm 11 stops on devEngines.packageManager (pnpm) even for a tarball, because it reads the
+        # manifest inside it. devEngines describes how to develop this repo, not how to consume the
+        # package, so it is dropped from the published manifest. The files are exactly the tarball
+        # that was just tested; --ignore-scripts keeps prepublishOnly (a rebuild) from running in a
+        # directory without node_modules. The registry login comes from setup-node's user .npmrc.
         working-directory: dist-pack
         run: |
           for tarball in ./*.tgz; do
-            npm publish "$tarball"
+            rm -rf unpacked
+            mkdir unpacked
+            tar -xzf "$tarball" -C unpacked
+            node -e '
+              const fs = require("node:fs");
+              const file = "unpacked/package/package.json";
+              const pkg = JSON.parse(fs.readFileSync(file, "utf8"));
+              delete pkg.devEngines;
+              fs.writeFileSync(file, JSON.stringify(pkg, null, 2) + String.fromCharCode(10));
+            '
+            (cd unpacked/package && npm publish --ignore-scripts $PUBLISH_FLAGS)
           done
 
       - name: Dry run notice
