@@ -228,15 +228,22 @@
   --pink-foreground: #000000;
   --violet-foreground: #000000;
 
-  /* Shadow ramp — flat in dark mode */
-  --shadow-2xs: none;
-  --shadow-xs: none;
-  --shadow-sm: none;
-  --shadow: none;
-  --shadow-md: none;
-  --shadow-lg: none;
-  --shadow-xl: none;
-  --shadow-2xl: none;
+  /* Shadow ramp — flat in dark mode.
+   *
+   * Flat is a zero-offset, fully transparent shadow, never the keyword `none`. Tailwind builds every
+   * element's `box-shadow` as a comma list ending in `var(--tw-shadow)`, and `none` is not valid
+   * inside a list: one `none` makes the whole declaration invalid at computed-value time, so the
+   * computed `box-shadow` collapses to `none` and every `focus-visible:ring-*` on an element that
+   * also has a `shadow-*` class (Button, Input, Select...) disappears. Dark mode had no visible
+   * focus ring on any of them. `0 0 #0000` paints nothing and keeps the list valid. */
+  --shadow-2xs: 0 0 #0000;
+  --shadow-xs: 0 0 #0000;
+  --shadow-sm: 0 0 #0000;
+  --shadow: 0 0 #0000;
+  --shadow-md: 0 0 #0000;
+  --shadow-lg: 0 0 #0000;
+  --shadow-xl: 0 0 #0000;
+  --shadow-2xl: 0 0 #0000;
 
   /* Misc framework tokens */
   --toolbox: #edeaf1;
