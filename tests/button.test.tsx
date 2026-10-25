@@ -142,3 +142,75 @@ describe("Semantic theme contrast compliance (WCAG 2.1 AA)", () => {
     },
   );
 });
+
+describe("Disabled button legibility", () => {
+  const SOLID = ["default", "destructive", "secondary", "success", "warning", "info"] as const;
+
+  it.each(SOLID)(
+    "a disabled %s button swaps to the muted surface instead of dimming its fill",
+    (variant) => {
+      render(
+        <Button variant={variant} disabled>
+          Save
+        </Button>,
+      );
+      const classes = screen.getByRole("button", { name: "Save" }).className.split(/\s+/);
+
+      expect(classes).toContain("disabled:bg-muted");
+      expect(classes).toContain("disabled:text-muted-foreground");
+      expect(classes).toContain("disabled:opacity-100");
+      // twMerge drops the base `disabled:opacity-60` once the variant sets its own.
+      expect(classes).not.toContain("disabled:opacity-60");
+    },
+  );
+
+  it.each(["outline", "ghost", "link"] as const)(
+    "a disabled %s button, which has no fill to swap, stays dimmed",
+    (variant) => {
+      render(
+        <Button variant={variant} disabled>
+          Save
+        </Button>,
+      );
+      expect(screen.getByRole("button", { name: "Save" }).className).toContain(
+        "disabled:opacity-60",
+      );
+    },
+  );
+
+  it.each(ENTRY_POINTS)(
+    "%s keeps --muted-foreground on --muted at AA contrast in both themes",
+    (_name, path) => {
+      for (const selector of [":root", ".dark"] as const) {
+        const tokens = block(path, selector);
+        const contrast = getContrastRatio(
+          token(tokens, "muted")!,
+          token(tokens, "muted-foreground")!,
+        );
+        expect(contrast, `${selector} muted/muted-foreground`).toBeGreaterThanOrEqual(4.5);
+      }
+    },
+  );
+
+  it("dims the transparent variants far enough that their label clears 4.5:1 on either page", () => {
+    // The label (--foreground) at 60% over the page (--background), the worst case being light mode.
+    const mix = (fg: string, bg: string, alpha: number): string =>
+      "#" +
+      [1, 3, 5]
+        .map((i) =>
+          Math.round(
+            parseInt(fg.slice(i, i + 2), 16) * alpha +
+              parseInt(bg.slice(i, i + 2), 16) * (1 - alpha),
+          )
+            .toString(16)
+            .padStart(2, "0"),
+        )
+        .join("");
+    for (const selector of [":root", ".dark"] as const) {
+      const tokens = block(ENTRY_POINTS[0][1], selector);
+      const page = token(tokens, "background")!;
+      const label = mix(token(tokens, "foreground")!, page, 0.6);
+      expect(getContrastRatio(label, page), selector).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+});

@@ -74,3 +74,41 @@ export const Disabled: Story = {
     </div>
   ),
 };
+
+const DISABLED_VARIANTS = [
+  "default",
+  "secondary",
+  "destructive",
+  "success",
+  "warning",
+  "info",
+  "outline",
+  "ghost",
+] as const;
+
+/** Every variant, live above its disabled twin, on both themes' surfaces side by side. */
+export const DisabledBothThemes: Story = {
+  render: () => (
+    <div className="flex flex-col gap-4">
+      {(["light", "dark"] as const).map((theme) => (
+        <div
+          key={theme}
+          className={`${theme === "dark" ? "dark " : ""}flex flex-col gap-3 rounded-box border border-border bg-background p-4 text-foreground`}
+        >
+          {[false, true].map((disabled) => (
+            <div key={String(disabled)} className="flex flex-wrap items-center gap-3">
+              <span className="w-24 text-xs text-muted-foreground">
+                {theme} {disabled ? "disabled" : "live"}
+              </span>
+              {DISABLED_VARIANTS.map((variant) => (
+                <Button key={variant} variant={variant} disabled={disabled}>
+                  {variant}
+                </Button>
+              ))}
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  ),
+};

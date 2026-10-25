@@ -85,7 +85,7 @@ export function StarRating({
                 type="button"
                 aria-label={`Rate ${star} star${star === 1 ? "" : "s"}`}
                 className={cn(
-                  "relative focus-visible:outline-none focus-visible:ring-2",
+                  "relative focus-visible:outline-hidden focus-visible:ring-2",
                   "focus-visible:ring-ring focus-visible:ring-offset-2",
                   "cursor-pointer",
                   disabled && "cursor-not-allowed",

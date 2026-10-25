@@ -8,6 +8,27 @@ import { DensityProvider } from "../src/contexts/density-context";
 import { Densities } from "../src/types/density";
 import { readStoryGlobals, type StorybookGlobals } from "./globals";
 
+/**
+ * Mirrors the toolbar theme onto <html>. The wrapper div in the decorator already carries `.dark`,
+ * but Radix portals (Dialog, Popover, Select, DropdownMenu, Tooltip...) render under <body>, outside
+ * that div, so without this they showed up in the light theme on a dark page. In an app the class
+ * lives on <html>, so this is also what makes those stories match what an app renders.
+ */
+function ThemeRoot({
+  theme,
+  children,
+}: {
+  theme: StorybookGlobals["theme"];
+  children: React.ReactNode;
+}) {
+  React.useLayoutEffect(() => {
+    const root = document.documentElement;
+    root.classList.toggle("dark", theme === "dark");
+    return () => root.classList.remove("dark");
+  }, [theme]);
+  return <>{children}</>;
+}
+
 const preview: Preview = {
   parameters: {
     controls: {
@@ -33,18 +54,20 @@ const preview: Preview = {
       const { theme = "light", density = Densities.Medium } = readStoryGlobals(context);
       const densityValue = density as Densities;
       return (
-        <div
-          data-density={densityValue.toLowerCase()}
-          className={
-            theme === "dark"
-              ? "dark bg-background text-foreground p-6 min-h-screen"
-              : "bg-background text-foreground p-6 min-h-screen"
-          }
-        >
-          <DensityProvider density={densityValue}>
-            <Story />
-          </DensityProvider>
-        </div>
+        <ThemeRoot theme={theme}>
+          <div
+            data-density={densityValue.toLowerCase()}
+            className={
+              theme === "dark"
+                ? "dark bg-background text-foreground p-6 min-h-screen"
+                : "bg-background text-foreground p-6 min-h-screen"
+            }
+          >
+            <DensityProvider density={densityValue}>
+              <Story />
+            </DensityProvider>
+          </div>
+        </ThemeRoot>
       );
     },
   ],

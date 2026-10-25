@@ -2,7 +2,7 @@ import { cva } from "class-variance-authority";
 
 /** The blade panel itself. Sizing comes from `bladeWidthVariant` unless the stack is collapsed. */
 export const bladeVariant = cva(
-  "group/blade relative flex h-full min-h-0 flex-col bg-background border-r border-border outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+  "group/blade relative flex h-full min-h-0 flex-col bg-background border-r border-border outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
   {
     variants: {
       collapsed: {

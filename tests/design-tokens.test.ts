@@ -130,7 +130,9 @@ describe("remaining framework tokens", () => {
 
   it.each(shadows)("declares --%s in both modes and aliases it", (name) => {
     expect(declaration(rootBlock, name)).toBeDefined();
-    expect(declaration(darkBlock, name)).toBe("none");
+    // Flat, but never the keyword `none`: it is invalid inside Tailwind's `box-shadow` list and wipes
+    // out the focus ring on every element that also carries a `shadow-*` class.
+    expect(declaration(darkBlock, name)).toBe("0 0 #0000");
     expect(themeBlock).toContain(`--${name}: var(--${name});`);
   });
 

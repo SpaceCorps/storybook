@@ -1,6 +1,8 @@
 @import "tailwindcss";
 /* Theme tokens are shared with index.css — see tokens.css. */
 @import "./tokens.css";
+/* Modal scroll lock without a layout shift — see scroll-lock.css. */
+@import "./scroll-lock.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
 

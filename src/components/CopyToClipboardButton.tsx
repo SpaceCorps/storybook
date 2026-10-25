@@ -22,7 +22,7 @@ const copyIconVariant = cva("", {
 });
 
 const copyButtonSizeVariant = cva(
-  "rounded bg-transparent hover:bg-accent focus:outline-none cursor-pointer flex items-center justify-center",
+  "rounded bg-transparent hover:bg-accent focus:outline-hidden cursor-pointer flex items-center justify-center",
   {
     variants: {
       density: {

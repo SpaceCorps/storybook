@@ -674,7 +674,7 @@ const CommentWidgetContainer: React.FC<CommentWidgetContainerProps> = ({
           </div>
 
           <textarea
-            className="w-full min-h-[80px] p-2 text-sm font-sans bg-[var(--background)] border border-[var(--border)] rounded focus:outline-none focus:ring-1 focus:ring-[var(--primary)] resize-y"
+            className="w-full min-h-[80px] p-2 text-sm font-sans bg-[var(--background)] border border-[var(--border)] rounded focus:outline-hidden focus:ring-1 focus:ring-[var(--primary)] resize-y"
             placeholder="Enter instruction for the agent at this line..."
             value={isEditing ? (editingText ?? "") : inputText}
             onChange={(e) => {
@@ -1138,7 +1138,7 @@ export const PlanDiffView: React.FC<PlanDiffViewProps> = ({
                       e.stopPropagation();
                       toggleViewed();
                     }}
-                    className="flex items-center gap-1.5 text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] cursor-pointer select-none font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--ring)] rounded px-1 py-0.5"
+                    className="flex items-center gap-1.5 text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] cursor-pointer select-none font-medium focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-[var(--ring)] rounded px-1 py-0.5"
                   >
                     <span
                       className={`size-3.5 shrink-0 rounded-sm border transition-colors flex items-center justify-center ${

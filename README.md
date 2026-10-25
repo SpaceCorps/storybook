@@ -431,7 +431,10 @@ export const Randomized: Story = {
 };
 ```
 
-Currently opted out: `UI/Calendar` (seeded with `new Date()`), `Components/WebViewer` (frames an external
+Currently opted out: `UI/Calendar` (seeded with `new Date()`), `UI/DatePicker` (opens its calendar in a
+portal, outside the captured root, and seeds dates), `UI/Dialog` → `OpenOverPage` and
+`ScrollLockDoesNotShiftLayout` (the dialog is portaled outside the captured root),
+`Components/WebViewer` (frames an external
 site), `Domain/Loading` → `Skeleton` (picks its line count and widths with `Math.random()`) and
 `Components/AgentViewer` → `WithRichPlanLogs` (auto-scrolls, and its embedded diagrams resize the
 container as they render, so the scroll lands a few pixels off each run). Animated stories do **not**
