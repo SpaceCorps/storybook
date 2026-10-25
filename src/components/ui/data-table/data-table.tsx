@@ -21,8 +21,6 @@ import {
 import { useDensity } from "@/contexts/density-context";
 import type { Densities } from "@/types/density";
 
-import "./data-table.css";
-
 import { DataTableCellEditor } from "./data-table-cell-editor";
 import { DataTableColumnHeader } from "./data-table-column-header";
 import { DataTableColumnOptions } from "./data-table-column-options";
@@ -52,7 +50,7 @@ import {
 } from "./use-data-table-virtualization";
 import { useInlineCellEdit } from "./use-inline-cell-edit";
 import { getCellValue, getRenderableActions, toDisplayString } from "./utils";
-import { dataTableCellAlignVariant, dataTableRowVariant } from "./variant";
+import { dataTableCellAlignVariant, dataTableCellWrapClass, dataTableRowVariant } from "./variant";
 
 export interface DataTableProps<TRow> extends Omit<
   React.HTMLAttributes<HTMLTableElement>,
@@ -151,7 +149,13 @@ export interface DataTableProps<TRow> extends Omit<
   emptyState?: React.ReactNode;
   /** Header slot above the table for filters and toolbar content. */
   toolbar?: DataTableToolbarSlots;
+  /**
+   * The table's accessible name/description. Visually hidden unless `showCaption` is set; screen
+   * readers announce it either way.
+   */
   caption?: React.ReactNode;
+  /** Render `caption` as a visible line above the table instead of hiding it. Defaults to false. */
+  showCaption?: boolean;
   density?: Densities;
   /** Applied to the wrapper around the toolbar, table and pagination footer. */
   className?: string;
@@ -208,6 +212,7 @@ function DataTableInner<TRow>(
     emptyState,
     toolbar,
     caption,
+    showCaption = false,
     density: propDensity,
     className,
     ...tableProps
@@ -346,8 +351,10 @@ function DataTableInner<TRow>(
    * row-action columns and painting their controls over the neighbouring cell. Swap in real widths
    * for the windowed variant; auto layout keeps `w-0`'s shrink-to-fit behaviour.
    */
-  const fitColumnClass = (kind: "select" | "actions") =>
-    virtualization.active ? `ivy-data-table-fit-${kind}` : "w-0";
+  const fitColumnClass = (kind: "select" | "actions") => {
+    if (!virtualization.active) return "w-0";
+    return kind === "select" ? "w-[2.75rem]" : "w-[var(--ivy-data-table-actions-width,5rem)]";
+  };
 
   /** 1-based absolute position, so paging and windowing both report true `aria-rowindex` values. */
   const absoluteRowIndex = (rowIndex: number) =>
@@ -356,7 +363,7 @@ function DataTableInner<TRow>(
       : (pagination.page - 1) * pagination.pageSize + rowIndex + 1;
 
   const spacerRow = (key: string, height: number) => (
-    <tr key={key} aria-hidden="true" data-slot="data-table-spacer">
+    <tr key={key} aria-hidden="true" data-slot="data-table-spacer" className="border-0">
       <td colSpan={Math.max(1, columnCount)} style={{ height, padding: 0, border: 0 }} />
     </tr>
   );
@@ -516,7 +523,7 @@ function DataTableInner<TRow>(
               key={column.name}
               className={cn(
                 dataTableCellAlignVariant({ align: column.align ?? "Left" }),
-                column.wrapText ? "ivy-data-table-wrap" : "ivy-data-table-nowrap",
+                dataTableCellWrapClass(column),
               )}
               style={column.width ? { width: column.width } : undefined}
             >
@@ -590,12 +597,31 @@ function DataTableInner<TRow>(
           // not windowing is active so a screen reader always hears the true row count.
           aria-rowcount={total}
           onKeyDown={rowFocus.handleKeyDown}
-          className={cn("ivy-data-table", virtualization.active && "ivy-data-table-virtualized")}
+          className={cn(
+            "ivy-data-table",
+            // Sticky header: survives the scroll container `Table` wraps every table in. The
+            // background is opaque so windowed rows do not scroll visibly through it. Utilities
+            // rather than a stylesheet, so they reach apps that only scan the compiled JS.
+            "[&_thead_th]:sticky [&_thead_th]:top-0 [&_thead_th]:z-[1] [&_thead_th]:bg-background",
+            // Windowed: fixed layout takes widths from `column.width` (or an equal split) and holds
+            // them, so columns do not twitch as longer content scrolls into the window.
+            virtualization.active && "ivy-data-table-virtualized table-fixed",
+          )}
           containerRef={scrollContainerRef}
           containerStyle={virtualization.containerStyle}
           {...tableProps}
         >
-          {caption ? <TableCaption>{caption}</TableCaption> : null}
+          {caption ? (
+            <TableCaption
+              className={
+                showCaption
+                  ? "caption-top mt-0 border-b border-border px-2 py-2 text-left"
+                  : "sr-only"
+              }
+            >
+              {caption}
+            </TableCaption>
+          ) : null}
           <TableHeader>
             <TableRow>
               {selectable ? (

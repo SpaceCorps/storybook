@@ -213,3 +213,115 @@ export const Virtualized: StoryObj = {
     </div>
   ),
 };
+
+interface Posting {
+  id: string;
+  date: string;
+  description: string;
+  amount: string;
+}
+
+const postings: Posting[] = Array.from({ length: 8 }, (_, index) => ({
+  id: `p${index + 1}`,
+  date: `2026-10-${String(23 - index).padStart(2, "0")}`,
+  description: [
+    "Consulting, October — Kvarnby Elektriska AB",
+    "Office rent, Q4",
+    "Cloud hosting and bandwidth, September",
+    "Travel: Stockholm–Göteborg, train",
+    "Software subscriptions",
+    "Accounting services",
+    "Insurance, annual premium",
+    "Team lunch",
+  ][index],
+  amount: `${(4025 - index * 311.5).toFixed(2)} SEK`,
+}));
+
+const postingColumns: DataTableColumn<Posting>[] = [
+  { name: "date", header: "Date", accessor: (row) => row.date, nowrap: true },
+  {
+    name: "description",
+    header: "Description",
+    accessor: (row) => row.description,
+    wrapText: true,
+  },
+  // Right-aligned columns are nowrap without being asked.
+  { name: "amount", header: "Amount", accessor: (row) => row.amount, align: "Right" },
+];
+
+/** A half-width card: dates and amounts stay whole while the description wraps. */
+export const NarrowCard: StoryObj = {
+  render: () => (
+    <div className="w-[26rem] rounded-box border border-border p-3">
+      <h3 className="mb-2 text-sm font-semibold">Latest postings</h3>
+      <DataTable columns={postingColumns} rows={postings} getRowId={(row) => row.id} />
+    </div>
+  ),
+};
+
+const manyPostings: Posting[] = Array.from({ length: 40 }, (_, index) => ({
+  ...postings[index % postings.length],
+  id: `m${index + 1}`,
+}));
+
+/**
+ * A page size of 15 is not in the default 10/25/50/100 options. The select lists it and shows it
+ * selected, and "Showing 1–15 of 40" agrees. The footer is narrow here too: a count and the page-size
+ * select share a row, with the buttons centred underneath.
+ */
+export const PageSizeOutsideOptions: StoryObj = {
+  render: () => (
+    <div className="flex flex-wrap items-start gap-6">
+      <div className="w-[26rem]">
+        <DataTable
+          columns={postingColumns}
+          rows={manyPostings}
+          getRowId={(row) => row.id}
+          defaultPageSize={15}
+        />
+      </div>
+      <div className="w-[48rem] max-w-full">
+        <DataTable
+          columns={postingColumns}
+          rows={manyPostings}
+          getRowId={(row) => row.id}
+          defaultPageSize={15}
+        />
+      </div>
+    </div>
+  ),
+};
+
+/** Everything fits on one page: no first/previous/next/last buttons and no "Page 1 of 1". */
+export const SinglePage: StoryObj = {
+  render: () => (
+    <div className="w-[40rem] max-w-full">
+      <DataTable columns={postingColumns} rows={postings} getRowId={(row) => row.id} />
+    </div>
+  ),
+};
+
+/** The caption is announced by screen readers but not drawn; `showCaption` draws it above the table. */
+export const Captions: StoryObj = {
+  render: () => (
+    <div className="flex flex-col gap-6">
+      <div className="w-[40rem] max-w-full">
+        <DataTable
+          columns={postingColumns}
+          rows={postings.slice(0, 3)}
+          getRowId={(row) => row.id}
+          caption="Postings, hidden caption (screen readers only)"
+        />
+      </div>
+      <div className="w-[40rem] max-w-full">
+        <DataTable
+          columns={postingColumns}
+          rows={postings.slice(0, 3)}
+          getRowId={(row) => row.id}
+          caption="Postings, visible caption"
+          showCaption
+        />
+      </div>
+    </div>
+  ),
+};

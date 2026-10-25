@@ -1,5 +1,7 @@
 import { cva } from "class-variance-authority";
 
+import type { DataTableColumn } from "./types";
+
 /** Text alignment shared by a column's header and its cells. */
 export const dataTableCellAlignVariant = cva("", {
   variants: {
@@ -45,3 +47,22 @@ export const dataTableToolbarVariant = cva("flex flex-wrap items-center", {
     density: "Medium",
   },
 });
+
+/**
+ * How a column's cells handle overflow. These are Tailwind utilities rather than rules in a
+ * stylesheet of their own: an app that takes the design system through `styles/index.css` plus a
+ * Tailwind `@source` on `dist` only receives utility classes found in the compiled components, so a
+ * rule living in a component `.css` file never reached it and every cell wrapped.
+ */
+const CELL_WRAP = "whitespace-normal [overflow-wrap:anywhere]";
+const CELL_NOWRAP = "whitespace-nowrap";
+const CELL_TRUNCATE = "overflow-hidden text-ellipsis whitespace-nowrap";
+
+/** Resolves a column's `nowrap` / `wrapText` / `align` into the cell's overflow classes. */
+export function dataTableCellWrapClass<TRow>(
+  column: Pick<DataTableColumn<TRow>, "nowrap" | "wrapText" | "align">,
+): string {
+  const nowrap = column.nowrap ?? (column.align === "Right" && !column.wrapText);
+  if (nowrap) return CELL_NOWRAP;
+  return column.wrapText ? CELL_WRAP : CELL_TRUNCATE;
+}

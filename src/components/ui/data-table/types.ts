@@ -31,8 +31,18 @@ export interface DataTableColumn<TRow> {
   help?: string;
   /** Aggregate footer value for this column (legacy `footer`). */
   footer?: React.ReactNode;
-  /** Defaults to false — cells truncate with an ellipsis unless set. */
+  /**
+   * Defaults to false — cells stay on one line and truncate with an ellipsis. Set to let a long text
+   * column wrap instead. Overridden by `nowrap`.
+   */
   wrapText?: boolean;
+  /**
+   * Keep the cell on one line and never clip it: no wrapping and no ellipsis, so the column grows to
+   * fit its content. Use it for dates, identifiers and amounts, which are unreadable when split or
+   * cut. Defaults to true for `align: "Right"` columns (numbers) unless `wrapText` is set, and false
+   * otherwise; an explicit value always wins, including over `wrapText`.
+   */
+  nowrap?: boolean;
   /** Cell becomes editable when the table is `editable`. Defaults to false. */
   editable?: boolean;
   /** Comparator override; defaults to the shared value comparator in utils.ts. */
