@@ -230,7 +230,7 @@ export function textInputFieldShellClasses(options: {
   return cn(
     "relative flex w-full min-w-0 items-stretch overflow-hidden rounded-field border bg-transparent shadow-sm transition-colors dark:bg-white/5",
     options.focused
-      ? "border-ring outline-none dark:border-ring"
+      ? "border-ring outline-hidden dark:border-ring"
       : "border-input dark:border-white/10",
     options.invalid && "border-destructive",
     options.disabled && "cursor-not-allowed opacity-50",
@@ -490,7 +490,7 @@ export function textInputTrailingIconButtonClasses(
   const d = normalizeInputDensity(density);
   return cn(
     textInputTrailingHitTargetVariant({ density: d }),
-    "cursor-pointer rounded text-muted-foreground hover:bg-accent hover:text-foreground focus:outline-none",
+    "cursor-pointer rounded text-muted-foreground hover:bg-accent hover:text-foreground focus:outline-hidden",
     overlay && "pointer-events-auto",
   );
 }

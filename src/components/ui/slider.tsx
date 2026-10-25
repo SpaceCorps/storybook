@@ -77,7 +77,7 @@ const Slider = React.forwardRef<
       <SliderPrimitive.Thumb
         aria-label={props["aria-label"] ?? "Slider"}
         className={cn(
-          "relative block rounded-full border bg-background shadow transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 cursor-pointer",
+          "relative block rounded-full border bg-background shadow transition-colors focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 cursor-pointer",
           variant.thumb,
         )}
       >

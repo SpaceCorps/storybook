@@ -32,7 +32,7 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-[50%] top-[10%] z-50 flex flex-col w-[calc(100%-2rem)] max-sm:!w-[calc(100%-2rem)] max-sm:!max-w-[calc(100%-2rem)] sm:w-full max-w-xl max-h-[85vh] translate-x-[-50%] translate-y-0 rounded-box border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[5%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[5%] sm:rounded-box overflow-hidden focus:outline-none focus:ring-0",
+        "fixed left-[50%] top-[10%] z-50 flex flex-col w-[calc(100%-2rem)] max-sm:!w-[calc(100%-2rem)] max-sm:!max-w-[calc(100%-2rem)] sm:w-full max-w-xl max-h-[85vh] translate-x-[-50%] translate-y-0 rounded-box border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[5%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[5%] sm:rounded-box overflow-hidden focus:outline-hidden focus:ring-0",
         className,
       )}
       {...props}
@@ -61,7 +61,7 @@ const DialogHeader = ({ className, children, hideCloseButton, ...props }: Dialog
       // Pinned to the title row, not centred on the whole header: with a description under the
       // title, `items-center` floated the X halfway down. The -mt-1 centres the 24px button on
       // the 16px `leading-none` title line, and -mr-1 puts the icon on the content's right edge.
-      <DialogPrimitive.Close className="-mr-1 -mt-1 shrink-0 p-1 rounded-selector text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors focus:outline-none cursor-pointer">
+      <DialogPrimitive.Close className="-mr-1 -mt-1 shrink-0 p-1 rounded-selector text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors focus:outline-hidden cursor-pointer">
         <X className="size-4" />
         <span className="sr-only">Close</span>
       </DialogPrimitive.Close>

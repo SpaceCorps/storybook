@@ -441,7 +441,7 @@ const MultipleSelector = React.forwardRef<
                         type="button"
                         tabIndex={-1}
                         aria-label="Remove"
-                        className="ml-1 p-0.5 rounded-sm hover:bg-black/10 dark:hover:bg-white/10 focus:outline-none cursor-pointer flex items-center justify-center opacity-70 hover:opacity-100 transition-opacity"
+                        className="ml-1 p-0.5 rounded-sm hover:bg-black/10 dark:hover:bg-white/10 focus:outline-hidden cursor-pointer flex items-center justify-center opacity-70 hover:opacity-100 transition-opacity"
                         onKeyDown={(e) => {
                           if (e.key === "Enter" || e.key === " ") {
                             e.preventDefault();
@@ -496,7 +496,7 @@ const MultipleSelector = React.forwardRef<
                       hidePlaceholderWhenSelected && value.length > 0 ? undefined : placeholder
                     }
                     disabled={disabled}
-                    className="ml-2 bg-transparent outline-none placeholder:text-muted-foreground flex-1 min-w-[120px] cursor-pointer"
+                    className="ml-2 bg-transparent outline-hidden placeholder:text-muted-foreground flex-1 min-w-[120px] cursor-pointer"
                   />
                 </span>
                 <div className={selectTriggerEndActionsVariant()}>
@@ -542,7 +542,7 @@ const MultipleSelector = React.forwardRef<
           </PopoverAnchor>
           <PopoverContent
             ref={dropdownRef}
-            className="w-[var(--radix-popover-trigger-width)] p-0 z-50 rounded-box border bg-popover text-popover-foreground shadow-md outline-none overflow-hidden"
+            className="w-[var(--radix-popover-trigger-width)] p-0 z-50 rounded-box border bg-popover text-popover-foreground shadow-md outline-hidden overflow-hidden"
             sideOffset={4}
             onOpenAutoFocus={(e) => e.preventDefault()}
             onCloseAutoFocus={(e) => e.preventDefault()}
@@ -624,7 +624,7 @@ const MultipleSelector = React.forwardRef<
               >
                 <button
                   type="button"
-                  className="text-primary hover:underline underline-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm px-0.5"
+                  className="text-primary hover:underline underline-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:no-underline focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded-sm px-0.5"
                   disabled={bulkSelectAllDisabled || disabled}
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => handleBulkSelectAll()}
@@ -633,7 +633,7 @@ const MultipleSelector = React.forwardRef<
                 </button>
                 <button
                   type="button"
-                  className="text-primary hover:underline underline-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm px-0.5"
+                  className="text-primary hover:underline underline-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:no-underline focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded-sm px-0.5"
                   disabled={bulkClearAllDisabled || disabled}
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => handleBulkClearAll()}

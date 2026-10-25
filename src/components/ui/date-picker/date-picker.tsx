@@ -8,6 +8,7 @@ import { Input, type InputProps } from "@/components/ui/input";
 import { inputVariant } from "@/components/ui/input/variant";
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useDensity } from "@/contexts/density-context";
+import { useControllableValue } from "@/hooks/use-controllable-value";
 import type { Densities } from "@/types/density";
 import {
   datePickerButtonVariant,
@@ -59,25 +60,6 @@ function disabledMatchers(min?: string, max?: string): CalendarProps["disabled"]
 function useDensityOr(density: Densities | undefined): Densities {
   const contextDensity = useDensity();
   return density ?? contextDensity;
-}
-
-/** Controlled when `value` is defined, otherwise tracks its own state seeded from `defaultValue`. */
-function useControllableValue<T>(
-  value: T | undefined,
-  defaultValue: T,
-  onChange: ((next: T) => void) | undefined,
-): [T, (next: T) => void] {
-  const [inner, setInner] = React.useState(defaultValue);
-  const isControlled = value !== undefined;
-  const current = isControlled ? value : inner;
-  const set = React.useCallback(
-    (next: T) => {
-      if (!isControlled) setInner(next);
-      onChange?.(next);
-    },
-    [isControlled, onChange],
-  );
-  return [current, set];
 }
 
 interface DateTextFieldProps extends Omit<

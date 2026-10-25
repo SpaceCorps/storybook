@@ -2,7 +2,7 @@ import { cva } from "class-variance-authority";
 
 /** The calendar button that sits inside the right edge of the field. */
 export const datePickerButtonVariant = cva(
-  "absolute inset-y-0 right-0 flex aspect-square items-center justify-center rounded-r-field text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+  "absolute inset-y-0 right-0 flex aspect-square items-center justify-center rounded-r-field text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0",
   {
     variants: {
       density: {

@@ -433,7 +433,7 @@ function DataTableInner<TRow>(
         role="button"
         tabIndex={0}
         aria-label={`Edit ${label}`}
-        className="w-full rounded-field outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        className="w-full rounded-field outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
         onClick={(event) => event.stopPropagation()}
         onDoubleClick={(event) => {
           event.stopPropagation();
@@ -495,7 +495,7 @@ function DataTableInner<TRow>(
           data-state={rowSelected ? "selected" : undefined}
           className={cn(
             dataTableRowVariant({ interactive: Boolean(onRowClick), selected: rowSelected }),
-            "outline-none focus-visible:ring-1 focus-visible:ring-ring",
+            "outline-hidden focus-visible:ring-1 focus-visible:ring-ring",
           )}
           onClick={onRowClick ? () => onRowClick(row, rowId) : undefined}
         >

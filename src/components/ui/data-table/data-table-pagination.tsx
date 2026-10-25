@@ -97,7 +97,7 @@ const DataTablePagination = React.forwardRef<HTMLElement, DataTablePaginationPro
         <select
           id={pageSizeId}
           className={cn(
-            "box-border cursor-pointer rounded-field border border-input bg-transparent shadow-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10",
+            "box-border cursor-pointer rounded-field border border-input bg-transparent shadow-sm focus:outline-hidden focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10",
             selectDensity[density],
           )}
           value={pageSize}

@@ -15,7 +15,7 @@ export const fileInputVariant = cva(
         Large: "gap-6",
       },
       isDragging: {
-        true: "border-primary bg-primary/5 outline-none ring-2 ring-primary ring-offset-2",
+        true: "border-primary bg-primary/5 outline-hidden ring-2 ring-primary ring-offset-2",
         false: "",
       },
     },
