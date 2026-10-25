@@ -32,7 +32,7 @@ const ScrollArea = React.forwardRef<
       <ScrollAreaPrimitive.Viewport
         tabIndex={0}
         className={cn(
-          "h-full w-full rounded-[inherit] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-inset",
+          "h-full w-full rounded-[inherit] focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-inset",
           viewportClassName,
         )}
         style={viewportStyle}

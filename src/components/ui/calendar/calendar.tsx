@@ -203,7 +203,7 @@ function MonthYearInput({ displayMonth, title }: { displayMonth?: Date; title?: 
   };
 
   const inputClass =
-    "w-6 text-center bg-transparent border-none outline-none focus:bg-accent rounded text-sm p-0 m-0";
+    "w-6 text-center bg-transparent border-none outline-hidden focus:bg-accent rounded text-sm p-0 m-0";
 
   return (
     <div

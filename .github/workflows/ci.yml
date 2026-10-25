@@ -19,7 +19,7 @@ jobs:
     name: Merge Resolution Guard
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -29,8 +29,20 @@ jobs:
       - name: Fetch base branch
         run: git fetch --no-tags origin +refs/heads/${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}
 
+      # `npx` cannot run here: package.json pins devEngines.packageManager to pnpm, and npm refuses
+      # (EBADDEVENGINES) to run anything in a project that names another package manager, so this
+      # job failed in six seconds on every pull request. The guard needs its `yaml` dependency
+      # installed anyway, so install the way every other job does and run tsx through Vite+.
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version: "24"
+          cache: true
+          run-install: |
+            args: ["--frozen-lockfile"]
+
       - name: Check merge resolutions
-        run: npx tsx scripts/verify-merge-resolution.ts --range origin/${{ github.base_ref }}
+        run: vp exec tsx scripts/verify-merge-resolution.ts --range origin/${{ github.base_ref }}
 
   lint:
     name: Lint & Types

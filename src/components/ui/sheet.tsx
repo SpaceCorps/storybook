@@ -6,6 +6,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { overlayVariant } from "./overlay-variant";
 
 const Sheet = SheetPrimitive.Root;
 
@@ -19,18 +20,11 @@ const SheetOverlay = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof SheetPrimitive.Overlay>
 >(({ className, ...props }, ref) => (
-  <SheetPrimitive.Overlay
-    className={cn(
-      "fixed inset-0 z-50 bg-black/30  data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-      className,
-    )}
-    {...props}
-    ref={ref}
-  />
+  <SheetPrimitive.Overlay className={cn(overlayVariant(), className)} {...props} ref={ref} />
 ));
 SheetOverlay.displayName = SheetPrimitive.Overlay.displayName;
 
-const sheetVariant = cva("fixed z-50 gap-4 bg-card p-6 outline-none", {
+const sheetVariant = cva("fixed z-50 gap-4 bg-card p-6 outline-hidden", {
   variants: {
     side: {
       top: "inset-x-0 top-0 border-b shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1),0_4px_6px_-4px_rgba(0,0,0,0.1),inset_0_-8px_8px_-8px_rgba(0,0,0,0.04)]",
@@ -60,7 +54,7 @@ const SheetContent = React.forwardRef<
   <SheetPortal>
     <SheetOverlay />
     <SheetPrimitive.Content ref={ref} className={cn(sheetVariant({ side }), className)} {...props}>
-      <SheetPrimitive.Close className="absolute right-4 top-4 p-1 rounded-selector text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors focus:outline-none cursor-pointer">
+      <SheetPrimitive.Close className="absolute right-4 top-4 p-1 rounded-selector text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors focus:outline-hidden cursor-pointer">
         <X className="size-4" />
         <span className="sr-only">Close</span>
       </SheetPrimitive.Close>

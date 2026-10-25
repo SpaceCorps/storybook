@@ -103,7 +103,7 @@ const StackedProgress = React.forwardRef<HTMLDivElement, StackedProgressProps>(
           aria-label={`Select ${label}`}
           onClick={() => onSelect(index)}
           className={cn(
-            "min-w-0 cursor-pointer p-0 hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            "min-w-0 cursor-pointer p-0 hover:opacity-80 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
             isSelected && SELECTED_RING,
           )}
           style={{ flex, height: "100%" }}

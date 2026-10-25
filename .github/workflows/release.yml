@@ -83,6 +83,9 @@ jobs:
       #
       # This is also what lets actionlint check the script at all: with `${{ }}` inline, shellcheck
       # cannot parse the text as bash and reports on a string that will not exist at runtime.
+      # Not `npm version`: package.json pins devEngines.packageManager to pnpm, and npm 11 refuses to
+      # run any command in such a project (EBADDEVENGINES). Setting the field directly is all
+      # `npm version --no-git-tag-version` did.
       - name: Resolve version
         id: version
         env:
@@ -91,13 +94,21 @@ jobs:
         run: |
           if [ -n "$INPUT_VERSION" ]; then
             VERSION="$INPUT_VERSION"
-            npm version --no-git-tag-version --allow-same-version "$VERSION"
           elif [[ "$REF" == refs/tags/v* ]]; then
             VERSION="${REF#refs/tags/v}"
-            npm version --no-git-tag-version --allow-same-version "$VERSION"
           else
             VERSION=$(node -p "require('./package.json').version")
           fi
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "ERROR: '$VERSION' is not a semantic version" >&2
+            exit 1
+          fi
+          VERSION="$VERSION" node -e '
+            const fs = require("node:fs");
+            const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+            pkg.version = process.env.VERSION;
+            fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2) + String.fromCharCode(10));
+          '
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Releasing $VERSION"
 
@@ -122,7 +133,14 @@ jobs:
         if: github.event_name == 'push' || inputs.dry-run == false
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm publish
+        # From inside dist-pack so npm sees no package.json: it would otherwise stop on devEngines
+        # (see the version step). The tarball carries its own publishConfig, and setup-node's user
+        # .npmrc supplies the registry login.
+        working-directory: dist-pack
+        run: |
+          for tarball in ./*.tgz; do
+            npm publish "$tarball"
+          done
 
       - name: Dry run notice
         if: github.event_name == 'workflow_dispatch' && inputs.dry-run

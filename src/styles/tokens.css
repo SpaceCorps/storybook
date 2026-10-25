@@ -86,6 +86,25 @@
   --pink-foreground: #ffffff;
   --violet-foreground: #ffffff;
 
+  /* Status tint scales used by `badgeVariant`. Unlike the solid status colors above, these are the
+   * same in both themes and the badge picks the step per theme: -200 fill with -800 text in light,
+   * -800 fill with -100 text in dark. Every pair clears WCAG AA (design-tokens.test.ts enforces it). */
+  --success-100: #dcfce7;
+  --success-200: #bbf7d0;
+  --success-800: #166534;
+  --warning-100: #fef3c7;
+  --warning-200: #fde68a;
+  --warning-800: #92400e;
+  --info-100: #dbeafe;
+  --info-200: #bfdbfe;
+  --info-800: #1e40af;
+  --destructive-100: #fee2e2;
+  --destructive-200: #fecaca;
+  --destructive-800: #991b1b;
+  --ivy-green-100: #d1f6eb;
+  --ivy-green-200: #adefdc;
+  --ivy-green-800: #004e37;
+
   /* Badge tint defaults (overridden inline per element by consumers) */
   --badge-tint-bg-light: var(--muted);
   --badge-tint-fg-light: var(--foreground);
@@ -209,15 +228,22 @@
   --pink-foreground: #000000;
   --violet-foreground: #000000;
 
-  /* Shadow ramp — flat in dark mode */
-  --shadow-2xs: none;
-  --shadow-xs: none;
-  --shadow-sm: none;
-  --shadow: none;
-  --shadow-md: none;
-  --shadow-lg: none;
-  --shadow-xl: none;
-  --shadow-2xl: none;
+  /* Shadow ramp — flat in dark mode.
+   *
+   * Flat is a zero-offset, fully transparent shadow, never the keyword `none`. Tailwind builds every
+   * element's `box-shadow` as a comma list ending in `var(--tw-shadow)`, and `none` is not valid
+   * inside a list: one `none` makes the whole declaration invalid at computed-value time, so the
+   * computed `box-shadow` collapses to `none` and every `focus-visible:ring-*` on an element that
+   * also has a `shadow-*` class (Button, Input, Select...) disappears. Dark mode had no visible
+   * focus ring on any of them. `0 0 #0000` paints nothing and keeps the list valid. */
+  --shadow-2xs: 0 0 #0000;
+  --shadow-xs: 0 0 #0000;
+  --shadow-sm: 0 0 #0000;
+  --shadow: 0 0 #0000;
+  --shadow-md: 0 0 #0000;
+  --shadow-lg: 0 0 #0000;
+  --shadow-xl: 0 0 #0000;
+  --shadow-2xl: 0 0 #0000;
 
   /* Misc framework tokens */
   --toolbox: #edeaf1;

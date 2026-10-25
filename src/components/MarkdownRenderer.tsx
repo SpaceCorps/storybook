@@ -267,7 +267,7 @@ const MarkdownImage: React.FC<MarkdownImageProps> = memo(
           alt={props.alt || ""}
           className={cn(
             typography.img,
-            "cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
+            "cursor-zoom-in focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
           )}
           loading="lazy"
           onClick={() => setShowOverlay(true)}

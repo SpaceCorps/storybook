@@ -68,7 +68,7 @@ function DataTableColumnHeaderInner<TRow>(
           type="button"
           aria-label={sortActionLabel(label, direction)}
           onClick={() => onToggleSort?.(column.name)}
-          className="inline-flex max-w-full items-center gap-1 rounded-field font-medium transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="inline-flex max-w-full items-center gap-1 rounded-field font-medium transition-colors hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
         >
           <span className="truncate">{label}</span>
           {indicator}

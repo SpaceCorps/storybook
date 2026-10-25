@@ -1,0 +1,29 @@
+/* Scroll lock without a layout shift.
+ *
+ * Radix modals (Dialog, AlertDialog, Sheet, Select, DropdownMenu...) lock the page through
+ * react-remove-scroll, which sets `overflow: hidden` on <body> and then papers over the vanished
+ * scrollbar with a `margin-right` equal to its width. Two things go wrong with that on a classic
+ * (non-overlay) scrollbar, as on Windows and most Linux desktops:
+ *
+ *   - Anything not laid out against <body>'s box (viewport-anchored layouts, full-bleed headers,
+ *     centred columns that size from the viewport) jumps sideways by one scrollbar width, because
+ *     the margin only compensates flow content.
+ *   - The width is measured when the lock engages, so a page that gains or loses its scrollbar
+ *     while locked shifts anyway.
+ *
+ * `scrollbar-gutter: stable` keeps the gutter reserved whether or not the page scrolls, so the
+ * scrollbar appearing or disappearing never changes the layout width, and the margin compensation
+ * is switched off so it does not double-count the reserved gutter. The `html body[...]` selector
+ * out-ranks the library's own `body[data-scroll-locked]` rule, and both are unlayered `!important`,
+ * so specificity decides. Keep this file out of any `@layer`: important declarations in a layer lose
+ * to unlayered ones, but the reverse ordering would make this override lose.
+ *
+ * Overlay scrollbars (macOS, touch) reserve no gutter, so this is a no-op there.
+ */
+html {
+  scrollbar-gutter: stable;
+}
+
+html body[data-scroll-locked] {
+  margin-right: 0 !important;
+}
