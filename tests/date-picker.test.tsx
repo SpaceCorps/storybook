@@ -1,7 +1,10 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import "@testing-library/jest-dom";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { sv } from "date-fns/locale";
 import * as React from "react";
 import { describe, expect, it, vi } from "vite-plus/test";
+import { Calendar } from "../src/components/ui/calendar";
 import {
   DatePicker,
   DateRangePicker,
@@ -264,4 +267,235 @@ describe("DateRangePicker", () => {
     await user.click(grid().getByRole("button", { name: /October 14th, 2026/ }));
     expect(readRange()).toEqual({ from: "2026-10-14", to: "" });
   }, 20_000);
+});
+
+describe("DatePicker focus", () => {
+  it("moves focus to the selected day when ArrowDown opens the calendar", async () => {
+    const user = userEvent.setup();
+    render(<DatePicker aria-label="Date" value="2026-10-23" onChange={vi.fn()} />);
+
+    screen.getByLabelText("Date").focus();
+    await user.keyboard("{ArrowDown}");
+
+    const day = screen.getByRole("button", { name: /October 23rd, 2026/ });
+    await waitFor(() => expect(day).toHaveFocus());
+  });
+
+  it("gives focus back to the text field on Escape and after picking a day", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<DatePicker aria-label="Date" value="2026-10-23" onChange={onChange} />);
+    const input = screen.getByLabelText("Date");
+
+    input.focus();
+    await user.keyboard("{ArrowDown}");
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /October 23rd, 2026/ })).toHaveFocus(),
+    );
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(input).toHaveFocus());
+
+    await user.keyboard("{ArrowDown}");
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /October 23rd, 2026/ })).toHaveFocus(),
+    );
+    await user.keyboard("{ArrowRight}{Enter}");
+    expect(onChange).toHaveBeenCalledWith("2026-10-24");
+    await waitFor(() => expect(input).toHaveFocus());
+  }, 20_000);
+
+  it("returns focus to the calendar button when it was the button that opened it", async () => {
+    const user = userEvent.setup();
+    render(<DatePicker aria-label="Date" value="2026-10-23" onChange={vi.fn()} />);
+    const button = screen.getByRole("button", { name: "Choose date" });
+
+    await user.click(button);
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /October 23rd, 2026/ })).toHaveFocus(),
+    );
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(button).toHaveFocus());
+  }, 20_000);
+
+  it("names the month and year boxes, asks for a number pad, and keeps focus on Enter", async () => {
+    const user = userEvent.setup();
+    render(<DatePicker aria-label="Date" value="2026-10-23" onChange={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: "Choose date" }));
+    const month = screen.getByRole("textbox", { name: "Month" });
+    const year = screen.getByRole("textbox", { name: "Year" });
+    expect(month).toHaveAttribute("inputmode", "numeric");
+    expect(year).toHaveAttribute("inputmode", "numeric");
+
+    await user.clear(month);
+    await user.type(month, "3{Enter}");
+    // Enter commits and stays; it used to blur to <body> while the calendar stayed open.
+    expect(month).toHaveFocus();
+    expect(screen.getByRole("grid")).toBeDefined();
+    // The box draws its focus ring itself (it has no outline), so the class has to be one of its own.
+    expect(month.classList.contains("focus-visible:ring-1")).toBe(true);
+  }, 20_000);
+
+  it("names the calendar popup, so it is not announced as just a dialog", async () => {
+    const user = userEvent.setup();
+    render(<DatePicker aria-label="Date" value="2026-10-23" onChange={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: "Choose date" }));
+
+    expect(screen.getByRole("dialog", { name: "Choose date" })).toBeInTheDocument();
+  }, 20_000);
+
+  it("leaves focus on the control that was clicked when ArrowDown had opened the calendar", async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <DatePicker aria-label="Date" value="2026-10-23" onChange={vi.fn()} />
+        <input aria-label="Notes" />
+      </>,
+    );
+    screen.getByLabelText("Date").focus();
+    await user.keyboard("{ArrowDown}");
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /October 23rd, 2026/ })).toHaveFocus(),
+    );
+
+    await user.click(screen.getByLabelText("Notes"));
+    await waitFor(() => expect(screen.queryByRole("grid")).toBeNull());
+    // Radix hands focus back in a timeout once the popover has unmounted.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(screen.getByLabelText("Notes")).toHaveFocus();
+    await user.keyboard("hi");
+    expect(screen.getByLabelText("Notes")).toHaveValue("hi");
+    expect(screen.getByLabelText("Date")).toHaveValue("2026-10-23");
+  }, 20_000);
+});
+
+describe("DateRangePicker focus", () => {
+  it("opens on the start day from either field and returns focus to that field", async () => {
+    const user = userEvent.setup();
+    render(
+      <DateRangePicker
+        defaultValue={{ from: "2026-10-01", to: "2026-10-31" }}
+        onChange={vi.fn()}
+      />,
+    );
+    const to = screen.getByLabelText("To date");
+
+    to.focus();
+    await user.keyboard("{ArrowDown}");
+    await waitFor(() =>
+      expect(
+        within(screen.getAllByRole("grid")[0]).getByRole("button", { name: /October 1st, 2026/ }),
+      ).toHaveFocus(),
+    );
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(to).toHaveFocus());
+  }, 20_000);
+
+  it("names the calendar popup", async () => {
+    const user = userEvent.setup();
+    render(<DateRangePicker />);
+
+    await user.click(screen.getByRole("button", { name: "Choose date range" }));
+
+    expect(screen.getByRole("dialog", { name: "Choose date range" })).toBeInTheDocument();
+  }, 20_000);
+
+  it("leaves focus on the control that was clicked when ArrowDown had opened the calendar", async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <DateRangePicker defaultValue={{ from: "2026-10-01", to: "2026-10-31" }} />
+        <input aria-label="Notes" />
+      </>,
+    );
+    screen.getByLabelText("To date").focus();
+    await user.keyboard("{ArrowDown}");
+    await waitFor(() =>
+      expect(
+        within(screen.getAllByRole("grid")[0]).getByRole("button", { name: /October 1st, 2026/ }),
+      ).toHaveFocus(),
+    );
+
+    await user.click(screen.getByLabelText("Notes"));
+    await waitFor(() => expect(screen.queryByRole("grid")).toBeNull());
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(screen.getByLabelText("Notes")).toHaveFocus();
+  }, 20_000);
+});
+
+describe("Calendar caption", () => {
+  const october = new Date(2026, 9, 1);
+  const monthBoxes = () =>
+    screen.getAllByRole("textbox", { name: "Month" }).map((box) => (box as HTMLInputElement).value);
+  const yearBoxes = () =>
+    screen.getAllByRole("textbox", { name: "Year" }).map((box) => (box as HTMLInputElement).value);
+
+  it("shows the month and year as numbers in any language", () => {
+    // The caption reads "oktober 2026", which cannot be parsed as an English month name.
+    render(<Calendar locale={sv} defaultMonth={october} />);
+    expect(screen.getByRole("grid", { name: /oktober 2026/i })).toBeInTheDocument();
+    expect(monthBoxes()).toEqual(["10"]);
+    expect(yearBoxes()).toEqual(["2026"]);
+  });
+
+  it("gives each month of a two-month calendar its own boxes", () => {
+    render(<Calendar numberOfMonths={2} defaultMonth={october} locale={sv} />);
+    expect(monthBoxes()).toEqual(["10", "11"]);
+    expect(yearBoxes()).toEqual(["2026", "2026"]);
+  });
+
+  it("announces the new month when the calendar moves", async () => {
+    const user = userEvent.setup();
+    render(<Calendar defaultMonth={october} />);
+    expect(screen.getByRole("status")).toHaveTextContent("October 2026");
+
+    await user.click(screen.getByRole("button", { name: /next month/i }));
+
+    expect(screen.getByRole("status")).toHaveTextContent("November 2026");
+    expect(monthBoxes()).toEqual(["11"]);
+  });
+
+  it("puts back the month on show when a box is left with numbers that are not one", async () => {
+    const user = userEvent.setup();
+    render(<Calendar defaultMonth={october} />);
+    const month = screen.getByRole("textbox", { name: "Month" });
+
+    await user.clear(month);
+    await user.type(month, "13");
+    await user.tab();
+
+    expect(month).toHaveValue("10");
+    expect(screen.getByRole("grid", { name: /October 2026/ })).toBeInTheDocument();
+  });
+
+  it("marks Enter on impossible numbers invalid until the next keystroke", async () => {
+    const user = userEvent.setup();
+    render(<Calendar defaultMonth={october} />);
+    const month = screen.getByRole("textbox", { name: "Month" });
+    const year = screen.getByRole("textbox", { name: "Year" });
+
+    await user.clear(month);
+    await user.type(month, "13{Enter}");
+    expect(month).toHaveAttribute("aria-invalid", "true");
+    expect(year).toHaveAttribute("aria-invalid", "true");
+    expect(month).toHaveFocus();
+
+    await user.type(month, "{Backspace}");
+    expect(month).not.toHaveAttribute("aria-invalid");
+  });
+
+  it("still goes to a month typed into the boxes", async () => {
+    const user = userEvent.setup();
+    render(<Calendar defaultMonth={october} />);
+    const month = screen.getByRole("textbox", { name: "Month" });
+
+    await user.clear(month);
+    await user.type(month, "3{Enter}");
+
+    expect(screen.getByRole("grid", { name: /March 2026/ })).toBeInTheDocument();
+    expect(month).toHaveFocus();
+  });
 });

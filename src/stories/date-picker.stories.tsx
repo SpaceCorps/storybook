@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import { expect, userEvent, waitFor, within } from "@storybook/test";
 import * as React from "react";
 
 import { Button } from "@/components/ui/button";
@@ -163,4 +164,68 @@ const InDialogDemo = () => {
 /** The calendar stacks above a dialog and the dialog stays open behind it. */
 export const InsideDialog: StoryObj = {
   render: () => <InDialogDemo />,
+};
+
+const KeyboardDemo = () => {
+  const [date, setDate] = React.useState("2026-10-23");
+  return (
+    <div className="flex w-64 flex-col gap-2">
+      <DatePicker aria-label="Keyboard date" value={date} onChange={setDate} />
+      <Readout label="value" value={date} />
+    </div>
+  );
+};
+
+/**
+ * ArrowDown in the field opens the calendar with focus already on the selected day (no tabbing past
+ * the month controls). Escape, or picking a day, puts focus back in the field.
+ */
+export const KeyboardOpen: StoryObj = {
+  render: () => <KeyboardDemo />,
+  play: async ({ canvasElement }) => {
+    const input = within(canvasElement).getByLabelText("Keyboard date");
+    await userEvent.click(input);
+    await userEvent.keyboard("{ArrowDown}");
+    const day = await within(document.body).findByRole("button", { name: /October 23rd, 2026/ });
+    await waitFor(() => expect(day).toHaveFocus());
+    await userEvent.keyboard("{ArrowRight}{Enter}");
+    await waitFor(() => expect(input).toHaveFocus());
+    await expect(input).toHaveValue("2026-10-24");
+  },
+};
+
+const OutsideClickDemo = () => {
+  const [date, setDate] = React.useState("2026-10-23");
+  return (
+    <div className="flex w-64 flex-col gap-3">
+      <Label htmlFor="outside-notes">Notes</Label>
+      <input
+        id="outside-notes"
+        className="h-9 rounded-field border border-input bg-transparent px-3 text-sm"
+      />
+      <DatePicker aria-label="Outside date" value={date} onChange={setDate} />
+    </div>
+  );
+};
+
+/**
+ * Open the calendar with ArrowDown, then click another field: the click wins. Focus goes back to the
+ * date field only when nothing else has taken it (Escape, or picking a day).
+ */
+export const OutsideClick: StoryObj = {
+  render: () => <OutsideClickDemo />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const input = canvas.getByLabelText("Outside date");
+    const notes = canvas.getByLabelText("Notes");
+    await userEvent.click(input);
+    await userEvent.keyboard("{ArrowDown}");
+    const day = await within(document.body).findByRole("button", { name: /October 23rd, 2026/ });
+    await waitFor(() => expect(day).toHaveFocus());
+
+    await userEvent.click(notes);
+    await waitFor(() => expect(within(document.body).queryByRole("grid")).toBeNull());
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    await expect(notes).toHaveFocus();
+  },
 };
