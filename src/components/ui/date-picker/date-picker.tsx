@@ -4,7 +4,9 @@ import type { DateRange } from "react-day-picker";
 
 import { cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
-import { Input, type InputProps } from "@/components/ui/input";
+import { FieldReset } from "@/components/ui/field/field";
+import { useFieldContext, useFieldControl } from "@/components/ui/field/field-context";
+import { Input, type InputProps, type PasswordInputOnlyProps } from "@/components/ui/input";
 import { inputVariant } from "@/components/ui/input/variant";
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useDensity } from "@/contexts/density-context";
@@ -31,6 +33,23 @@ const RANGE_FIELD =
 
 type CalendarProps = React.ComponentProps<typeof Calendar>;
 
+/** The day button the calendar's roving tabindex points at: the selected day, else today. */
+const FOCUSABLE_DAY = 'button[data-day][tabindex="0"]';
+
+function focusCalendarDay(content: HTMLElement | null) {
+  content?.querySelector<HTMLElement>(FOCUSABLE_DAY)?.focus();
+}
+
+/**
+ * Whether focus is already on some other control by the time the calendar finishes closing. A click
+ * on another field closes the calendar and focuses that field first, and handing focus back to the
+ * text field the calendar was opened from would then pull it away from where the user just went.
+ */
+function focusMovedElsewhere(content: HTMLElement | null): boolean {
+  const active = document.activeElement;
+  return active !== null && active !== document.body && !content?.contains(active);
+}
+
 /** Props shared by both pickers that configure the popover calendar. */
 interface DatePickerCalendarProps {
   /** Earliest selectable date, `yyyy-mm-dd`. */
@@ -41,6 +60,10 @@ interface DatePickerCalendarProps {
   weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6;
   /** A `date-fns` locale for month and weekday names. Dates are still shown as `yyyy-mm-dd`. */
   locale?: CalendarProps["locale"];
+  /** Accessible name of the month box in the calendar caption. */
+  monthLabel?: string;
+  /** Accessible name of the year box in the calendar caption. */
+  yearLabel?: string;
   density?: Densities;
 }
 
@@ -64,7 +87,7 @@ function useDensityOr(density: Densities | undefined): Densities {
 
 interface DateTextFieldProps extends Omit<
   InputProps,
-  "value" | "defaultValue" | "onChange" | "type" | "density"
+  "value" | "defaultValue" | "onChange" | "type" | "density" | PasswordInputOnlyProps
 > {
   /** The committed value: a valid `yyyy-mm-dd` or an empty string. */
   value: string;
@@ -72,8 +95,8 @@ interface DateTextFieldProps extends Omit<
   onCommit: (iso: string) => void;
   /** Rejects dates the picker cannot take (outside `min`/`max`, wrong side of the other end). */
   isAllowed?: (iso: string) => boolean;
-  /** ArrowDown asks the owner to open the calendar. */
-  onRequestOpen?: () => void;
+  /** ArrowDown asks the owner to open the calendar, naming the field it came from. */
+  onRequestOpen?: (field: HTMLInputElement) => void;
   /** Enter was pressed; the owner may close the calendar. */
   onSubmitted?: () => void;
   density?: Densities;
@@ -123,7 +146,7 @@ const DateTextField = React.forwardRef<HTMLInputElement, DateTextFieldProps>(
           if (event.defaultPrevented) return;
           if (event.key === "ArrowDown") {
             event.preventDefault();
-            onRequestOpen?.();
+            onRequestOpen?.(event.currentTarget);
           } else if (event.key === "Enter") {
             onSubmitted?.();
           }
@@ -136,7 +159,17 @@ DateTextField.displayName = "DateTextField";
 
 export interface DatePickerProps
   extends
-    Omit<InputProps, "value" | "defaultValue" | "onChange" | "type" | "min" | "max" | "density">,
+    Omit<
+      InputProps,
+      | "value"
+      | "defaultValue"
+      | "onChange"
+      | "type"
+      | "min"
+      | "max"
+      | "density"
+      | PasswordInputOnlyProps
+    >,
     DatePickerCalendarProps {
   /** Controlled value as `yyyy-mm-dd`; `""` or `null` for no date. */
   value?: string | null;
@@ -153,65 +186,91 @@ export interface DatePickerProps
  * Type a date — digits are enough, the dashes are added — or pick one from the calendar, which opens
  * from the button or with ArrowDown and starts its weeks on Monday.
  */
-const DatePicker = React.forwardRef<HTMLInputElement, DatePickerProps>(
-  (
-    {
-      value,
-      defaultValue = "",
-      onChange,
-      min,
-      max,
-      weekStartsOn = 1,
-      locale,
-      density: propDensity,
-      className,
-      disabled,
-      name,
-      ...props
-    },
-    ref,
-  ) => {
-    const density = useDensityOr(propDensity);
-    const [current, setCurrent] = useControllableValue<string>(
-      value === null ? "" : value,
-      defaultValue,
-      onChange,
-    );
-    const [open, setOpen] = React.useState(false);
+const DatePicker = React.forwardRef<HTMLInputElement, DatePickerProps>((props, ref) => {
+  const {
+    value,
+    defaultValue = "",
+    onChange,
+    min,
+    max,
+    weekStartsOn = 1,
+    locale,
+    monthLabel,
+    yearLabel,
+    density: propDensity,
+    className,
+    ...fieldProps
+  } = props;
+  // `name` belongs on the hidden input that holds the committed date, not on the text being typed.
+  const { name, disabled, ...inputProps } = useFieldControl(fieldProps);
+  const density = useDensityOr(propDensity);
+  const [current, setCurrent] = useControllableValue<string>(
+    value === null ? "" : value,
+    defaultValue,
+    onChange,
+  );
+  const [open, setOpen] = React.useState(false);
+  const contentRef = React.useRef<HTMLDivElement>(null);
+  // Set when ArrowDown in the text field opened the calendar, so closing hands focus back to it.
+  const openedFromRef = React.useRef<HTMLInputElement | null>(null);
 
-    const selected = parseIsoDate(current);
-    const allowed = React.useCallback((iso: string) => isWithin(iso, min, max), [min, max]);
+  const selected = parseIsoDate(current);
+  const allowed = React.useCallback((iso: string) => isWithin(iso, min, max), [min, max]);
 
-    return (
+  return (
+    <FieldReset>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverAnchor asChild>
           <div className={cn("relative w-full", className)}>
             <DateTextField
               ref={ref}
-              {...props}
+              {...inputProps}
               className={datePickerInputVariant({ density })}
               density={density}
               disabled={disabled}
               value={current}
               onCommit={setCurrent}
               isAllowed={allowed}
-              onRequestOpen={() => !disabled && setOpen(true)}
+              onRequestOpen={(field) => {
+                if (disabled) return;
+                openedFromRef.current = field;
+                setOpen(true);
+              }}
               onSubmitted={() => setOpen(false)}
             />
-            {name ? <input type="hidden" name={name} value={current} /> : null}
+            {name ? <input type="hidden" name={name} value={current} disabled={disabled} /> : null}
             <PopoverTrigger asChild>
               <button
                 type="button"
                 aria-label="Choose date"
                 disabled={disabled}
                 className={datePickerButtonVariant({ density })}
+                onClick={() => {
+                  openedFromRef.current = null;
+                }}
               >
                 <CalendarIcon aria-hidden="true" />
               </button>
             </PopoverTrigger>
           </div>
         </PopoverAnchor>
-        <PopoverContent align="start" className="w-auto p-0">
+        <PopoverContent
+          ref={contentRef}
+          align="start"
+          className="w-auto p-0"
+          aria-label="Choose date"
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            focusCalendarDay(contentRef.current);
+          }}
+          onCloseAutoFocus={(event) => {
+            const from = openedFromRef.current;
+            openedFromRef.current = null;
+            if (!from || focusMovedElsewhere(contentRef.current)) return;
+            event.preventDefault();
+            from.focus();
+          }}
+        >
           <Calendar
             mode="single"
             required
@@ -225,13 +284,15 @@ const DatePicker = React.forwardRef<HTMLInputElement, DatePickerProps>(
             disabled={disabledMatchers(min, max)}
             weekStartsOn={weekStartsOn}
             locale={locale}
+            monthLabel={monthLabel}
+            yearLabel={yearLabel}
             density={density}
           />
         </PopoverContent>
       </Popover>
-    );
-  },
-);
+    </FieldReset>
+  );
+});
 DatePicker.displayName = "DatePicker";
 
 /** The start and end of a range as `yyyy-mm-dd`; either is `""` while unset. */
@@ -251,6 +312,13 @@ export interface DateRangePickerProps
   /** Called with the new range; `from` and `to` are `yyyy-mm-dd` or `""`. */
   onChange?: (value: DateRangeValue) => void;
   disabled?: boolean;
+  /**
+   * The id of the first (From) input, so a `<label htmlFor>` focuses it. The group around the two
+   * inputs gets `{id}-group`. Inside a `Field` or the library's `Form` it is supplied for you.
+   */
+  id?: string;
+  /** The form field name. The range submits as two hidden inputs, `{name}-from` and `{name}-to`. */
+  name?: string;
   /** Accessible names for the two fields. */
   fromLabel?: string;
   toLabel?: string;
@@ -263,65 +331,99 @@ const EMPTY_RANGE: DateRangeValue = { from: "", to: "" };
  * end before the start is ignored, and in the calendar the first click starts a range, the second
  * ends it (in either order), and a click after that starts over.
  */
-const DateRangePicker = React.forwardRef<HTMLDivElement, DateRangePickerProps>(
-  (
-    {
-      value,
-      defaultValue = EMPTY_RANGE,
-      onChange,
-      min,
-      max,
-      weekStartsOn = 1,
-      locale,
-      density: propDensity,
-      className,
-      disabled,
-      fromLabel = "From date",
-      toLabel = "To date",
-      ...props
-    },
-    ref,
-  ) => {
-    const density = useDensityOr(propDensity);
-    const [range, setRange] = useControllableValue<DateRangeValue>(value, defaultValue, onChange);
-    const [open, setOpen] = React.useState(false);
+const DateRangePicker = React.forwardRef<HTMLDivElement, DateRangePickerProps>((props, ref) => {
+  const {
+    value,
+    defaultValue = EMPTY_RANGE,
+    onChange,
+    min,
+    max,
+    weekStartsOn = 1,
+    locale,
+    monthLabel,
+    yearLabel,
+    density: propDensity,
+    className,
+    fromLabel = "From date",
+    toLabel = "To date",
+    ...fieldProps
+  } = props;
+  const field = useFieldContext();
+  const {
+    id: fieldId,
+    name,
+    disabled,
+    "aria-describedby": describedBy,
+    "aria-invalid": ariaInvalid,
+    "aria-required": ariaRequired,
+    ...groupProps
+  } = useFieldControl(fieldProps);
+  // The `id` (the caller's, or the field's) goes to the first input, so a label pointing at it focuses
+  // it. The group takes a derived id, because the same value on both would be a duplicate and the
+  // label's `for` would resolve to the group, which a label cannot focus.
+  const groupId = fieldId ? `${fieldId}-group` : undefined;
+  const density = useDensityOr(propDensity);
+  const [range, setRange] = useControllableValue<DateRangeValue>(value, defaultValue, onChange);
+  const [open, setOpen] = React.useState(false);
+  const contentRef = React.useRef<HTMLDivElement>(null);
+  const openedFromRef = React.useRef<HTMLInputElement | null>(null);
 
-    const selected: DateRange | undefined = React.useMemo(() => {
-      const from = parseIsoDate(range.from);
-      const to = parseIsoDate(range.to);
-      return from || to ? { from, to } : undefined;
-    }, [range.from, range.to]);
+  const labelledBy =
+    groupProps["aria-labelledby"] ??
+    (field?.hasLabel && !groupProps["aria-label"] ? field.labelId : undefined);
+  // aria-invalid and aria-required are not valid on a group, so the two text boxes carry them.
+  const inputAria = {
+    "aria-describedby": describedBy,
+    "aria-invalid": ariaInvalid,
+    "aria-required": ariaRequired,
+  } as const;
 
-    const fromAllowed = React.useCallback(
-      (iso: string) => isWithin(iso, min, range.to || max),
-      [min, max, range.to],
+  const selected: DateRange | undefined = React.useMemo(() => {
+    const from = parseIsoDate(range.from);
+    const to = parseIsoDate(range.to);
+    return from || to ? { from, to } : undefined;
+  }, [range.from, range.to]);
+
+  const fromAllowed = React.useCallback(
+    (iso: string) => isWithin(iso, min, range.to || max),
+    [min, max, range.to],
+  );
+  const toAllowed = React.useCallback(
+    (iso: string) => isWithin(iso, range.from || min, max),
+    [min, max, range.from],
+  );
+
+  const pickDay = (day: Date) => {
+    const iso = formatIsoDate(day);
+    if (range.from === "" || range.to !== "") {
+      setRange({ from: iso, to: "" });
+      return;
+    }
+    setRange(
+      compareIsoDates(iso, range.from) < 0
+        ? { from: iso, to: range.from }
+        : { from: range.from, to: iso },
     );
-    const toAllowed = React.useCallback(
-      (iso: string) => isWithin(iso, range.from || min, max),
-      [min, max, range.from],
-    );
+    setOpen(false);
+  };
 
-    const pickDay = (day: Date) => {
-      const iso = formatIsoDate(day);
-      if (range.from === "" || range.to !== "") {
-        setRange({ from: iso, to: "" });
-        return;
-      }
-      setRange(
-        compareIsoDates(iso, range.from) < 0
-          ? { from: iso, to: range.from }
-          : { from: range.from, to: iso },
-      );
-      setOpen(false);
-    };
+  const requestOpen = (from: HTMLInputElement) => {
+    if (disabled) return;
+    openedFromRef.current = from;
+    setOpen(true);
+  };
 
-    return (
+  return (
+    <FieldReset>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverAnchor asChild>
           <div
             ref={ref}
             role="group"
-            {...props}
+            {...groupProps}
+            id={groupId}
+            aria-labelledby={labelledBy}
+            aria-describedby={describedBy}
             className={cn(
               inputVariant({ density }),
               dateRangeFrameVariant({ density }),
@@ -330,6 +432,8 @@ const DateRangePicker = React.forwardRef<HTMLDivElement, DateRangePickerProps>(
             )}
           >
             <DateTextField
+              {...inputAria}
+              id={fieldId}
               aria-label={fromLabel}
               className={RANGE_FIELD}
               density={density}
@@ -337,13 +441,14 @@ const DateRangePicker = React.forwardRef<HTMLDivElement, DateRangePickerProps>(
               value={range.from}
               onCommit={(from) => setRange({ ...range, from })}
               isAllowed={fromAllowed}
-              onRequestOpen={() => !disabled && setOpen(true)}
+              onRequestOpen={requestOpen}
               onSubmitted={() => setOpen(false)}
             />
             <span aria-hidden="true" className="text-muted-foreground">
               –
             </span>
             <DateTextField
+              {...inputAria}
               aria-label={toLabel}
               className={RANGE_FIELD}
               density={density}
@@ -351,22 +456,47 @@ const DateRangePicker = React.forwardRef<HTMLDivElement, DateRangePickerProps>(
               value={range.to}
               onCommit={(to) => setRange({ ...range, to })}
               isAllowed={toAllowed}
-              onRequestOpen={() => !disabled && setOpen(true)}
+              onRequestOpen={requestOpen}
               onSubmitted={() => setOpen(false)}
             />
+            {name ? (
+              <>
+                <input type="hidden" name={`${name}-from`} value={range.from} disabled={disabled} />
+                <input type="hidden" name={`${name}-to`} value={range.to} disabled={disabled} />
+              </>
+            ) : null}
             <PopoverTrigger asChild>
               <button
                 type="button"
                 aria-label="Choose date range"
                 disabled={disabled}
                 className={datePickerButtonVariant({ density })}
+                onClick={() => {
+                  openedFromRef.current = null;
+                }}
               >
                 <CalendarIcon aria-hidden="true" />
               </button>
             </PopoverTrigger>
           </div>
         </PopoverAnchor>
-        <PopoverContent align="start" className="w-auto p-0">
+        <PopoverContent
+          ref={contentRef}
+          align="start"
+          className="w-auto p-0"
+          aria-label="Choose date range"
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            focusCalendarDay(contentRef.current);
+          }}
+          onCloseAutoFocus={(event) => {
+            const from = openedFromRef.current;
+            openedFromRef.current = null;
+            if (!from || focusMovedElsewhere(contentRef.current)) return;
+            event.preventDefault();
+            from.focus();
+          }}
+        >
           <Calendar
             mode="range"
             numberOfMonths={2}
@@ -376,13 +506,15 @@ const DateRangePicker = React.forwardRef<HTMLDivElement, DateRangePickerProps>(
             disabled={disabledMatchers(min, max)}
             weekStartsOn={weekStartsOn}
             locale={locale}
+            monthLabel={monthLabel}
+            yearLabel={yearLabel}
             density={density}
           />
         </PopoverContent>
       </Popover>
-    );
-  },
-);
+    </FieldReset>
+  );
+});
 DateRangePicker.displayName = "DateRangePicker";
 
 export { DatePicker, DateRangePicker };

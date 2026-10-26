@@ -289,13 +289,16 @@ export function textInputTrailingClusterGapClasses(density: Densities = Densitie
   return textInputTrailingClusterGapVariant({ density: normalizeInputDensity(density) });
 }
 
-/** Trailing icon hit target — scales with field height at each density. */
+/**
+ * Trailing icon hit target — scales with field height at each density. Small is `size-6`, not
+ * `size-5`: at this repo's spacing unit `size-5` is 22px, under the 24px minimum target size.
+ */
 export const textInputTrailingHitTargetVariant = cva(
   "inline-flex shrink-0 items-center justify-center overflow-hidden leading-none",
   {
     variants: {
       density: {
-        Small: "size-5",
+        Small: "size-6",
         Medium: "size-6",
         Large: "size-7",
       },
@@ -445,7 +448,23 @@ export const textInputTrailingOverlayPositionVariant = cva("", {
   },
 });
 
-export function textInputTrailingOverlayClasses(density: Densities = Densities.Medium): string {
+/** Right padding that keeps typed text clear of a one-button trailing overlay (the password eye). */
+export const textInputPasswordPaddingVariant = cva("", {
+  variants: {
+    density: {
+      Small: "pr-9",
+      Medium: "pr-9",
+      Large: "pr-11",
+    },
+  },
+  defaultVariants: {
+    density: "Medium",
+  },
+});
+
+export function textInputTrailingOverlayClasses(
+  density: Densities | InputDensityVariant = Densities.Medium,
+): string {
   return cn(
     "pointer-events-none absolute top-1/2 flex -translate-y-1/2 flex-row flex-nowrap items-center",
     textInputTrailingOverlayPositionVariant({ density }),
@@ -482,15 +501,18 @@ export function textareaTrailingStackClasses(density: Densities = Densities.Medi
   return cn("flex flex-col items-center", textInputTrailingClusterGapVariant({ density }));
 }
 
-/** Uniform trailing icon button — fixed hit target keeps eye/clear aligned beside suffix. */
+/**
+ * Uniform trailing icon button — fixed hit target keeps eye/clear aligned beside suffix. The ring is
+ * `focus-visible` only: a mouse click on the eye must not leave a ring behind, a Tab stop must show one.
+ */
 export function textInputTrailingIconButtonClasses(
   overlay = false,
-  density: Densities = Densities.Medium,
+  density: Densities | InputDensityVariant = Densities.Medium,
 ): string {
   const d = normalizeInputDensity(density);
   return cn(
     textInputTrailingHitTargetVariant({ density: d }),
-    "cursor-pointer rounded text-muted-foreground hover:bg-accent hover:text-foreground focus:outline-hidden",
+    "cursor-pointer rounded text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring",
     overlay && "pointer-events-auto",
   );
 }
@@ -498,7 +520,7 @@ export function textInputTrailingIconButtonClasses(
 /** Invalid icon slot — same footprint as eye/clear so cluster gaps stay even. */
 export function textInputTrailingInvalidSlotClasses(
   overlay = false,
-  density: Densities = Densities.Medium,
+  density: Densities | InputDensityVariant = Densities.Medium,
 ): string {
   return cn(
     textInputTrailingIconButtonClasses(overlay, density),
