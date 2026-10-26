@@ -2,11 +2,15 @@
 
 import * as React from "react";
 import * as SheetPrimitive from "@radix-ui/react-dialog";
+import { Slottable } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import { X } from "lucide-react";
 
+import { CardContentLayoutReset } from "@/components/ui/card-flush-context";
+import { FieldReset } from "@/components/ui/field";
 import { cn } from "@/lib/utils";
-import { overlayVariant } from "./overlay-variant";
+import { useReturnFocus } from "@/hooks/use-return-focus";
+import { overlayCloseVariant, overlayVariant } from "./overlay-variant";
 
 const Sheet = SheetPrimitive.Root;
 
@@ -45,23 +49,68 @@ interface SheetContentProps
     Omit<React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content>, "children">,
     VariantProps<typeof sheetVariant> {
   children?: React.ReactNode;
+  /**
+   * Where focus goes on close when whatever opened the sheet has since left the page, such as a
+   * row that the sheet deleted.
+   */
+  fallbackFocusRef?: React.RefObject<HTMLElement | null>;
 }
 
+/**
+ * Focus goes to `data-autofocus`, else the first field, else the Close button on open, and back to
+ * whatever was focused before on close, with or without a `SheetTrigger`.
+ */
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ side = "right", className, children, ...props }, ref) => (
-  <SheetPortal>
-    <SheetOverlay />
-    <SheetPrimitive.Content ref={ref} className={cn(sheetVariant({ side }), className)} {...props}>
-      <SheetPrimitive.Close className="absolute right-4 top-4 p-1 rounded-selector text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors focus:outline-hidden cursor-pointer">
-        <X className="size-4" />
-        <span className="sr-only">Close</span>
-      </SheetPrimitive.Close>
-      {children}
-    </SheetPrimitive.Content>
-  </SheetPortal>
-));
+>(
+  (
+    {
+      side = "right",
+      className,
+      children,
+      asChild,
+      onOpenAutoFocus,
+      onCloseAutoFocus,
+      fallbackFocusRef,
+      ...props
+    },
+    ref,
+  ) => {
+    const focus = useReturnFocus({
+      onOpenAutoFocus,
+      onCloseAutoFocus,
+      fallbackFocusRef,
+      focusFirstField: true,
+      forwardedRef: ref,
+    });
+    return (
+      // Above the portal, not around the children: with `asChild` Radix needs to see one element.
+      <FieldReset>
+        <CardContentLayoutReset>
+          <SheetPortal>
+            <SheetOverlay />
+            <SheetPrimitive.Content
+              ref={focus.ref}
+              asChild={asChild}
+              className={cn(sheetVariant({ side }), className)}
+              {...props}
+              onOpenAutoFocus={focus.onOpenAutoFocus}
+              onCloseAutoFocus={focus.onCloseAutoFocus}
+            >
+              {focus.anchor}
+              <SheetPrimitive.Close className={cn(overlayCloseVariant(), "absolute right-4 top-4")}>
+                <X className="size-4" />
+                <span className="sr-only">Close</span>
+              </SheetPrimitive.Close>
+              {asChild ? <Slottable>{children}</Slottable> : children}
+            </SheetPrimitive.Content>
+          </SheetPortal>
+        </CardContentLayoutReset>
+      </FieldReset>
+    );
+  },
+);
 SheetContent.displayName = SheetPrimitive.Content.displayName;
 
 const SheetHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (

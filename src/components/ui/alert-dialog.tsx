@@ -1,7 +1,10 @@
 import * as React from "react";
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog";
 
+import { CardContentLayoutReset } from "@/components/ui/card-flush-context";
+import { FieldReset } from "@/components/ui/field";
 import { cn } from "@/lib/utils";
+import { useReturnFocus } from "@/hooks/use-return-focus";
 import { overlayVariant } from "./overlay-variant";
 import { buttonVariant } from "@/components/ui/button";
 import type { ButtonProps } from "@/components/ui/button/button";
@@ -22,22 +25,72 @@ const AlertDialogOverlay = React.forwardRef<
 ));
 AlertDialogOverlay.displayName = AlertDialogPrimitive.Overlay.displayName;
 
+/**
+ * Radix's AlertDialogContent wraps what it is given in a `Slottable` itself, so with `asChild` it
+ * wants exactly one element. Put the anchor inside that element instead of beside it.
+ */
+function withAnchor(anchor: React.ReactElement, children: React.ReactNode, asChild?: boolean) {
+  if (asChild && React.isValidElement<{ children?: React.ReactNode }>(children)) {
+    return React.cloneElement(children, undefined, anchor, children.props.children);
+  }
+  return (
+    <>
+      {anchor}
+      {children}
+    </>
+  );
+}
+
+type AlertDialogContentProps = React.ComponentPropsWithoutRef<
+  typeof AlertDialogPrimitive.Content
+> & {
+  /**
+   * Where focus goes on close when whatever opened the dialog has since left the page, such as a
+   * row that the dialog deleted.
+   */
+  fallbackFocusRef?: React.RefObject<HTMLElement | null>;
+};
+
+/** Focus starts on Cancel, the safe choice, and returns to the opener on close. */
 const AlertDialogContent = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Content>
->(({ className, ...props }, ref) => (
-  <AlertDialogPortal>
-    <AlertDialogOverlay />
-    <AlertDialogPrimitive.Content
-      ref={ref}
-      className={cn(
-        "fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-2rem)] max-sm:!w-[calc(100%-2rem)] max-sm:!max-w-[calc(100%-2rem)] sm:w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
-        className,
-      )}
-      {...props}
-    />
-  </AlertDialogPortal>
-));
+  AlertDialogContentProps
+>(
+  (
+    { className, children, asChild, onOpenAutoFocus, onCloseAutoFocus, fallbackFocusRef, ...props },
+    ref,
+  ) => {
+    const focus = useReturnFocus({
+      onOpenAutoFocus,
+      onCloseAutoFocus,
+      fallbackFocusRef,
+      forwardedRef: ref,
+    });
+    return (
+      // Above the portal, not around the children: with `asChild` Radix needs to see one element.
+      <FieldReset>
+        <CardContentLayoutReset>
+          <AlertDialogPortal>
+            <AlertDialogOverlay />
+            <AlertDialogPrimitive.Content
+              ref={focus.ref}
+              asChild={asChild}
+              className={cn(
+                "fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-2rem)] max-sm:!w-[calc(100%-2rem)] max-sm:!max-w-[calc(100%-2rem)] sm:w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
+                className,
+              )}
+              {...props}
+              onOpenAutoFocus={focus.onOpenAutoFocus}
+              onCloseAutoFocus={focus.onCloseAutoFocus}
+            >
+              {withAnchor(focus.anchor, children, asChild)}
+            </AlertDialogPrimitive.Content>
+          </AlertDialogPortal>
+        </CardContentLayoutReset>
+      </FieldReset>
+    );
+  },
+);
 AlertDialogContent.displayName = AlertDialogPrimitive.Content.displayName;
 
 const AlertDialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (

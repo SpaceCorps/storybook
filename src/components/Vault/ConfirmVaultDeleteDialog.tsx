@@ -32,6 +32,7 @@ export const ConfirmVaultDeleteDialog: React.FC<ConfirmVaultDeleteDialogProps> =
     submitLabel="Create Deletion PR"
     submitVariant="destructive"
     submitDisabled={isBusy}
+    submitDisabledReason={isBusy ? "Action already in progress" : undefined}
     onSubmit={onConfirm}
   >
     <Alert variant="destructive">

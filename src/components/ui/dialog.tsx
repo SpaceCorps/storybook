@@ -2,10 +2,14 @@
 
 import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { Slottable } from "@radix-ui/react-slot";
 import { X } from "lucide-react";
 
+import { CardContentLayoutReset } from "@/components/ui/card-flush-context";
+import { FieldReset } from "@/components/ui/field";
 import { cn } from "@/lib/utils";
-import { overlayVariant } from "./overlay-variant";
+import { useReturnFocus } from "@/hooks/use-return-focus";
+import { overlayCloseVariant, overlayVariant } from "./overlay-variant";
 
 const Dialog = DialogPrimitive.Root;
 
@@ -23,24 +27,59 @@ const DialogOverlay = React.forwardRef<
 ));
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
+type DialogContentProps = React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
+  /**
+   * Where focus goes on close when whatever opened the dialog has since left the page, such as a
+   * row that the dialog deleted.
+   */
+  fallbackFocusRef?: React.RefObject<HTMLElement | null>;
+};
+
+/**
+ * Focus goes to `data-autofocus`, else the first field, else the Close button on open, and back
+ * to whatever was focused before on close, with or without a `DialogTrigger`.
+ */
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
-  <DialogPortal>
-    <DialogOverlay />
-    <DialogPrimitive.Content
-      ref={ref}
-      className={cn(
-        "fixed left-[50%] top-[10%] z-50 flex flex-col w-[calc(100%-2rem)] max-sm:!w-[calc(100%-2rem)] max-sm:!max-w-[calc(100%-2rem)] sm:w-full max-w-xl max-h-[85vh] translate-x-[-50%] translate-y-0 rounded-box border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[5%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[5%] sm:rounded-box overflow-hidden focus:outline-hidden focus:ring-0",
-        className,
-      )}
-      {...props}
-    >
-      {children}
-    </DialogPrimitive.Content>
-  </DialogPortal>
-));
+  DialogContentProps
+>(
+  (
+    { className, children, asChild, onOpenAutoFocus, onCloseAutoFocus, fallbackFocusRef, ...props },
+    ref,
+  ) => {
+    const focus = useReturnFocus({
+      onOpenAutoFocus,
+      onCloseAutoFocus,
+      fallbackFocusRef,
+      focusFirstField: true,
+      forwardedRef: ref,
+    });
+    return (
+      // Above the portal, not around the children: with `asChild` Radix needs to see one element.
+      <FieldReset>
+        <CardContentLayoutReset>
+          <DialogPortal>
+            <DialogOverlay />
+            <DialogPrimitive.Content
+              ref={focus.ref}
+              asChild={asChild}
+              className={cn(
+                "fixed left-[50%] top-[10%] z-50 flex flex-col w-[calc(100%-2rem)] max-sm:!w-[calc(100%-2rem)] max-sm:!max-w-[calc(100%-2rem)] sm:w-full max-w-xl max-h-[85vh] translate-x-[-50%] translate-y-0 rounded-box border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[5%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[5%] overflow-hidden focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
+                className,
+              )}
+              {...props}
+              onOpenAutoFocus={focus.onOpenAutoFocus}
+              onCloseAutoFocus={focus.onCloseAutoFocus}
+            >
+              {focus.anchor}
+              {asChild ? <Slottable>{children}</Slottable> : children}
+            </DialogPrimitive.Content>
+          </DialogPortal>
+        </CardContentLayoutReset>
+      </FieldReset>
+    );
+  },
+);
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
 type DialogHeaderProps = React.HTMLAttributes<HTMLDivElement> & {
@@ -61,7 +100,7 @@ const DialogHeader = ({ className, children, hideCloseButton, ...props }: Dialog
       // Pinned to the title row, not centred on the whole header: with a description under the
       // title, `items-center` floated the X halfway down. The -mt-1 centres the 24px button on
       // the 16px `leading-none` title line, and -mr-1 puts the icon on the content's right edge.
-      <DialogPrimitive.Close className="-mr-1 -mt-1 shrink-0 p-1 rounded-selector text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors focus:outline-hidden cursor-pointer">
+      <DialogPrimitive.Close className={cn(overlayCloseVariant(), "-mr-1 -mt-1")}>
         <X className="size-4" />
         <span className="sr-only">Close</span>
       </DialogPrimitive.Close>

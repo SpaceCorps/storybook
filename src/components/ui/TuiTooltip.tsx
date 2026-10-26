@@ -34,8 +34,19 @@ export const TooltipScope: React.FC<TooltipScopeProps> = ({
 
 export type TooltipSide = "top" | "right" | "bottom" | "left";
 
+/**
+ * Passed to a trigger that has nothing to show. Radix composes its own handler after the caller's and
+ * skips it when the event is already prevented, so the trigger neither opens nor tells the provider
+ * that it did (which would close a tooltip that is open on some other control).
+ */
+const cancelOpen = (event: React.SyntheticEvent) => event.preventDefault();
+
 export interface TooltipProps {
-  /** The tooltip body. Nothing renders when it is empty. */
+  /**
+   * The tooltip body. Nothing renders when it is empty, and an element child then does nothing it
+   * would not do bare: it stays mounted only so that a control whose tooltip text comes and goes
+   * (a gate that opens, a reason that clears) is not remounted, which would drop its focus.
+   */
   content?: React.ReactNode;
   children: React.ReactNode;
   side?: TooltipSide;
@@ -45,14 +56,22 @@ export interface TooltipProps {
   /** False renders the trigger alone — for a label that is only a tooltip while collapsed. */
   enabled?: boolean;
   /**
-   * Anchors the tooltip on a wrapper instead of the trigger itself. Pass it for a control that
-   * can be disabled: a disabled button emits no pointer events, which is exactly when its
-   * tooltip matters most, since it says why the control cannot be used. It is a property of the
-   * control, not of its current state — flipping it would remount the trigger, so pass
-   * `triggerDisabled` for the state.
+   * Anchors the tooltip on a wrapper `span` instead of the trigger itself, for a trigger that cannot
+   * take pointer events. It is a property of the control, not of its current state: flipping it
+   * would remount the trigger.
+   *
+   * Do not use it to explain a disabled control. A natively disabled button is out of the tab order
+   * whatever wraps it, so the explanation never reaches a keyboard. Make the control soft-disabled
+   * instead (`focusableWhenDisabled` and `disabledReason` on `Button` and `IconButton`): it stays
+   * focusable, announces the reason, and opens this tooltip on hover and on focus with no wrapper.
+   * The wrapper itself is never focusable, since an unnamed, outline-less tab stop is worse than none.
    */
   wrapTrigger?: boolean;
-  /** Whether the wrapped control is disabled right now; only then is the wrapper focusable. */
+  /**
+   * @deprecated No effect. It used to make the `wrapTrigger` wrapper a tab stop while the control
+   * was disabled; that stop was unnamed and invisible, so the wrapper is never focusable now. Use
+   * `focusableWhenDisabled` and `disabledReason` on the control instead.
+   */
   triggerDisabled?: boolean;
   delayDuration?: number;
   skipDelayDuration?: number;
@@ -76,7 +95,6 @@ export const Tooltip: React.FC<TooltipProps> = ({
   shortcut,
   enabled = true,
   wrapTrigger = false,
-  triggerDisabled = false,
   delayDuration = 500,
   skipDelayDuration = 300,
   className = "",
@@ -86,40 +104,66 @@ export const Tooltip: React.FC<TooltipProps> = ({
   onOpenChange,
 }) => {
   const scoped = useContext(InScope);
+  const hasContent = Boolean(content);
 
-  if (enabled === false || !content) {
+  /* Radix is always driven from here, so it never switches between controlled and uncontrolled as
+     `content` comes and goes. */
+  const [innerOpen, setInnerOpen] = React.useState(defaultOpen ?? false);
+  const controlled = open !== undefined;
+  const handleOpenChange = (next: boolean) => {
+    // No content, nothing to open: do not remember a hover that had no tooltip to show.
+    if (next && !hasContent) return;
+    if (!controlled) setInnerOpen(next);
+    onOpenChange?.(next);
+  };
+
+  if (enabled === false) {
+    return <>{children}</>;
+  }
+
+  /* An element child that is its own trigger keeps one place in the tree whether or not there is
+     content. Otherwise a control whose tooltip text comes and goes (a gate that opens, a reason
+     that clears) would be remounted each time, and a focused button would lose focus to <body>.
+     Anything else (text, a fragment, a child that Radix would have to wrap) is returned bare. */
+  const keepsPlace =
+    asChild && !wrapTrigger && React.isValidElement(children) && children.type !== React.Fragment;
+  if (!hasContent && !keepsPlace) {
     return <>{children}</>;
   }
 
   const root = (
-    <TooltipPrimitive.Root open={open} defaultOpen={defaultOpen} onOpenChange={onOpenChange}>
-      <TooltipPrimitive.Trigger asChild={asChild || wrapTrigger}>
-        {wrapTrigger ? (
-          /* Focusable only while the control is: otherwise the wrapper would be a tab stop
-             in front of a perfectly reachable button. */
-          <span className="tui-tooltip-trigger-wrap" tabIndex={triggerDisabled ? 0 : undefined}>
-            {children}
-          </span>
-        ) : (
-          children
-        )}
+    <TooltipPrimitive.Root
+      open={hasContent && (controlled ? open : innerOpen)}
+      onOpenChange={handleOpenChange}
+    >
+      <TooltipPrimitive.Trigger
+        asChild={asChild || wrapTrigger}
+        // With nothing to show the trigger is inert: no state attribute, and no opening on hover or
+        // focus.
+        {...(hasContent
+          ? {}
+          : { "data-state": undefined, onPointerMove: cancelOpen, onFocus: cancelOpen })}
+      >
+        {wrapTrigger ? <span className="tui-tooltip-trigger-wrap">{children}</span> : children}
       </TooltipPrimitive.Trigger>
-      <TooltipPrimitive.Portal>
-        <TooltipPrimitive.Content
-          side={side}
-          sideOffset={sideOffset}
-          className={`tui-tooltip-content ${className}`.trim()}
-        >
-          <div className="tui-tooltip-inner">
-            {typeof content === "string" ? (
-              <span className="tui-tooltip-label">{content}</span>
-            ) : (
-              content
-            )}
-            {shortcut && <TuiKbd keys={shortcut} variant="boxed" />}
-          </div>
-        </TooltipPrimitive.Content>
-      </TooltipPrimitive.Portal>
+      {hasContent ? (
+        <TooltipPrimitive.Portal>
+          <TooltipPrimitive.Content
+            side={side}
+            sideOffset={sideOffset}
+            className={`tui-tooltip-content ${className}`.trim()}
+          >
+            <div className="tui-tooltip-inner">
+              {typeof content === "string" ? (
+                <span className="tui-tooltip-label">{content}</span>
+              ) : (
+                content
+              )}
+              {shortcut && <TuiKbd keys={shortcut} variant="boxed" />}
+            </div>
+          </TooltipPrimitive.Content>
+        </TooltipPrimitive.Portal>
+      ) : null}
     </TooltipPrimitive.Root>
   );
 
