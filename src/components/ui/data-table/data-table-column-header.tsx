@@ -51,7 +51,8 @@ function DataTableColumnHeaderInner<TRow>(
     ) : direction === "Descending" ? (
       <ArrowDown aria-hidden="true" className="size-3.5 shrink-0" />
     ) : (
-      <ChevronsUpDown aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground/60" />
+      // Not dimmer than 3:1 against the header (WCAG 1.4.11): at 60% the muted grey was 2.5:1 in light.
+      <ChevronsUpDown aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground/80" />
     );
 
   return (

@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { densityToIconButtonSize } from "@/components/ui/density-scale";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useCardContentLayout } from "@/components/ui/card-flush-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -35,11 +36,12 @@ import type {
   DataTableRowActionEvent,
   DataTableSort,
   DataTableToolbarSlots,
+  DataTableVariant,
   DataTableVirtualized,
 } from "./types";
 import { useColumnVisibility } from "./use-column-visibility";
 import { useDataTablePagination } from "./use-data-table-pagination";
-import { useDataTableRowFocus } from "./use-data-table-row-focus";
+import { INTERACTIVE_WITHIN_ROW, useDataTableRowFocus } from "./use-data-table-row-focus";
 import { useDataTableSort } from "./use-data-table-sort";
 import {
   DATA_TABLE_MAX_BODY_HEIGHT,
@@ -48,9 +50,18 @@ import {
   DATA_TABLE_VIRTUALIZATION_THRESHOLD,
   useDataTableVirtualization,
 } from "./use-data-table-virtualization";
+import { useRevealFocus } from "./use-focus-reveal";
 import { useInlineCellEdit } from "./use-inline-cell-edit";
-import { getCellValue, getRenderableActions, toDisplayString } from "./utils";
-import { dataTableCellAlignVariant, dataTableCellWrapClass, dataTableRowVariant } from "./variant";
+import { useScrollEdges } from "./use-scroll-edges";
+import { getCellValue, getRenderableActions, revealTruncatedText, toDisplayString } from "./utils";
+import {
+  DATA_TABLE_FOOTER_ROW,
+  dataTableCellAlignVariant,
+  dataTableCellTruncates,
+  dataTableCellWrapClass,
+  dataTablePinClass,
+  dataTableRowVariant,
+} from "./variant";
 
 export interface DataTableProps<TRow> extends Omit<
   React.HTMLAttributes<HTMLTableElement>,
@@ -64,6 +75,11 @@ export interface DataTableProps<TRow> extends Omit<
    * rows currently rendered (i.e. within the page under client-side pagination).
    */
   getRowId: (row: TRow, index: number) => string;
+  /**
+   * What a screen reader hears for a row's selection checkbox: "Select row <label>". Defaults to the
+   * row id, which is often opaque (a UUID); give it the row's name when it has one.
+   */
+  getRowLabel?: (row: TRow, index: number) => string;
 
   /** Controlled sort; `null` means unsorted. */
   sort?: DataTableSort | null;
@@ -102,9 +118,22 @@ export interface DataTableProps<TRow> extends Omit<
 
   /** The function form covers the legacy widget's `rowActions` *and* `perRowActions`. */
   rowActions?: DataTableRowAction<TRow>[] | ((row: TRow) => DataTableRowAction<TRow>[]);
+  /**
+   * An action may remove its own row. The button that had focus goes with it, so the table moves
+   * focus to the row now at that position (the last one, if it was the last) rather than letting it
+   * fall to `<body>`. Focus that has gone to a dialog the action opened, or anywhere else, is left
+   * where it is.
+   */
   onRowAction?: (event: DataTableRowActionEvent<TRow>) => void;
 
-  /** Inline editing gate. A cell is editable only when `editable && column.editable`. */
+  /**
+   * Inline editing gate. A cell is editable only when `editable && column.editable`. An editable cell
+   * is a focusable button: Enter, Space or F2 (or a double-click) opens the editor, Enter commits,
+   * Escape discards, and Tab or Shift+Tab commit and move focus to the next or previous editable cell
+   * (focus only: the next editor is not opened for you). A screen reader hears the cell as
+   * "Edit <header>: <value>". The cell is itself a button, so a `column.cell` that renders a link or
+   * button of its own makes it a button inside a button: leave editable columns to plain content.
+   */
   editable?: boolean;
   /**
    * Called when an inline edit is committed with a changed value. The table never mutates `rows` —
@@ -112,7 +141,14 @@ export interface DataTableProps<TRow> extends Omit<
    */
   onCellCommit?: (event: DataTableCellCommitEvent<TRow>) => void | Promise<void>;
 
-  /** Optional row activation. Row actions, selection and the inline editor never trigger it. */
+  /**
+   * Optional row activation, by click or by Enter/Space on the focused row. Row actions, selection,
+   * the inline editor and any button, link or input inside a cell never trigger it.
+   *
+   * Tab stops: the body is one stop (the active row, moved with the arrow keys, Home/End and
+   * PageUp/PageDown), and each row adds its checkbox, editable cells and row actions as stops of
+   * their own. A page of 25 rows with an inline action each is therefore 26 stops before the footer.
+   */
   onRowClick?: (row: TRow, id: string) => void;
 
   /**
@@ -150,12 +186,27 @@ export interface DataTableProps<TRow> extends Omit<
   /** Header slot above the table for filters and toolbar content. */
   toolbar?: DataTableToolbarSlots;
   /**
-   * The table's accessible name/description. Visually hidden unless `showCaption` is set; screen
-   * readers announce it either way.
+   * The table's accessible name/description, always present as the `<caption>` and visually hidden.
+   * Plain text: with `showCaption` a second, `aria-hidden` copy is drawn, so it must not hold
+   * anything focusable.
    */
   caption?: React.ReactNode;
-  /** Render `caption` as a visible line above the table instead of hiding it. Defaults to false. */
+  /**
+   * Also draw `caption` as a visible line at the top of the table. It sits outside the scrolling
+   * area, so it stays put while a wide table scrolls. Inside a titled card the card title already
+   * names the table; leave this off there. Defaults to false.
+   */
   showCaption?: boolean;
+  /**
+   * `"bordered"` draws the table's own rounded border; `"embedded"` draws no box, for a host that
+   * already supplies one. Defaults to `"embedded"` inside a `CardContent` (so a table in a card never
+   * shows a second border inside the card's) and `"bordered"` everywhere else. Inside
+   * `<CardContent flush>` the embedded table also runs edge to edge, with its first and last column
+   * inset by the card padding. An embedded table paints its pinned columns with
+   * `--ivy-data-table-surface` (the page background if unset); set it when the host is not the page
+   * colour.
+   */
+  variant?: DataTableVariant;
   density?: Densities;
   /** Applied to the wrapper around the toolbar, table and pagination footer. */
   className?: string;
@@ -170,11 +221,28 @@ function defaultCellContent(value: unknown): React.ReactNode {
   return toDisplayString(value);
 }
 
+/**
+ * The editable cell before or after `from`, in document order (row by row), or `null` at either end.
+ * Only one cell is ever being edited, so every other marked element is a focusable cell button.
+ */
+function adjacentEditableCell(
+  from: HTMLElement,
+  direction: "next" | "previous",
+): HTMLElement | null {
+  const current = from.closest<HTMLElement>("[data-editable-cell]");
+  const scope = from.closest<HTMLElement>("table");
+  if (!current || !scope) return null;
+  const cells = Array.from(scope.querySelectorAll<HTMLElement>("[data-editable-cell]"));
+  const index = cells.indexOf(current);
+  return cells[direction === "next" ? index + 1 : index - 1] ?? null;
+}
+
 function DataTableInner<TRow>(
   {
     columns,
     rows,
     getRowId,
+    getRowLabel,
     sort,
     defaultSort = null,
     onSortChange,
@@ -213,8 +281,12 @@ function DataTableInner<TRow>(
     toolbar,
     caption,
     showCaption = false,
+    variant,
     density: propDensity,
     className,
+    onKeyDown,
+    onFocus,
+    onBlur,
     ...tableProps
   }: DataTableProps<TRow>,
   ref: React.ForwardedRef<HTMLTableElement>,
@@ -223,6 +295,14 @@ function DataTableInner<TRow>(
   const density = propDensity ?? contextDensity;
   const iconButtonSize = densityToIconButtonSize(density);
   const selectionIdPrefix = React.useId();
+
+  // A card is the one host that is known to supply a border and a surface of its own, so inside one
+  // the table steps back. An explicit `variant` always wins.
+  const cardLayout = useCardContentLayout();
+  const resolvedVariant: DataTableVariant = variant ?? (cardLayout ? "embedded" : "bordered");
+  const embedded = resolvedVariant === "embedded";
+  // Flush content has no padding of its own, so the table supplies the card's inset itself.
+  const inset = embedded && cardLayout === "flush";
 
   const { resolvedVisibility, visibleColumns, setColumnVisible } = useColumnVisibility({
     columns,
@@ -278,6 +358,8 @@ function DataTableInner<TRow>(
   };
 
   const allPageSelected = pageRowIds.length > 0 && pageRowIds.every((id) => selectedSet.has(id));
+  // Some but not all: the select-all box reports "mixed" rather than an unchecked state that hides it.
+  const somePageSelected = !allPageSelected && pageRowIds.some((id) => selectedSet.has(id));
 
   const toggleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -296,7 +378,9 @@ function DataTableInner<TRow>(
     commitSelection(checked ? [...selectedIds, id] : selectedIds.filter((other) => other !== id));
   };
 
-  const { isEditing, beginEdit, endEdit, registerCell } = useInlineCellEdit({ editable });
+  const { isEditing, beginEdit, endEdit, redirectFocus, registerCell } = useInlineCellEdit({
+    editable,
+  });
 
   const resolveActions = React.useCallback(
     (row: TRow): DataTableRowAction<TRow>[] =>
@@ -312,6 +396,9 @@ function DataTableInner<TRow>(
     return pageRows.some((row) => getRenderableActions(rowActions(row)).length > 0);
   }, [pageRows, rowActions]);
 
+  const tableName = typeof caption === "string" ? caption : tableProps["aria-label"];
+  const paginationLabel = tableName ? `${tableName} pagination` : "Table pagination";
+
   const hasFooter = visibleColumns.some((column) => column.footer !== undefined);
   const columnCount = visibleColumns.length + (selectable ? 1 : 0) + (hasActionsColumn ? 1 : 0);
   const showToolbar = Boolean(toolbar?.left || toolbar?.right || showColumnOptions);
@@ -325,11 +412,20 @@ function DataTableInner<TRow>(
     scrollToIndexRef.current(index);
   }, []);
 
+  useScrollEdges(scrollContainerRef);
+  useRevealFocus(scrollContainerRef);
+
   const rowFocus = useDataTableRowFocus({
     count: pageRows.length,
     containerRef: scrollContainerRef,
     scrollToIndex,
     estimatedRowHeight: estimateRowHeight ?? DATA_TABLE_ROW_HEIGHT_ESTIMATES[density],
+    onActivate: onRowClick
+      ? (index) => {
+          const row = pageRows[index];
+          if (row !== undefined) onRowClick(row, pageRowIds[index]);
+        }
+      : undefined,
   });
 
   const virtualization = useDataTableVirtualization({
@@ -346,6 +442,18 @@ function DataTableInner<TRow>(
   });
   scrollToIndexRef.current = virtualization.scrollToIndex;
 
+  // The body is one tab stop: the active row. A windowed table only pins that row into the DOM once a
+  // row has been focused, so scrolling with the mouse first can leave it unmounted and the body with
+  // no stop at all; the first row on screen stands in until one is focused.
+  const tabStopIndex = (() => {
+    const windowed = virtualization.virtualItems;
+    if (!windowed?.length || windowed.some((item) => item.index === rowFocus.activeIndex)) {
+      return rowFocus.activeIndex;
+    }
+    const visible = virtualization.firstVisibleIndex;
+    return windowed.some((item) => item.index === visible) ? visible : windowed[0].index;
+  })();
+
   /**
    * Under `table-layout: fixed` a `w-0` utility is taken literally, collapsing the selection and
    * row-action columns and painting their controls over the neighbouring cell. Swap in real widths
@@ -356,11 +464,13 @@ function DataTableInner<TRow>(
     return kind === "select" ? "w-[2.75rem]" : "w-[var(--ivy-data-table-actions-width,5rem)]";
   };
 
-  /** 1-based absolute position, so paging and windowing both report true `aria-rowindex` values. */
+  /**
+   * 1-based absolute position, so paging and windowing both report true `aria-rowindex` values. A
+   * manually paginated table is offset by its page too: its `rows` are only the current page, though
+   * `aria-rowcount` reports the full total.
+   */
   const absoluteRowIndex = (rowIndex: number) =>
-    manualPagination || !paginated
-      ? rowIndex + 1
-      : (pagination.page - 1) * pagination.pageSize + rowIndex + 1;
+    paginated ? (pagination.page - 1) * pagination.pageSize + rowIndex + 1 : rowIndex + 1;
 
   const spacerRow = (key: string, height: number) => (
     <tr key={key} aria-hidden="true" data-slot="data-table-spacer" className="border-0">
@@ -375,7 +485,7 @@ function DataTableInner<TRow>(
           <Settings2 aria-hidden="true" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-56">
+      <PopoverContent align="end" className="w-56" aria-label="Column options">
         <DataTableColumnOptions
           columns={columns}
           visibility={resolvedVisibility}
@@ -400,18 +510,23 @@ function DataTableInner<TRow>(
       return rendered;
     }
 
+    const previous = toDisplayString(value);
+
     if (isEditing(rowId, column.name)) {
-      const previous = toDisplayString(value);
       return (
         <div
+          data-editable-cell=""
           onClick={(event) => event.stopPropagation()}
           onDoubleClick={(event) => event.stopPropagation()}
         >
           <DataTableCellEditor
             aria-label={`Edit ${label}`}
             value={previous}
-            onCommit={(next) => {
-              endEdit();
+            onCommit={(next, blurEvent) => {
+              // Focus leaving the editor for another control (a click on a button or a field) is
+              // where the user is going: handing it back to this cell would cancel that move. It
+              // only comes back when focus went nowhere in particular.
+              endEdit({ restoreFocus: !blurEvent || blurEvent.relatedTarget === null });
               if (next === previous) return;
               void onCellCommit?.({
                 id: rowId,
@@ -421,7 +536,16 @@ function DataTableInner<TRow>(
                 previousValue: value,
               });
             }}
-            onCancel={endEdit}
+            onCancel={() => endEdit()}
+            onNavigate={(direction, event) => {
+              // Spreadsheet-style: the edit is already committed, so carry on to the neighbouring
+              // editable cell. At either end there is none, and the browser's own Tab takes over
+              // from the cell this editor was opened from.
+              const target = adjacentEditableCell(event.currentTarget, direction);
+              if (!target) return;
+              event.preventDefault();
+              redirectFocus(target);
+            }}
           />
         </div>
       );
@@ -430,17 +554,24 @@ function DataTableInner<TRow>(
     return (
       <div
         ref={registerCell(rowId, column.name)}
+        data-editable-cell=""
         role="button"
         tabIndex={0}
-        aria-label={`Edit ${label}`}
-        className="w-full rounded-field outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
+        // The name replaces the cell's content for a screen reader, so it carries the value too.
+        aria-label={previous ? `Edit ${label}: ${previous}` : `Edit ${label}`}
+        // `outline-hidden` only while focused: unconditionally it is a real 2px outline in forced
+        // colors mode, which boxes every editable cell and makes the focused one hard to tell apart.
+        className="w-full rounded-field focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
         onClick={(event) => event.stopPropagation()}
         onDoubleClick={(event) => {
           event.stopPropagation();
           beginEdit(rowId, column.name);
         }}
         onKeyDown={(event) => {
-          if (event.key !== "Enter") return;
+          // A button answers to Enter and Space; F2 is the spreadsheet convention for "edit this".
+          if (event.key !== "Enter" && event.key !== " " && event.key !== "F2") return;
+          // Something focusable inside a custom cell keeps its own keys.
+          if (event.target !== event.currentTarget) return;
           event.preventDefault();
           event.stopPropagation();
           beginEdit(rowId, column.name);
@@ -490,17 +621,39 @@ function DataTableInner<TRow>(
           data-row-id={rowId}
           ref={virtualization.active ? virtualization.measureRowElement : undefined}
           aria-rowindex={absoluteRowIndex(rowIndex)}
-          tabIndex={rowFocus.rowTabIndex(rowIndex)}
+          tabIndex={rowIndex === tabStopIndex ? 0 : -1}
           onFocus={() => rowFocus.handleRowFocus(rowIndex)}
           data-state={rowSelected ? "selected" : undefined}
           className={cn(
             dataTableRowVariant({ interactive: Boolean(onRowClick), selected: rowSelected }),
-            "outline-hidden focus-visible:ring-1 focus-visible:ring-ring",
+            // An outline, not a ring: a box-shadow on a `<tr>` is not painted in a collapsed-border
+            // table, so the ring never showed. Inset so the scroll container cannot clip it.
+            "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
           )}
-          onClick={onRowClick ? () => onRowClick(row, rowId) : undefined}
+          onClick={
+            onRowClick
+              ? (event) => {
+                  const target = event.target as Element;
+                  // React bubbles a click out of a portal to the row that owns it: a row action's
+                  // menu, a dialog or popover a cell opened. That is not a click on the row.
+                  if (!event.currentTarget.contains(target)) return;
+                  // A button, link or input in a custom cell is its own target.
+                  const inner = target.closest(INTERACTIVE_WITHIN_ROW);
+                  if (inner && event.currentTarget.contains(inner)) return;
+                  onRowClick(row, rowId);
+                }
+              : undefined
+          }
         >
           {selectable ? (
-            <TableCell className={fitColumnClass("select")}>
+            <TableCell
+              data-pin="start"
+              className={cn(
+                fitColumnClass("select"),
+                dataTablePinClass("start", "cell"),
+                "[&:has([role=checkbox])]:pr-2",
+              )}
+            >
               <div
                 className="flex items-center"
                 onClick={(event) => event.stopPropagation()}
@@ -512,7 +665,7 @@ function DataTableInner<TRow>(
                   onCheckedChange={(checked) => toggleRowSelected(rowId, checked === true)}
                 />
                 <Label htmlFor={`${selectionIdPrefix}-row-${rowId}`} className="sr-only">
-                  Select row {rowId}
+                  Select row {getRowLabel ? getRowLabel(row, rowIndex) : rowId}
                 </Label>
               </div>
             </TableCell>
@@ -526,13 +679,22 @@ function DataTableInner<TRow>(
                 dataTableCellWrapClass(column),
               )}
               style={column.width ? { width: column.width } : undefined}
+              data-truncate={dataTableCellTruncates(column) ? "" : undefined}
+              onMouseEnter={
+                dataTableCellTruncates(column)
+                  ? (event) => revealTruncatedText(event.currentTarget)
+                  : undefined
+              }
             >
               {renderCellContent(column, row, rowId, rowIndex)}
             </TableCell>
           ))}
 
           {hasActionsColumn ? (
-            <TableCell className={fitColumnClass("actions")}>
+            <TableCell
+              data-pin="end"
+              className={cn(fitColumnClass("actions"), dataTablePinClass("end", "cell"))}
+            >
               <DataTableRowActions
                 actions={actions}
                 row={row}
@@ -573,10 +735,19 @@ function DataTableInner<TRow>(
   })();
 
   return (
-    <div className={cn("flex w-full flex-col gap-2", className)}>
+    <div
+      data-slot="data-table"
+      data-variant={resolvedVariant}
+      // `min-w-0 max-w-full` so the table can be a flex or grid item without its content width
+      // deciding the track: the scroll container below absorbs the overflow instead.
+      className={cn("flex w-full min-w-0 max-w-full flex-col gap-2", className)}
+    >
       {showToolbar ? (
         <DataTableToolbar
           density={density}
+          // Flush content clips its overflow and has no padding above the toolbar, so the first
+          // control's focus ring (ring plus offset, 4px) would be cut off along the top.
+          className={inset ? "px-6 pt-1.5" : undefined}
           left={toolbar?.left}
           right={
             <>
@@ -587,7 +758,32 @@ function DataTableInner<TRow>(
         />
       ) : null}
 
-      <div className="rounded-box border border-border bg-background">
+      <div
+        data-slot="data-table-surface"
+        className={cn(
+          "min-w-0",
+          embedded
+            ? // The card's own border frames the table; the divider only separates it from the
+              // card header above.
+              cardLayout === "flush" && "border-t border-border"
+            : "rounded-box border border-border bg-background [--ivy-data-table-surface:var(--background)]",
+        )}
+      >
+        {caption && showCaption ? (
+          // Outside the scroller so it stays put while a wide table scrolls. The `<caption>` below
+          // already names the table for assistive tech, so this copy is hidden from it.
+          <div
+            data-slot="data-table-caption"
+            aria-hidden="true"
+            className={cn(
+              "border-b border-border py-2 text-left text-sm text-muted-foreground",
+              inset ? "px-6" : "px-2",
+            )}
+          >
+            {caption}
+          </div>
+        ) : null}
+
         <Table
           ref={ref}
           density={density}
@@ -596,40 +792,63 @@ function DataTableInner<TRow>(
           // reading would include the header (N + 1); N is the convention here, applied whether or
           // not windowing is active so a screen reader always hears the true row count.
           aria-rowcount={total}
-          onKeyDown={rowFocus.handleKeyDown}
+          // The consumer's handlers run first, and neither replaces the table's own: `{...tableProps}`
+          // below used to overwrite `onKeyDown`, which silently switched the whole row keymap off.
+          onKeyDown={(event) => {
+            onKeyDown?.(event);
+            rowFocus.handleKeyDown(event);
+          }}
+          onFocus={(event) => {
+            onFocus?.(event);
+            rowFocus.handleFocusWithin(event);
+          }}
+          onBlur={(event) => {
+            onBlur?.(event);
+            rowFocus.handleBlurWithin(event);
+          }}
           className={cn(
             "ivy-data-table",
             // Sticky header: survives the scroll container `Table` wraps every table in. The
-            // background is opaque so windowed rows do not scroll visibly through it. Utilities
+            // background is opaque so windowed rows do not scroll visibly through it, and it sits
+            // above the pinned body cells (z-1) with the pinned header corners above it. Utilities
             // rather than a stylesheet, so they reach apps that only scan the compiled JS.
-            "[&_thead_th]:sticky [&_thead_th]:top-0 [&_thead_th]:z-[1] [&_thead_th]:bg-background",
+            "[&_thead_th]:sticky [&_thead_th]:top-0 [&_thead_th]:z-[2] [&_thead_th]:bg-[color:var(--ivy-data-table-surface,var(--background))] [&_thead_th[data-pin]]:z-[3]",
+            // Flush: the first and last column carry the card's padding, so text lines up with the
+            // card header and the pinned columns keep it while scrolled.
+            inset && "[&_tr>:first-child]:ps-6 [&_tr>:last-child]:pe-6",
             // Windowed: fixed layout takes widths from `column.width` (or an equal split) and holds
             // them, so columns do not twitch as longer content scrolls into the window.
             virtualization.active && "ivy-data-table-virtualized table-fixed",
           )}
+          // The scroller: wide content scrolls here instead of overflowing the card, and a scroll
+          // that hits an end does not chain to the page. The scrollbar takes its colours from the
+          // tokens: a native one stays light in the dark theme and glares against the card. The
+          // `scroll-p*` utilities read the size of the pinned columns and the sticky header that
+          // `useRevealFocus` measures, so a focused control is scrolled out from under them.
+          containerClassName="min-w-0 max-w-full overscroll-x-contain scroll-pl-[var(--ivy-data-table-pin-start,0px)] scroll-pr-[var(--ivy-data-table-pin-end,0px)] scroll-pt-[var(--ivy-data-table-head-height,0px)] [scrollbar-color:var(--muted-foreground)_transparent] [scrollbar-width:thin]"
           containerRef={scrollContainerRef}
           containerStyle={virtualization.containerStyle}
           {...tableProps}
         >
-          {caption ? (
-            <TableCaption
-              className={
-                showCaption
-                  ? "caption-top mt-0 border-b border-border px-2 py-2 text-left"
-                  : "sr-only"
-              }
-            >
-              {caption}
-            </TableCaption>
-          ) : null}
+          {caption ? <TableCaption className="sr-only">{caption}</TableCaption> : null}
           <TableHeader>
             <TableRow>
               {selectable ? (
-                <TableHead className={fitColumnClass("select")}>
+                <TableHead
+                  data-pin="start"
+                  className={cn(
+                    fitColumnClass("select"),
+                    dataTablePinClass("start", "head"),
+                    "[&:has([role=checkbox])]:pr-2",
+                  )}
+                >
                   <div className="flex items-center">
                     <Checkbox
                       id={`${selectionIdPrefix}-all`}
-                      checked={allPageSelected}
+                      // `nullable` is what lets the box show the mixed state, and it also makes an
+                      // unchecked box cycle through it, so it is only switched on while mixed.
+                      nullable={somePageSelected}
+                      checked={somePageSelected ? null : allPageSelected}
                       onCheckedChange={(checked) => toggleSelectAll(checked === true)}
                     />
                     <Label htmlFor={`${selectionIdPrefix}-all`} className="sr-only">
@@ -650,7 +869,11 @@ function DataTableInner<TRow>(
               ))}
 
               {hasActionsColumn ? (
-                <TableHead aria-label="Row actions" className={fitColumnClass("actions")}>
+                <TableHead
+                  aria-label="Row actions"
+                  data-pin="end"
+                  className={cn(fitColumnClass("actions"), dataTablePinClass("end", "head"))}
+                >
                   <span className="sr-only">Row actions</span>
                 </TableHead>
               ) : null}
@@ -661,17 +884,24 @@ function DataTableInner<TRow>(
 
           {hasFooter ? (
             <TableFooter>
-              <TableRow>
-                {selectable ? <TableCell /> : null}
+              <TableRow className={DATA_TABLE_FOOTER_ROW}>
+                {selectable ? (
+                  <TableCell data-pin="start" className={dataTablePinClass("start", "cell")} />
+                ) : null}
                 {visibleColumns.map((column) => (
                   <TableCell
                     key={column.name}
-                    className={cn(dataTableCellAlignVariant({ align: column.align ?? "Left" }))}
+                    className={cn(
+                      dataTableCellAlignVariant({ align: column.align ?? "Left" }),
+                      dataTableCellWrapClass(column),
+                    )}
                   >
                     {column.footer}
                   </TableCell>
                 ))}
-                {hasActionsColumn ? <TableCell /> : null}
+                {hasActionsColumn ? (
+                  <TableCell data-pin="end" className={dataTablePinClass("end", "cell")} />
+                ) : null}
               </TableRow>
             </TableFooter>
           ) : null}
@@ -680,6 +910,10 @@ function DataTableInner<TRow>(
         {paginated ? (
           <DataTablePagination
             density={density}
+            // Named after the table: several tables on a page would otherwise each expose an
+            // identical "Table pagination" landmark and a screen reader could not tell them apart.
+            aria-label={paginationLabel}
+            className={inset ? "px-6" : undefined}
             page={pagination.page}
             pageCount={pagination.pageCount}
             pageSize={pagination.pageSize}

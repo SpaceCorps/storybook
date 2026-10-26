@@ -47,6 +47,7 @@ const Table = React.forwardRef<HTMLTableElement, TableProps>(
       <TableProvider density={density as Densities}>
         <div
           ref={containerRef}
+          data-slot="table-container"
           className={cn("relative w-full overflow-auto", containerClassName)}
           style={containerStyle}
         >
