@@ -259,22 +259,26 @@ const MarkdownImage: React.FC<MarkdownImageProps> = memo(
           return `${getIvyHost()}${prefixedSrc}`;
         })();
 
+    // A real button, so Enter and Space both open it and it has a name even when the markdown gave
+    // the image no alt text. The vertical margin moves from the image to the button, or the focus
+    // ring would hug the picture and leave the margin outside it.
     return (
       <>
-        <img
-          {...props}
-          src={imageSrc}
-          alt={props.alt || ""}
-          className={cn(
-            typography.img,
-            "cursor-zoom-in focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
-          )}
-          loading="lazy"
+        <button
+          type="button"
+          aria-label={props.alt ? undefined : "Open image"}
+          aria-haspopup="dialog"
+          className="block w-fit max-w-full my-4 p-0 border-0 bg-transparent rounded-md cursor-zoom-in focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
           onClick={() => setShowOverlay(true)}
-          onKeyDown={(e) => e.key === "Enter" && setShowOverlay(true)}
-          role="button"
-          tabIndex={0}
-        />
+        >
+          <img
+            {...props}
+            src={imageSrc}
+            alt={props.alt || ""}
+            className={cn(typography.img, "my-0")}
+            loading="lazy"
+          />
+        </button>
         {showOverlay && (
           <ImageOverlay src={imageSrc} alt={props.alt} onClose={() => setShowOverlay(false)} />
         )}

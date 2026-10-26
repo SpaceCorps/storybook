@@ -170,6 +170,11 @@
     background-color 120ms ease;
 }
 
+.pws-btn:focus-visible {
+  outline: 2px solid var(--ring, var(--pws-fg));
+  outline-offset: 2px;
+}
+
 .pws-btn--primary {
   background: var(--pws-cta-bg);
   color: var(--pws-cta-fg);
@@ -278,8 +283,20 @@
   cursor: pointer;
 }
 
-.pws-menu-item:hover:not(:disabled) {
+.pws-menu-item:hover:not(:disabled),
+.pws-menu-item:focus-visible {
   background: var(--pws-hover-bg);
+}
+
+/* The arrow keys move focus through the items, so the highlighted one needs more than a tint. */
+.pws-menu-item:focus-visible {
+  outline: 2px solid var(--ring, var(--pws-fg));
+  outline-offset: -2px;
+}
+
+/* Focus lands on the menu itself when it is opened with a click; it is not an item to outline. */
+.pws-menu:focus {
+  outline: 2px solid transparent;
 }
 
 .pws-menu-item:disabled {
@@ -287,8 +304,24 @@
   cursor: default;
 }
 
+/* The solid --destructive is a fill: as text it is 3.8:1 on a light menu and 2:1 on a dark one. The
+   -800 and -100 tints are the readable pair, as in the diff view's destructive text. */
 .pws-menu-item[data-danger="true"] {
-  color: var(--pws-danger);
+  color: var(--destructive-800, var(--pws-danger));
+}
+
+.dark .pws-menu-item[data-danger="true"] {
+  color: var(--destructive-100, var(--pws-danger));
+}
+
+/* A pressed action folded into the menu is marked with a check, not only announced. */
+.pws-menu-item-check {
+  flex-shrink: 0;
+  margin-left: 4px;
+}
+
+.pws-menu-item-badge {
+  flex-shrink: 0;
 }
 
 .pws-menu-item-icon {
@@ -384,6 +417,12 @@
 
 .pws-tab:hover {
   opacity: 0.85;
+}
+
+.pws-tab:focus-visible {
+  outline: 2px solid var(--ring, var(--pws-fg));
+  outline-offset: -2px;
+  opacity: 1;
 }
 
 .pws-tab[aria-selected="true"] {
@@ -493,6 +532,17 @@
 .pws-resizer:hover::after,
 .pws-root[data-dragging="true"] .pws-resizer::after {
   background: color-mix(in srgb, var(--pws-fg) 35%, transparent);
+}
+
+/* Keyboard focus draws the divider as a solid line, so it is found without the pointer hover. */
+.pws-resizer:focus-visible {
+  outline: 2px solid transparent;
+}
+
+.pws-resizer:focus-visible::after {
+  left: 3px;
+  width: 3px;
+  background: var(--ring, var(--pws-fg));
 }
 
 .pws-chat {

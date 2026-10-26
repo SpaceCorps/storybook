@@ -1,4 +1,5 @@
 import { useState, type CSSProperties } from "react";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "../ui/dialog";
 import { BadgeSelect, type BadgeSelectOption } from "./BadgeSelect";
 
 export default {
@@ -127,4 +128,70 @@ export const CustomBadgeColorsAndStyling = () => {
       />
     </div>
   );
+};
+
+/**
+ * Inside a Dialog: Escape with the list open closes the list only, and the dialog stays; a second
+ * Escape, with the list closed, closes the dialog.
+ */
+export const InsideDialog = {
+  parameters: {
+    // New story: no baseline image yet, and the dialog and the list portal out of the root.
+    visual: { disable: true },
+  },
+  render: () => {
+    const [open, setOpen] = useState(true);
+    const [val, setVal] = useState<string[]>(["bug"]);
+    return (
+      <div style={{ padding: 24 }}>
+        <button type="button" onClick={() => setOpen(true)}>
+          Edit tags
+        </button>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogContent>
+            <DialogTitle>Edit tags</DialogTitle>
+            <DialogDescription>Pick the tags for this plan.</DialogDescription>
+            <BadgeSelect
+              id="bs-dialog"
+              options={mockTags}
+              value={val}
+              placeholder="Tags"
+              events={["OnChange"]}
+              eventHandler={(_evt, _id, args) => setVal(args[0] as string[])}
+            />
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  },
+};
+
+/**
+ * One option that cannot be removed: when it is selected it has no X in the list, so a check marks
+ * it instead of a tint alone.
+ */
+export const NonRemovableSelected = {
+  parameters: {
+    // New story: no baseline image yet.
+    visual: { disable: true },
+  },
+  render: () => {
+    const [val, setVal] = useState<string[]>(["urgent", "bug"]);
+    const options: BadgeSelectOption[] = mockTags.map((tag) =>
+      tag.value === "urgent" ? { ...tag, removable: false } : tag,
+    );
+    return (
+      <div style={{ maxWidth: 360, padding: 24 }}>
+        <BadgeSelect
+          id="bs-non-removable"
+          options={options}
+          value={val}
+          multiple
+          placeholder="Tags"
+          events={["OnChange"]}
+          eventHandler={(_evt, _id, args) => setVal(args[0] as string[])}
+        />
+      </div>
+    );
+  },
 };

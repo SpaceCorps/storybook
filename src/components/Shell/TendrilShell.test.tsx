@@ -319,7 +319,7 @@ describe("ShellTabs", () => {
       );
     });
 
-    const tabElements = container.querySelectorAll<HTMLDivElement>(".tsh-tab");
+    const tabElements = container.querySelectorAll<HTMLButtonElement>(".tsh-tab-main");
     expect(tabElements.length).toBe(2);
     expect(tabElements[0]?.getAttribute("data-active")).toBe("true");
     expect(tabElements[1]?.getAttribute("data-active")).toBe("false");
@@ -331,7 +331,7 @@ describe("ShellTabs", () => {
     expect(handler).toHaveBeenCalledWith("OnSelect", "tabs", ["t2"]);
 
     // Close tab 1
-    const closeBtn = tabElements[0]?.querySelector<HTMLButtonElement>(".tsh-tab-close");
+    const closeBtn = container.querySelectorAll<HTMLButtonElement>(".tsh-tab-close")[0];
     act(() => {
       closeBtn?.click();
     });

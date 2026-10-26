@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useEffect } from "react";
-import { createPortal } from "react-dom";
+import React, { useState, useCallback } from "react";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
 
 interface ImageRendererProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   src?: string;
@@ -38,41 +38,11 @@ export const ImageRenderer: React.FC<ImageRendererProps> = ({ src, alt, title, .
     setLoadState("error");
   }, []);
 
-  const handleImageClick = useCallback(() => {
-    if (loadState === "loaded") {
-      setIsOverlayOpen(true);
-    }
-  }, [loadState]);
-
-  const handleCloseOverlay = useCallback(() => {
-    setIsOverlayOpen(false);
-  }, []);
-
   const handleBackdropClick = useCallback((e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
       setIsOverlayOpen(false);
     }
   }, []);
-
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isOverlayOpen) {
-        setIsOverlayOpen(false);
-      }
-    };
-
-    if (isOverlayOpen) {
-      document.addEventListener("keydown", handleEscape);
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-
-    return () => {
-      document.removeEventListener("keydown", handleEscape);
-      document.body.style.overflow = "";
-    };
-  }, [isOverlayOpen]);
 
   if (loadState === "error") {
     return (
@@ -84,32 +54,43 @@ export const ImageRenderer: React.FC<ImageRendererProps> = ({ src, alt, title, .
     );
   }
 
+  // The image sits inside a Trigger button, so it opens from the keyboard and Radix hands focus
+  // back to it on close. The button stays disabled until the image has loaded, as the click used to
+  // be ignored until then; the same element is kept throughout so the image never remounts.
   return (
-    <>
-      <img
-        {...props}
-        src={src}
-        alt={alt}
-        title={title}
-        className={loadState === "loaded" ? "pmv-img-clickable" : ""}
-        onLoad={handleLoad}
-        onError={handleError}
-        onClick={handleImageClick}
-      />
-      {isOverlayOpen &&
-        createPortal(
-          <div className="pmv-img-overlay" onClick={handleBackdropClick}>
-            <button
-              className="pmv-img-overlay-close"
-              onClick={handleCloseOverlay}
-              aria-label="Close"
-            >
-              ×
-            </button>
-            <img src={src} alt={alt} title={title} />
-          </div>,
-          document.body,
-        )}
-    </>
+    <DialogPrimitive.Root open={isOverlayOpen} onOpenChange={setIsOverlayOpen}>
+      <DialogPrimitive.Trigger asChild>
+        <button
+          type="button"
+          className="pmv-img-button"
+          disabled={loadState !== "loaded"}
+          aria-label={alt ? undefined : "Open image"}
+        >
+          <img
+            {...props}
+            src={src}
+            alt={alt}
+            title={title}
+            className={loadState === "loaded" ? "pmv-img-clickable" : ""}
+            onLoad={handleLoad}
+            onError={handleError}
+          />
+        </button>
+      </DialogPrimitive.Trigger>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Content
+          className="pmv-img-overlay"
+          // No description: the image and its alt text are the content.
+          aria-describedby={undefined}
+          onClick={handleBackdropClick}
+        >
+          <DialogPrimitive.Title className="pmv-sr-only">Image preview</DialogPrimitive.Title>
+          <DialogPrimitive.Close className="pmv-img-overlay-close" aria-label="Close">
+            <span aria-hidden="true">×</span>
+          </DialogPrimitive.Close>
+          <img src={src} alt={alt} title={title} />
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 };

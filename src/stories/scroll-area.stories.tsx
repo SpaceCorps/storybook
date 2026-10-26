@@ -12,7 +12,7 @@ const tags = Array.from({ length: 50 }).map((_, i, a) => `v1.2.0-beta.${a.length
 
 export const Default: StoryObj = {
   render: () => (
-    <ScrollArea className="h-72 w-48 rounded-md border">
+    <ScrollArea aria-label="Release tags" className="h-72 w-48 rounded-md border">
       <div className="p-4">
         <h4 className="mb-4 text-sm font-medium leading-none">Tags</h4>
         {tags.map((tag) => (
@@ -22,6 +22,18 @@ export const Default: StoryObj = {
           </div>
         ))}
       </div>
+    </ScrollArea>
+  ),
+};
+
+export const FitsWithoutScrolling: StoryObj = {
+  parameters: {
+    // New story: no baseline image yet.
+    visual: { disable: true },
+  },
+  render: () => (
+    <ScrollArea className="h-72 w-48 rounded-md border">
+      <div className="p-4 text-sm">Short content: nothing to scroll, so it is not a tab stop.</div>
     </ScrollArea>
   ),
 };

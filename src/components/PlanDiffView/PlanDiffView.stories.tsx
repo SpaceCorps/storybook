@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { PlanDiffView } from "./PlanDiffView";
+import { PlanChangesView, type ChangedFile } from "./PlanChangesView";
 
 export default {
   title: "Components/PlanDiffView",
@@ -125,4 +126,43 @@ export const CustomLanguage = {
       </div>
     );
   },
+};
+
+function changedFile(path: string, before: string, after: string): ChangedFile {
+  return {
+    filePath: path,
+    diff: [
+      `diff --git a/${path} b/${path}`,
+      `--- a/${path}`,
+      `+++ b/${path}`,
+      "@@ -1 +1 @@",
+      `-${before}`,
+      `+${after}`,
+      "",
+    ].join("\n"),
+    additions: 1,
+    deletions: 1,
+  };
+}
+
+export const ChangedFilesTree = {
+  parameters: {
+    // New story: no baseline image yet.
+    visual: { disable: true },
+  },
+  render: () => (
+    <div style={{ maxWidth: 1100, height: 520, margin: "0 auto", padding: "1.5rem" }}>
+      <PlanChangesView
+        id="changes-tree"
+        height="full"
+        files={[
+          changedFile("src/services/PlanService.ts", "const a = 1;", "const a = 2;"),
+          changedFile("src/services/UserService.ts", "const b = 1;", "const b = 3;"),
+          changedFile("src/components/Header.tsx", "<h1>Old</h1>", "<h1>New</h1>"),
+          changedFile("docs/guide/setup.md", "Old", "New"),
+          changedFile("README.md", "Old summary", "New summary"),
+        ]}
+      />
+    </div>
+  ),
 };

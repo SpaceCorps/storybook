@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react";
 import { Bold, Italic, Redo2, Save, Trash2, Underline, Undo2 } from "lucide-react";
 import {
@@ -117,6 +118,71 @@ export const LeadingAndTrailing: Story = {
         aria-label="Plan actions"
         leading={<span className="px-2 text-sm font-medium">Revision 003</span>}
         trailing={<Badge variant="secondary">Draft</Badge>}
+      >
+        <ToolbarGroup aria-label="Formatting">
+          <ToolbarToggleButton icon={<Bold />} tooltip="Bold" pressed />
+          <ToolbarToggleButton icon={<Italic />} tooltip="Italic" />
+        </ToolbarGroup>
+      </Toolbar>
+    </div>
+  ),
+};
+
+export const OverflowWithToggles: Story = {
+  parameters: {
+    // New story: no baseline image yet, and the menu portals out of the screenshotted root.
+    visual: { disable: true },
+  },
+  render: () => {
+    const [bold, setBold] = useState(true);
+    const [italic, setItalic] = useState(false);
+    const [saved, setSaved] = useState(0);
+    return (
+      <div className="flex w-[280px] flex-col gap-3">
+        <Toolbar aria-label="Formatting" overflow="menu" maxVisibleItems={1}>
+          <ToolbarButton icon={<Save />} label="Save" onClick={() => setSaved((n) => n + 1)} />
+          <ToolbarToggleButton
+            icon={<Bold />}
+            label="Bold"
+            pressed={bold}
+            onPressedChange={setBold}
+          />
+          <ToolbarToggleButton
+            icon={<Italic />}
+            label="Italic"
+            pressed={italic}
+            onPressedChange={setItalic}
+          />
+          <ToolbarButton icon={<Trash2 />} label="Delete" />
+        </Toolbar>
+        <p className="text-sm text-muted-foreground" aria-live="polite">
+          Bold {bold ? "on" : "off"}, italic {italic ? "on" : "off"}, saved {saved} times
+        </p>
+      </div>
+    );
+  },
+};
+
+/**
+ * A search field in the `leading` slot is not a toolbar item: Home, End and the arrow keys move its
+ * caret instead of the toolbar's focus.
+ */
+export const WithSearchField: Story = {
+  parameters: {
+    // New story: no baseline image yet.
+    visual: { disable: true },
+  },
+  render: () => (
+    <div className="w-[560px]">
+      <Toolbar
+        aria-label="Plan actions"
+        leading={
+          <input
+            aria-label="Search the plan"
+            className="h-8 w-40 rounded-field border bg-background px-2 text-sm"
+            defaultValue="release notes"
+          />
+        }
       >
         <ToolbarGroup aria-label="Formatting">
           <ToolbarToggleButton icon={<Bold />} tooltip="Bold" pressed />
