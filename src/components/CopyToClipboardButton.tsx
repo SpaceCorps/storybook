@@ -21,8 +21,13 @@ const copyIconVariant = cva("", {
   },
 });
 
+// Ring-based like every other control here, with an offset so it reads on the primary fill the
+// button takes after a copy (the ring colour alone is that fill).
+const focusRing =
+  "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+
 const copyButtonSizeVariant = cva(
-  "rounded bg-transparent hover:bg-accent focus:outline-hidden cursor-pointer flex items-center justify-center",
+  `rounded bg-transparent hover:bg-accent cursor-pointer flex items-center justify-center ${focusRing}`,
   {
     variants: {
       density: {
@@ -79,9 +84,9 @@ export const CopyToClipboardButton: React.FC<CopyToClipboardButtonProps> = ({
               copyButtonSizeVariant({ density: effectiveDensity }),
               !copied && "text-muted-foreground hover:text-foreground",
               copied &&
-                "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus-visible:ring-primary",
+                "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
             )
-          : "flex items-center gap-1 px-3 py-2 rounded-lg transition-all duration-200 ease-in-out cursor-pointer hover:bg-accent hover:shadow-sm border-0",
+          : `flex items-center gap-1 px-3 py-2 rounded-lg transition-all duration-200 ease-in-out cursor-pointer hover:bg-accent hover:shadow-sm border-0 ${focusRing}`,
         !isIconOnly &&
           (copied
             ? "bg-primary text-primary-foreground"

@@ -11,6 +11,8 @@ const CLOSE_DELAY_MS = 220;
 const MENU_WIDTH = 300;
 const MENU_MARGIN = 8;
 const MENU_MIN_HEIGHT = 160;
+const TABBABLE =
+  'button:not(:disabled), [href], input:not(:disabled), [tabindex]:not([tabindex="-1"])';
 
 interface MenuPosition {
   top: number;
@@ -67,6 +69,8 @@ export const ShellRailFlyout: React.FC<ShellRailFlyoutProps> = ({
   const menuRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<number | null>(null);
   const [rowInteracting, setRowInteracting] = useState(false);
+  // Set when the menu is pinned open, so focus moves into it once it has mounted.
+  const focusOnOpenRef = useRef(false);
 
   const clearTimer = useCallback(() => {
     if (timerRef.current != null) {
@@ -125,9 +129,20 @@ export const ShellRailFlyout: React.FC<ShellRailFlyoutProps> = ({
       closeMenu();
       return;
     }
+    focusOnOpenRef.current = true;
     setPinned(true);
     openMenu();
   }, [closeMenu, openMenu, pinned]);
+
+  // The menu is portaled to the end of the body, so a keyboard user who pins it open from the rail
+  // button would otherwise be left on the button with the list out of reach: focus goes in.
+  useEffect(() => {
+    if (!open || !pinned || !focusOnOpenRef.current) return;
+    const menu = menuRef.current;
+    if (!menu) return;
+    focusOnOpenRef.current = false;
+    (menu.querySelector<HTMLElement>(TABBABLE) ?? menu).focus();
+  }, [open, pinned, position]);
 
   useEffect(() => clearTimer, [clearTimer]);
 
@@ -145,7 +160,11 @@ export const ShellRailFlyout: React.FC<ShellRailFlyoutProps> = ({
   useEffect(() => {
     if (!open || !pinned) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") closeMenu();
+      if (e.key !== "Escape") return;
+      // Focus goes back to the rail button only if it was in the menu, which is about to vanish.
+      const hadFocus = menuRef.current?.contains(document.activeElement) ?? false;
+      closeMenu();
+      if (hadFocus) buttonRef.current?.focus();
     };
     const onPointerDown = (e: Event) => {
       const target = e.target as Node | null;
@@ -171,6 +190,27 @@ export const ShellRailFlyout: React.FC<ShellRailFlyoutProps> = ({
     const next = selectedIndex === -1 ? (delta < 0 ? items.length - 1 : 0) : selectedIndex + delta;
     if (next < 0 || next >= items.length) return;
     onSelect(items[next].id);
+  };
+
+  // A pinned menu holds focus the way a dialog does: Tab wraps inside it, and Escape leaves.
+  const handleMenuKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== "Tab" || !pinned) return;
+    const menu = menuRef.current;
+    if (!menu) return;
+    const tabbable = Array.from(menu.querySelectorAll<HTMLElement>(TABBABLE));
+    if (tabbable.length === 0) {
+      e.preventDefault();
+      return;
+    }
+    const first = tabbable[0];
+    const last = tabbable[tabbable.length - 1];
+    if (e.shiftKey && (document.activeElement === first || document.activeElement === menu)) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
   };
 
   const closeUnlessPinned = () => {
@@ -211,8 +251,10 @@ export const ShellRailFlyout: React.FC<ShellRailFlyoutProps> = ({
               width: MENU_WIDTH,
               maxHeight: position.maxHeight,
             }}
+            tabIndex={-1}
             onPointerEnter={clearTimer}
             onPointerLeave={scheduleClose}
+            onKeyDown={handleMenuKeyDown}
           >
             <div className="tsh-rail-menu-bar">
               <span className="tsh-rail-menu-steps">

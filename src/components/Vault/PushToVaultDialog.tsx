@@ -136,6 +136,13 @@ export const PushToVaultDialog: React.FC<PushToVaultDialogProps> = ({
       error={error}
       submitLabel="Publish & Open PR"
       submitDisabled={submitDisabled}
+      submitDisabledReason={
+        isBusy
+          ? "Action already in progress"
+          : selectedProjects.length === 0
+            ? "Select at least one project"
+            : undefined
+      }
       onSubmit={() => {
         if (submitDisabled) return;
         onSubmit({

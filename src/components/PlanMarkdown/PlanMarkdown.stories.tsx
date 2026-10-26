@@ -171,3 +171,22 @@ questions:
     );
   },
 };
+
+export const WithImage = {
+  parameters: {
+    // New story: no baseline image yet, and the image viewer portals out of the screenshotted root.
+    visual: { disable: true },
+  },
+  render: () => {
+    // Storybook serves its own logo from every host it runs on, so the image needs no network.
+    const imageUrl = `${window.location.origin}/sb-common-assets/favicon.svg`;
+    return (
+      <div style={{ maxWidth: 720, margin: "0 auto", padding: "1.5rem" }}>
+        <PlanMarkdown
+          id="plan-md-image"
+          content={`Press Enter or Space on the picture to open it.\n\n![The Storybook logo](${imageUrl})\n\nAfter it.`}
+        />
+      </div>
+    );
+  },
+};

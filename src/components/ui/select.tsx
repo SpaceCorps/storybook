@@ -3,6 +3,7 @@ import * as SelectPrimitive from "@radix-ui/react-select";
 import { Check, ChevronDown, ChevronUp } from "lucide-react";
 import type { VariantProps } from "class-variance-authority";
 
+import { useFieldContext, useFieldControl } from "@/components/ui/field/field-context";
 import { cn } from "@/lib/utils";
 import {
   selectSingleTriggerVariant,
@@ -12,7 +13,21 @@ import {
 } from "./select/variant";
 import { useDensity } from "@/contexts/density-context";
 
-const Select = SelectPrimitive.Root;
+/**
+ * `SelectPrimitive.Root` plus what a surrounding Field knows: the form `name` and whether the whole
+ * select is disabled. (`id` and `aria-*` belong on the trigger, which {@link SelectTrigger} handles.)
+ */
+function Select(props: React.ComponentProps<typeof SelectPrimitive.Root>) {
+  const field = useFieldContext();
+  return (
+    <SelectPrimitive.Root
+      {...props}
+      name={props.name ?? field?.name}
+      disabled={props.disabled ?? (field?.disabled ? true : undefined)}
+    />
+  );
+}
+Select.displayName = "Select";
 
 const SelectGroup = SelectPrimitive.Group;
 
@@ -22,13 +37,17 @@ const SelectTrigger = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger> &
     VariantProps<typeof selectSingleTriggerVariant>
->(({ className, density, children, ...props }, ref) => {
+>((props, ref) => {
+  // The field's `name` is submitted by the select behind the trigger (see `Select`). On the button as
+  // well, `form.elements[name]` would be a list of the two and its `.value` would be "".
+  const { className, density, children, name: _fieldName, ...rest } = useFieldControl(props);
   const contextDensity = useDensity();
   return (
     <SelectPrimitive.Trigger
       ref={ref}
       className={cn(selectSingleTriggerVariant({ density: density ?? contextDensity, className }))}
-      {...props}
+      name={props.name}
+      {...rest}
     >
       {children}
     </SelectPrimitive.Trigger>

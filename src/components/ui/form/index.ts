@@ -7,5 +7,6 @@ export {
   FormMessage,
   FormField,
 } from "./form";
+export type { FormItemProps } from "./form";
 
 export { useFormField } from "./hooks";

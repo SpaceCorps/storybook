@@ -1,4 +1,5 @@
 import React from "react";
+import { useSoftDisabled } from "./button/soft-disabled";
 import { Tooltip, type TooltipSide } from "./TuiTooltip";
 import "./ui.css";
 
@@ -23,6 +24,18 @@ export interface IconButtonProps extends Omit<
   variant?: IconButtonVariant;
   /** Held-open look for a button whose panel is showing. */
   active?: boolean;
+  /**
+   * With `disabled`, keep the button focusable (`aria-disabled`, not the `disabled` attribute) so a
+   * keyboard user can find it and its tooltip opens on focus as well as hover. Click, Enter and
+   * Space are ignored. Plain `disabled` stays native.
+   */
+  focusableWhenDisabled?: boolean;
+  /**
+   * Why it is unavailable: announced as the description, and shown in the tooltip. The button is
+   * described by this reason alone. The open tooltip, which repeats the label and the reason, is not
+   * linked to it a second time, so a screen reader does not say the reason twice.
+   */
+  disabledReason?: string;
   className?: string;
 }
 
@@ -42,15 +55,41 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(f
     size = "lg",
     variant = "ghost",
     active,
+    focusableWhenDisabled,
+    disabledReason,
     className = "",
     type = "button",
     ...rest
   },
   ref,
 ) {
+  const hasDisabledProp = "disabled" in rest;
+  const {
+    disabled,
+    onClick,
+    onKeyDown,
+    onPointerDown,
+    onMouseDown,
+    "aria-describedby": describedBy,
+    "aria-haspopup": hasPopup,
+    ...buttonProps
+  } = rest;
+  const softDisabled = useSoftDisabled<HTMLButtonElement>({
+    disabled,
+    focusableWhenDisabled,
+    disabledReason,
+    onClick,
+    onKeyDown,
+    onPointerDown,
+    onMouseDown,
+    "aria-describedby": describedBy,
+    "aria-haspopup": hasPopup,
+  });
+
   const button = (
     <button
-      {...rest}
+      {...buttonProps}
+      {...softDisabled.props}
       ref={ref}
       type={type}
       className={`tui-icon-btn ${className}`.trim()}
@@ -60,6 +99,11 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(f
       aria-label={label}
     >
       {children}
+      {softDisabled.reason ? (
+        <span id={softDisabled.reason.id} hidden>
+          {softDisabled.reason.text}
+        </span>
+      ) : null}
     </button>
   );
 
@@ -67,13 +111,14 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(f
 
   return (
     <Tooltip
-      content={tooltip ?? label}
+      content={tooltip ?? (softDisabled.reason ? `${label}: ${softDisabled.reason.text}` : label)}
       shortcut={shortcut}
       side={tooltipSide}
       open={tooltipOpen}
       onOpenChange={onTooltipOpenChange}
-      wrapTrigger={"disabled" in rest}
-      triggerDisabled={Boolean(rest.disabled)}
+      // A natively disabled button emits no pointer events, so its tooltip hangs off a wrapper.
+      // A soft-disabled one is a live element and needs none.
+      wrapTrigger={hasDisabledProp && !focusableWhenDisabled}
     >
       {button}
     </Tooltip>

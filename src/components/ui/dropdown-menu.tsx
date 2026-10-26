@@ -4,6 +4,7 @@ import { Check, ChevronRight, Circle } from "lucide-react";
 import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
+import { menuItemRing } from "./overlay-variant";
 
 const DropdownMenu = DropdownMenuPrimitive.Root;
 
@@ -18,7 +19,7 @@ const DropdownMenuSub = DropdownMenuPrimitive.Sub;
 const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup;
 
 const menuItemVariants = cva(
-  "relative flex cursor-pointer select-none items-center gap-2 rounded-selector px-2 py-1.5 text-sm outline-hidden transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&>svg]:size-4 [&>svg]:shrink-0",
+  `relative flex cursor-pointer select-none items-center gap-2 rounded-selector px-2 py-1.5 text-sm outline-hidden transition-colors focus:bg-accent focus:text-accent-foreground ${menuItemRing} data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&>svg]:size-4 [&>svg]:shrink-0`,
   {
     variants: {
       variant: {
@@ -113,6 +114,7 @@ const DropdownMenuCheckboxItem = React.forwardRef<
     ref={ref}
     className={cn(
       "relative flex cursor-pointer select-none items-center rounded-selector py-1.5 pl-8 pr-2 text-sm outline-hidden transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      menuItemRing,
       className,
     )}
     checked={checked}
@@ -136,6 +138,7 @@ const DropdownMenuRadioItem = React.forwardRef<
     ref={ref}
     className={cn(
       "relative flex cursor-pointer select-none items-center rounded-selector py-1.5 pl-8 pr-2 text-sm outline-hidden transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      menuItemRing,
       className,
     )}
     {...props}

@@ -1,8 +1,72 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
 import * as root from "../src/index";
 import * as ui from "../src/ui";
 import * as renderers from "../src/renderers";
 import * as tendril from "../src/tendril";
+
+/**
+ * What a consumer imports for forms, dates, times, calendars, gamepad input and focus handling, in
+ * groups. Both `@spacecorps/components` and `@spacecorps/components/ui` re-export every group with
+ * `export * from ...`, so dropping one line from `src/index.ts` or `src/ui.ts` removes a whole group
+ * at once. Naming the names, not the group, is what makes that fail a test with a readable list.
+ */
+const SHARED_EXPORTS = {
+  field: [
+    "Field",
+    "FieldReset",
+    "FieldContext",
+    "useFieldContext",
+    "useFieldControl",
+    "fieldVariant",
+    "fieldErrorTextClass",
+  ],
+  "time input": [
+    "TimeInput",
+    "parseTimeText",
+    "timeToMinutes",
+    "minutesToTime",
+    "timeListVariant",
+    "timeOptionVariant",
+  ],
+  "time calendar": [
+    "TimeCalendar",
+    "getVisibleRange",
+    "getFetchRange",
+    "getPeriodRange",
+    "CALENDAR_COLORS",
+    "calendarColorForKey",
+    "formatTrackedHours",
+  ],
+  "gamepad navigation": [
+    "GamepadNavigationProvider",
+    "useGamepadNavigation",
+    "gamepadFocusRingClass",
+    "GAMEPAD_FOCUS_ATTRIBUTE",
+    "INPUT_MODALITY_ATTRIBUTE",
+    "GAMEPAD_AXIS",
+    "GAMEPAD_BUTTON",
+  ],
+  "date pickers": [
+    "DatePicker",
+    "DateRangePicker",
+    "compareIsoDates",
+    "formatIsoDate",
+    "isIsoDate",
+    "parseIsoDate",
+    "datePickerButtonVariant",
+    "datePickerInputVariant",
+    "dateRangeFrameVariant",
+  ],
+  "soft-disabled buttons": ["Button", "buttonVariant", "useSoftDisabled"],
+  "data table": [
+    "DataTable",
+    "DataTableCellEditor",
+    "DataTablePagination",
+    "useDataTableRowFocus",
+    "useInlineCellEdit",
+    "dataTableRowVariant",
+  ],
+} as const;
 
 describe("Package Exports", () => {
   describe("Root Export (@spacecorps/components)", () => {
@@ -245,5 +309,84 @@ describe("Package Exports", () => {
       expect(tendril.submitNote).toBeDefined();
       expect(tendril.unansweredRequired).toBeDefined();
     });
+  });
+});
+
+describe("Forms, dates, times, calendars, keyboard and focus exports", () => {
+  const entries: Array<[string, object]> = [
+    ["@spacecorps/components", root],
+    ["@spacecorps/components/ui", ui],
+  ];
+
+  describe.each(entries)("%s", (_entry, barrel) => {
+    it.each(Object.entries(SHARED_EXPORTS))("exports the %s names", (_group, names) => {
+      const exported = barrel as Record<string, unknown>;
+      const missing = names.filter((name) => exported[name] === undefined);
+      expect(missing).toEqual([]);
+    });
+  });
+
+  it("exports the hooks and components as callable things", () => {
+    for (const barrel of [root, ui]) {
+      expect(typeof barrel.useFieldControl).toBe("function");
+      expect(typeof barrel.useFieldContext).toBe("function");
+      expect(typeof barrel.useGamepadNavigation).toBe("function");
+      expect(typeof barrel.useSoftDisabled).toBe("function");
+      expect(typeof barrel.getFetchRange).toBe("function");
+      expect(typeof barrel.getVisibleRange).toBe("function");
+      expect(typeof barrel.parseTimeText).toBe("function");
+      // `forwardRef` components are objects, plain function components are functions.
+      for (const component of [
+        barrel.Field,
+        barrel.FieldReset,
+        barrel.TimeInput,
+        barrel.TimeCalendar,
+        barrel.GamepadNavigationProvider,
+        barrel.DatePicker,
+        barrel.DateRangePicker,
+      ]) {
+        expect(["function", "object"]).toContain(typeof component);
+      }
+    }
+  });
+
+  it("exports useReturnFocus from both entries", () => {
+    expect(typeof root.useReturnFocus).toBe("function");
+    expect(typeof ui.useReturnFocus).toBe("function");
+  });
+
+  it("exports Calendar and the Input helpers from the ui entry", () => {
+    expect(ui.Calendar).toBeDefined();
+    expect(typeof ui.InputVariants.resolveInputSemantics).toBe("function");
+    expect(ui.InputVariants.textInputPasswordPaddingVariant).toBeDefined();
+  });
+
+  // Types are erased at run time, so these are checked by the type checker (`vp check`): dropping a
+  // barrel line, or renaming one of these, fails there with "has no exported member".
+  it("exports the public types from both entries", () => {
+    expectTypeOf<ui.DataTableVariant>().toEqualTypeOf<"bordered" | "embedded">();
+    expectTypeOf<root.DataTableVariant>().toEqualTypeOf<ui.DataTableVariant>();
+    expectTypeOf<ui.DataTableProps<{ id: string }>["variant"]>().toEqualTypeOf<
+      ui.DataTableVariant | undefined
+    >();
+    expectTypeOf<ui.CalendarView>().toEqualTypeOf<"month" | "week">();
+    expectTypeOf<root.CalendarView>().toEqualTypeOf<ui.CalendarView>();
+    expectTypeOf<ui.InputModality>().toEqualTypeOf<"gamepad" | "keyboard" | "pointer">();
+    expectTypeOf<root.InputModality>().toEqualTypeOf<ui.InputModality>();
+    expectTypeOf<ui.DateRangeValue>().toEqualTypeOf<{ from: string; to: string }>();
+    expectTypeOf<root.DateRangeValue>().toEqualTypeOf<ui.DateRangeValue>();
+    expectTypeOf<ui.FieldProps>().toHaveProperty("label");
+    expectTypeOf<root.FieldProps>().toHaveProperty("label");
+    expectTypeOf<ui.TimeInputProps>().toHaveProperty("pickerLabel");
+    expectTypeOf<root.TimeInputProps>().toHaveProperty("pickerLabel");
+    expectTypeOf<ui.TimeCalendarProps>().toHaveProperty("events");
+    expectTypeOf<root.TimeCalendarProps>().toHaveProperty("events");
+    expectTypeOf<ui.TimeCalendarEvent>().toHaveProperty("start");
+    expectTypeOf<ui.TimeCalendarNavigation>().toHaveProperty("range");
+    expectTypeOf<ui.GamepadNavigationProviderProps>().toHaveProperty("allowNonStandardPads");
+    expectTypeOf<root.GamepadNavigationProviderProps>().toHaveProperty("allowNonStandardPads");
+    expectTypeOf<ui.GamepadNavigationState>().toHaveProperty("modality");
+    expectTypeOf<ui.SoftDisabledOptions<HTMLButtonElement>>().not.toBeAny();
+    expectTypeOf<root.UseReturnFocusResult>().toHaveProperty("anchor");
   });
 });

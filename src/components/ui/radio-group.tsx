@@ -2,13 +2,26 @@ import * as React from "react";
 import * as RadioGroupPrimitive from "@radix-ui/react-radio-group";
 import { Circle } from "lucide-react";
 
+import { useFieldContext, useFieldControl } from "@/components/ui/field/field-context";
 import { cn } from "@/lib/utils";
 
 const RadioGroup = React.forwardRef<
   React.ElementRef<typeof RadioGroupPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Root>
->(({ className, ...props }, ref) => {
-  return <RadioGroupPrimitive.Root className={cn("grid gap-2", className)} {...props} ref={ref} />;
+>((props, ref) => {
+  const { className, ...rest } = useFieldControl(props);
+  const field = useFieldContext();
+  // A group is not a labelable element, so a field's label names it by reference instead of `for`.
+  const labelledBy =
+    rest["aria-labelledby"] ?? (field?.hasLabel && !rest["aria-label"] ? field.labelId : undefined);
+  return (
+    <RadioGroupPrimitive.Root
+      className={cn("group/radiogroup grid gap-2", className)}
+      {...rest}
+      aria-labelledby={labelledBy}
+      ref={ref}
+    />
+  );
 });
 RadioGroup.displayName = RadioGroupPrimitive.Root.displayName;
 
@@ -20,7 +33,7 @@ const RadioGroupItem = React.forwardRef<
     <RadioGroupPrimitive.Item
       ref={ref}
       className={cn(
-        "relative aspect-square size-4 rounded-full border border-primary text-primary shadow focus:outline-hidden focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer dark:border-white/10 dark:data-[state=checked]:border-primary",
+        "relative aspect-square size-4 rounded-full border border-primary text-primary shadow focus:outline-hidden focus-visible:ring-1 focus-visible:ring-ring aria-invalid:border-destructive group-aria-invalid/radiogroup:border-destructive group-aria-invalid/radiogroup:focus-visible:ring-destructive dark:aria-invalid:border-red dark:group-aria-invalid/radiogroup:border-red dark:group-aria-invalid/radiogroup:focus-visible:ring-red disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer dark:border-white/10 dark:data-[state=checked]:border-primary",
         className,
       )}
       {...props}

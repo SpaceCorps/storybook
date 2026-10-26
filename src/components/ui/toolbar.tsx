@@ -2,9 +2,11 @@ import * as React from "react";
 import { Ellipsis } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { useMergedRefs } from "@/lib/merge-refs";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
@@ -65,6 +67,15 @@ interface ToolbarItemLikeProps {
   disabled?: boolean;
   "aria-label"?: string;
   children?: React.ReactNode;
+  pressed?: boolean;
+  onPressedChange?: (pressed: boolean) => void;
+}
+
+/** What the overflow menu needs to stand in for one item that no longer fits. */
+interface OverflowItem {
+  props: ToolbarItemLikeProps;
+  /** Toggles keep their pressed state in the menu, as a checked item. */
+  toggle: boolean;
 }
 
 function isSeparatorElement(child: React.ReactElement): boolean {
@@ -76,11 +87,11 @@ function isItemElement(child: React.ReactElement): boolean {
 }
 
 /** Flattens a child (including nested groups) into the button-like props the overflow menu needs. */
-function collectOverflowItems(child: React.ReactNode): ToolbarItemLikeProps[] {
+function collectOverflowItems(child: React.ReactNode): OverflowItem[] {
   if (!React.isValidElement(child)) return [];
   const props = child.props as ToolbarItemLikeProps;
   if (isSeparatorElement(child)) return [];
-  if (isItemElement(child)) return [props];
+  if (isItemElement(child)) return [{ props, toggle: child.type === ToolbarToggleButton }];
   if (props.children === undefined) return [];
   return React.Children.toArray(props.children).flatMap(collectOverflowItems);
 }
@@ -118,10 +129,31 @@ function splitChildren(children: React.ReactElement[], cap: number | undefined):
   return { visible, overflowed };
 }
 
+/** Whether the element takes typed text, and so owns the caret keys (Home, End, the arrows). */
+function isEditable(el: HTMLElement): boolean {
+  if (el.isContentEditable) return true;
+  if (el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement) return true;
+  if (el instanceof HTMLInputElement) {
+    return !["button", "checkbox", "radio", "submit", "reset", "image", "file", "range"].includes(
+      el.type,
+    );
+  }
+  return false;
+}
+
 function navigableItems(root: HTMLElement): HTMLElement[] {
   return Array.from(root.querySelectorAll<HTMLElement>(`[${ITEM_ATTR}]`)).filter(
     (el) => el.closest(`[${SLOT_ATTR}]`) === null,
   );
+}
+
+/**
+ * Items that can take focus. Judged by the element itself rather than a marker attribute, because
+ * Button owns its `data-disabled` and rewrites it; and an `aria-disabled` item stays in, since a
+ * soft-disabled button is deliberately focusable.
+ */
+function enabledItems(root: HTMLElement): HTMLElement[] {
+  return navigableItems(root).filter((el) => !el.matches(":disabled"));
 }
 
 const Toolbar = React.forwardRef<HTMLDivElement, ToolbarProps>(
@@ -137,6 +169,8 @@ const Toolbar = React.forwardRef<HTMLDivElement, ToolbarProps>(
       overflow = "menu",
       maxVisibleItems,
       onKeyDown,
+      onFocus,
+      onPointerDown,
       "aria-label": ariaLabel,
       ...props
     },
@@ -146,14 +180,7 @@ const Toolbar = React.forwardRef<HTMLDivElement, ToolbarProps>(
     const effectiveDensity = density ?? contextDensity;
 
     const rootRef = React.useRef<HTMLDivElement | null>(null);
-    const setRootRef = React.useCallback(
-      (node: HTMLDivElement | null) => {
-        rootRef.current = node;
-        if (typeof ref === "function") ref(node);
-        else if (ref) ref.current = node;
-      },
-      [ref],
-    );
+    const setRootRef = useMergedRefs(rootRef, ref);
 
     const [activeIndex, setActiveIndex] = React.useState(0);
     const [measuredCap, setMeasuredCap] = React.useState<number | undefined>(undefined);
@@ -177,7 +204,7 @@ const Toolbar = React.forwardRef<HTMLDivElement, ToolbarProps>(
       const node = rootRef.current;
       if (!node) return;
       const items = navigableItems(node);
-      const enabled = items.filter((el) => el.getAttribute("data-disabled") !== "true");
+      const enabled = enabledItems(node);
       for (const el of items) el.setAttribute("tabindex", "-1");
       const active = enabled[activeIndex < enabled.length ? activeIndex : 0];
       active?.setAttribute("tabindex", "0");
@@ -219,14 +246,27 @@ const Toolbar = React.forwardRef<HTMLDivElement, ToolbarProps>(
       const node = rootRef.current;
       if (!node) return;
 
+      // Alt+Left and Alt+Right are the browser's Back and Forward, and a chord with Ctrl or Meta
+      // (Ctrl+Home, Ctrl+Left...) is the page's or the platform's. Only the bare keys navigate.
+      if (event.altKey || event.ctrlKey || event.metaKey) return;
+
+      // Only a key pressed on one of the toolbar's own items navigates. Everything else that
+      // bubbles up to this root has keys of its own: the caret keys of a search field in the
+      // `leading` or `trailing` slot, and the keys of the overflow menu, whose content React
+      // delivers here although it is portaled out of the toolbar.
+      const origin =
+        event.target instanceof Element
+          ? event.target.closest<HTMLElement>(`[${ITEM_ATTR}]`)
+          : null;
+      if (!origin || !node.contains(origin) || origin.closest(`[${SLOT_ATTR}]`) !== null) return;
+      if (isEditable(origin)) return;
+
       const nextKey = orientation === "vertical" ? "ArrowDown" : "ArrowRight";
       const prevKey = orientation === "vertical" ? "ArrowUp" : "ArrowLeft";
-      const items = navigableItems(node).filter(
-        (el) => el.getAttribute("data-disabled") !== "true",
-      );
+      const items = enabledItems(node);
       if (items.length === 0) return;
 
-      const focused = items.indexOf(document.activeElement as HTMLElement);
+      const focused = items.indexOf(origin);
       const from = focused === -1 ? Math.min(activeIndex, items.length - 1) : focused;
 
       let next: number | undefined;
@@ -239,6 +279,27 @@ const Toolbar = React.forwardRef<HTMLDivElement, ToolbarProps>(
       event.preventDefault();
       setActiveIndex(next);
       items[next].focus();
+    };
+
+    // The tab stop follows wherever focus actually goes, not only the arrow keys: after a mouse
+    // click on item 3 and a Tab away, Shift+Tab has to come back to item 3. A pointer press counts
+    // too, because Safari does not focus a button it was clicked on.
+    const rememberItem = (target: EventTarget) => {
+      const node = rootRef.current;
+      const item = target instanceof Element ? target.closest<HTMLElement>(`[${ITEM_ATTR}]`) : null;
+      if (!node || !item) return;
+      const index = enabledItems(node).indexOf(item);
+      if (index !== -1) setActiveIndex(index);
+    };
+
+    const handleFocus = (event: React.FocusEvent<HTMLDivElement>) => {
+      onFocus?.(event);
+      rememberItem(event.target);
+    };
+
+    const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+      onPointerDown?.(event);
+      rememberItem(event.target);
     };
 
     const contextValue = React.useMemo<ToolbarContextValue>(
@@ -257,6 +318,8 @@ const Toolbar = React.forwardRef<HTMLDivElement, ToolbarProps>(
             aria-disabled={disabled}
             data-density={effectiveDensity.toLowerCase()}
             onKeyDown={handleKeyDown}
+            onFocus={handleFocus}
+            onPointerDown={handlePointerDown}
             className={cn(
               toolbarVariant({ density: effectiveDensity, orientation }),
               overflow === "wrap" && "flex-wrap",
@@ -288,18 +351,39 @@ const Toolbar = React.forwardRef<HTMLDivElement, ToolbarProps>(
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  {overflowItems.map((item, index) => (
-                    <DropdownMenuItem
-                      key={index}
-                      disabled={item.disabled}
-                      onSelect={() =>
-                        item.onClick?.({} as React.MouseEvent<HTMLButtonElement, MouseEvent>)
-                      }
-                    >
-                      {item.icon}
-                      <span>{item.label ?? item.tooltip ?? item["aria-label"]}</span>
-                    </DropdownMenuItem>
-                  ))}
+                  {overflowItems.map(({ props: item, toggle }, index) => {
+                    const content = (
+                      <>
+                        {item.icon}
+                        <span>{item.label ?? item.tooltip ?? item["aria-label"]}</span>
+                      </>
+                    );
+                    // The menu item's own click, which Radix also fires for Enter and Space, so the
+                    // handler gets a real event it can call preventDefault or stopPropagation on.
+                    // Its currentTarget is the menu item rather than a button.
+                    const onClick = item.onClick as unknown as React.MouseEventHandler<HTMLElement>;
+                    return toggle ? (
+                      <DropdownMenuCheckboxItem
+                        key={index}
+                        checked={Boolean(item.pressed)}
+                        disabled={item.disabled}
+                        onCheckedChange={(next) => item.onPressedChange?.(next)}
+                        onClick={onClick}
+                      >
+                        {content}
+                      </DropdownMenuCheckboxItem>
+                    ) : (
+                      <DropdownMenuItem
+                        key={index}
+                        // Lines the labels up with the checked items' indicator column.
+                        inset={overflowItems.some((other) => other.toggle)}
+                        disabled={item.disabled}
+                        onClick={onClick}
+                      >
+                        {content}
+                      </DropdownMenuItem>
+                    );
+                  })}
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
@@ -385,6 +469,15 @@ export interface ToolbarButtonProps extends Omit<
   density?: Densities;
 }
 
+/**
+ * A button in a toolbar. It is a roving-tabindex item: one button of the toolbar is a tab stop and
+ * the arrow keys move between them.
+ *
+ * A disabled button is disabled natively (the `disabled` attribute, which also removes it from
+ * navigation). It no longer carries the `data-disabled="true"` marker an earlier version added, so
+ * outside CSS or tests that select on it should use `:disabled` or `[data-disabled]`, which the
+ * underlying Button sets for its own styling.
+ */
 const ToolbarButton = React.forwardRef<HTMLButtonElement, ToolbarButtonProps>(
   ({ className, icon, label, tooltip, density, disabled, ...props }, ref) => {
     const context = useToolbarContext();
@@ -406,7 +499,6 @@ const ToolbarButton = React.forwardRef<HTMLButtonElement, ToolbarButtonProps>(
         }
         disabled={isDisabled}
         data-toolbar-item=""
-        data-disabled={isDisabled ? "true" : undefined}
         className={className}
         {...props}
         aria-label={accessibleName}
@@ -433,12 +525,22 @@ export interface ToolbarToggleButtonProps extends ToolbarButtonProps {
   onPressedChange?: (pressed: boolean) => void;
 }
 
+/**
+ * A toolbar button with a pressed state (`aria-pressed`). Pressed, it has a tint and a bar under the
+ * icon, which is what shows it to anyone for whom the tint alone is too faint.
+ */
 const ToolbarToggleButton = React.forwardRef<HTMLButtonElement, ToolbarToggleButtonProps>(
   ({ className, pressed = false, onPressedChange, onClick, ...props }, ref) => (
     <ToolbarButton
       ref={ref}
       aria-pressed={pressed}
-      className={cn(pressed && "bg-accent", className)}
+      className={cn(
+        // A tint alone is a 1.1:1 step from the toolbar. The bar under the icon is the cue that
+        // survives a low-vision user's contrast and forced-colors mode, which strips the tint.
+        pressed &&
+          "relative bg-accent after:pointer-events-none after:absolute after:inset-x-1.5 after:bottom-0.5 after:h-0.5 after:rounded-full after:bg-foreground forced-colors:after:bg-[Highlight]",
+        className,
+      )}
       onClick={(event) => {
         onClick?.(event);
         onPressedChange?.(!pressed);

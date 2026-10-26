@@ -19,7 +19,10 @@
   box-sizing: border-box;
 }
 
-.bselect-trigger {
+/* The visible control. The combobox itself is the transparent button laid over it, so the badge
+   remove buttons are its siblings and not interactive content inside a combobox. */
+.bselect-field {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -31,19 +34,53 @@
   border-radius: var(--radius, 6px);
   background: var(--background);
   color: var(--foreground);
-  cursor: pointer;
-  text-align: left;
   font-size: 0.8125rem;
   line-height: 1.25;
 }
 
-.bselect-trigger:hover {
+.bselect-field:hover {
   background: var(--accent);
+}
+
+/* Everything drawn in the field sits above the combobox button but lets the pointer through to it,
+   so the whole field opens the list; only the remove buttons take clicks of their own. */
+.bselect-field > :not(.bselect-trigger) {
+  position: relative;
+  pointer-events: none;
+}
+
+.bselect-trigger {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
 }
 
 .bselect-trigger:focus-visible {
   outline: 2px solid var(--ring, var(--primary));
   outline-offset: 1px;
+}
+
+/* The selected labels as text for assistive technology: the combobox's value. The visible badges
+   are drawn next to it, not inside it. */
+.bselect-value-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 
 .bselect-trigger-icon,
@@ -60,6 +97,10 @@
   min-width: 0;
   align-items: center;
   overflow: hidden;
+  /* Room for the remove buttons' 24px hit areas, which stand taller than the badges: overflow
+     clips pointer hits as well as paint. The negative margin gives the room back to the layout. */
+  padding-block: 4px;
+  margin-block: -4px;
 }
 
 .bselect-count {
@@ -102,21 +143,35 @@
   white-space: nowrap;
 }
 
+/* The glyph is 12px, the button around it 24px so a finger or a loose mouse can hit it without
+   opening the list instead. The negative margin takes the extra 6px a side back out of the layout,
+   so the badge looks and measures as it did; the hit area reaches into the badge's own padding and
+   the gap beside it, never as far as the next badge's button. */
 .bselect-badge-x {
+  pointer-events: auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin: 0;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  width: 24px;
+  height: 24px;
+  margin: -6px;
   padding: 0;
   border: none;
   background: transparent;
   color: var(--muted-foreground);
   cursor: pointer;
-  border-radius: 2px;
+  border-radius: 6px;
 }
 
 .bselect-badge-x:hover {
   color: var(--foreground);
+}
+
+.bselect-badge-x:focus-visible {
+  outline: 2px solid var(--ring, var(--primary));
+  outline-offset: 1px;
 }
 
 .bselect-menu {
@@ -158,6 +213,14 @@
 
 .bselect-item-selected {
   background: var(--accent);
+}
+
+/* The row the arrow keys are on. A background alone is too faint against the popup, and an outline
+   survives forced-colors mode. */
+.bselect-item-active {
+  background: var(--accent);
+  outline: 2px solid var(--ring, var(--primary));
+  outline-offset: -2px;
 }
 
 .bselect-item-label {

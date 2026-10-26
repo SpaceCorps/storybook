@@ -1,4 +1,7 @@
-import { Input } from "@/components/ui/input";
+import { FieldReset } from "@/components/ui/field/field";
+import { useFieldControl } from "@/components/ui/field/field-context";
+import { Input, type InputProps } from "@/components/ui/input";
+import { useMergedRefs } from "@/lib/merge-refs";
 import { Densities } from "@/types/density";
 import { useDensity } from "@/contexts/density-context";
 import React, {
@@ -14,25 +17,35 @@ import { formatBytes } from "@/lib/formatters";
 
 const numberFormatCache = new Map<string, Intl.NumberFormat>();
 
-export interface NumberInputProps {
+export interface NumberInputProps extends Omit<
+  InputProps,
+  | "value"
+  | "defaultValue"
+  | "onChange"
+  | "type"
+  | "min"
+  | "max"
+  | "step"
+  | "density"
+  // The password and verbatim extras mean nothing on a number.
+  | "passwordToggle"
+  | "passwordToggleLabel"
+  | "revealed"
+  | "defaultRevealed"
+  | "onRevealedChange"
+  | "containerClassName"
+  | "verbatim"
+> {
   min?: number;
   max?: number;
   step?: number;
-  disabled?: boolean;
-  placeholder?: string;
   value?: number | null;
   onChange?: (value: number | null) => void;
-  onBlur?: (e: FocusEvent<HTMLInputElement>) => void;
-  onFocus?: (e: FocusEvent<HTMLInputElement>) => void;
   format?: Intl.NumberFormatOptions;
   isBytesFormat?: boolean;
   allowNegative?: boolean;
-  autoFocus?: boolean;
-  className?: string;
   density?: Densities;
   "data-testid"?: string;
-  "aria-label"?: string;
-  "aria-labelledby"?: string;
 }
 
 export const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
@@ -41,12 +54,13 @@ export const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
       min,
       max,
       step = 1,
-      disabled = false,
       placeholder = "",
       value = null,
       onChange,
       onBlur,
       onFocus,
+      onKeyDown,
+      onWheel,
       format = {
         style: "decimal",
         minimumFractionDigits: 0,
@@ -59,10 +73,14 @@ export const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
       className = "",
       density,
       "data-testid": dataTestId,
-      ...props
+      ...fieldProps
     },
     ref,
   ) => {
+    // `name` belongs on a hidden input that holds the number, not on the text being edited, which is
+    // formatted ("1,234.5", "1.2 KB") and is not what a form should submit.
+    const { name, disabled, ...inputProps } = useFieldControl(fieldProps);
+    const readOnly = inputProps.readOnly === true;
     const contextDensity = useDensity();
     const effectiveDensity = density ?? contextDensity;
 
@@ -70,6 +88,7 @@ export const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
     const [isFocused, setIsFocused] = useState(false);
     const [isValid, setIsValid] = useState(true);
     const inputRef = React.useRef<HTMLInputElement | null>(null);
+    const mergedRef = useMergedRefs(ref, inputRef);
 
     const formatter = useMemo(() => {
       const key = JSON.stringify(format);
@@ -121,7 +140,7 @@ export const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
 
     const handleStep = useCallback(
       (multiplier: number) => {
-        if (disabled) return;
+        if (disabled || readOnly) return;
 
         const current = value ?? 0;
         const newValue = parseValue((current + step * multiplier).toString(), true);
@@ -134,12 +153,15 @@ export const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
           setDisplayValue(formatValue(newValue));
         }
       },
-      [value, step, parseValue, onChange, formatValue, disabled, min, max],
+      [value, step, parseValue, onChange, formatValue, disabled, readOnly, min, max],
     );
 
+    // The caller's handler runs first and can take the key or the wheel for itself with
+    // `preventDefault`; it never switches stepping off by being there.
     const handleKeyDown = useCallback(
       (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (disabled) return;
+        onKeyDown?.(e);
+        if (e.defaultPrevented || disabled || readOnly) return;
 
         switch (e.key) {
           case "ArrowUp":
@@ -152,18 +174,19 @@ export const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
             break;
         }
       },
-      [disabled, handleStep],
+      [onKeyDown, disabled, readOnly, handleStep],
     );
 
     const handleWheel = useCallback(
       (e: WheelEvent<HTMLInputElement>) => {
-        if (!isFocused || disabled) return;
+        onWheel?.(e);
+        if (e.defaultPrevented || !isFocused || disabled || readOnly) return;
 
         e.preventDefault();
         const delta = -Math.sign(e.deltaY);
         handleStep(delta);
       },
-      [isFocused, disabled, handleStep],
+      [onWheel, isFocused, disabled, readOnly, handleStep],
     );
 
     const handleChange = useCallback(
@@ -218,35 +241,36 @@ export const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
     const displayValueToUse = isFocused ? displayValue : formatValue(value);
 
     return (
-      <div className="relative">
-        <Input
-          ref={(node) => {
-            inputRef.current = node;
-            if (typeof ref === "function") {
-              ref(node);
-            } else if (ref) {
-              ref.current = node;
-            }
-          }}
-          type="text"
-          inputMode="decimal"
-          value={displayValueToUse}
-          onChange={handleChange}
-          onFocus={handleFocus}
-          onBlur={handleBlur}
-          onKeyDown={handleKeyDown}
-          onWheel={handleWheel}
-          min={min}
-          max={max}
-          step={step}
-          disabled={disabled}
-          placeholder={placeholder}
-          density={effectiveDensity}
-          className={`${className} ${!isValid ? "border-[var(--color-destructive)]" : ""}`}
-          data-testid={dataTestId}
-          {...props}
-        />
-      </div>
+      // The field's id, description and state were resolved above and are passed on by hand, so the
+      // surrounding field is cut off from the Input, which would otherwise hand it the `name` again.
+      <FieldReset>
+        <div className="relative">
+          <Input
+            ref={mergedRef}
+            type="text"
+            inputMode="decimal"
+            value={displayValueToUse}
+            onChange={handleChange}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+            min={min}
+            max={max}
+            step={step}
+            placeholder={placeholder}
+            density={effectiveDensity}
+            className={`${className} ${!isValid ? "border-[var(--color-destructive)] dark:border-red" : ""}`}
+            data-testid={dataTestId}
+            data-gamepad-step=""
+            {...inputProps}
+            disabled={disabled}
+            onKeyDown={handleKeyDown}
+            onWheel={handleWheel}
+          />
+          {name ? (
+            <input type="hidden" name={name} value={value ?? ""} disabled={disabled} />
+          ) : null}
+        </div>
+      </FieldReset>
     );
   },
 );

@@ -31,9 +31,14 @@ export const datePickerInputVariant = cva("", {
   },
 });
 
-/** The shared frame of a range field: the two inputs and the dash between them. */
+/**
+ * The shared frame of a range field: the two inputs and the dash between them. The frame is the
+ * bordered box, and `aria-invalid` is only valid on the inputs inside it, so the invalid border and
+ * ring are driven from them. Dark theme uses the `red` step, as the other controls do, because the
+ * `destructive` fill is 2:1 on the page.
+ */
 export const dateRangeFrameVariant = cva(
-  "relative items-center gap-1 focus-within:ring-1 focus-within:ring-ring",
+  "relative items-center gap-1 focus-within:ring-1 focus-within:ring-ring has-[input[aria-invalid=true]]:border-destructive has-[input[aria-invalid=true]]:focus-within:ring-destructive dark:has-[input[aria-invalid=true]]:border-red dark:has-[input[aria-invalid=true]]:focus-within:ring-red",
   {
     variants: {
       density: {

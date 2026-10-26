@@ -1,5 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, Code } from "lucide-react";
+import { rovingTarget } from "../keyboard/roving";
+import { findByTypeahead, isTypeaheadKey, useTypeahead } from "../keyboard/typeahead";
 import {
   PlanDiffView,
   getBasename,
@@ -103,96 +105,212 @@ function FileStats({ additions, deletions }: { additions: number; deletions: num
   if (additions <= 0 && deletions <= 0) return null;
   return (
     <span className="ivy-changes-tree-stats">
-      {additions > 0 && <span className="text-[var(--success)]">+{additions}</span>}
-      {deletions > 0 && <span className="text-[var(--destructive)]">-{deletions}</span>}
+      {additions > 0 && <span className="ivy-text-success">+{additions}</span>}
+      {deletions > 0 && <span className="ivy-text-destructive">-{deletions}</span>}
     </span>
   );
 }
 
-interface TreeRowsProps {
-  node: TreeFolder;
+/** One visible row of the tree, flattened so the keyboard can walk them in order. */
+interface TreeRowModel {
+  key: string;
+  kind: "folder" | "file";
   depth: number;
+  parentKey: string | null;
+  /** The text a typed letter is matched against, and the row's visible name. */
+  label: string;
+  /** Folder path or file path: what a click toggles or selects. */
+  path: string;
+  expanded?: boolean;
+  file?: ChangedFile;
+  setSize: number;
+  posInSet: number;
+}
+
+function collectVisibleRows(
+  node: TreeFolder,
+  depth: number,
+  parentKey: string | null,
+  collapsed: Record<string, boolean>,
+  out: TreeRowModel[],
+) {
+  const setSize = node.folders.length + node.files.length;
+  node.folders.forEach((folder, index) => {
+    const { label, node: target } = collapseFolderChain(folder);
+    const isCollapsed = collapsed[target.path] ?? false;
+    const key = `folder:${target.path}`;
+    out.push({
+      key,
+      kind: "folder",
+      depth,
+      parentKey,
+      label,
+      path: target.path,
+      expanded: !isCollapsed,
+      setSize,
+      posInSet: index + 1,
+    });
+    if (!isCollapsed) collectVisibleRows(target, depth + 1, key, collapsed, out);
+  });
+  node.files.forEach((file, index) => {
+    out.push({
+      key: `file:${file.filePath}`,
+      kind: "file",
+      depth,
+      parentKey,
+      label: getBasename(file.filePath),
+      path: file.filePath,
+      file,
+      setSize,
+      posInSet: node.folders.length + index + 1,
+    });
+  });
+}
+
+interface FileTreeProps {
+  root: TreeFolder;
   selectedPath: string | null;
   collapsed: Record<string, boolean>;
   onToggleFolder: (path: string) => void;
   onSelectFile: (path: string) => void;
 }
 
-function TreeRows({
-  node,
-  depth,
-  selectedPath,
-  collapsed,
-  onToggleFolder,
-  onSelectFile,
-}: TreeRowsProps) {
+/**
+ * The changed-files tree as an APG tree view: one tab stop that follows focus, Up/Down walk the
+ * visible rows, Right opens a folder or steps into it, Left closes it or steps out to its parent,
+ * Home/End jump to the ends, and a typed letter jumps to the next row starting with it.
+ */
+function FileTree({ root, selectedPath, collapsed, onToggleFolder, onSelectFile }: FileTreeProps) {
+  const treeRef = useRef<HTMLDivElement>(null);
+  const typeahead = useTypeahead();
+  const [activeKey, setActiveKey] = useState<string | null>(null);
+
+  const rows = useMemo(() => {
+    const out: TreeRowModel[] = [];
+    collectVisibleRows(root, 0, null, collapsed, out);
+    return out;
+  }, [root, collapsed]);
+
+  // The tab stop is the row last focused; before any, the selected file, else the first row. It
+  // falls back the same way when its row leaves the tree because a folder above it was closed.
+  const stopKey =
+    (rows.some((row) => row.key === activeKey) ? activeKey : null) ??
+    rows.find((row) => row.kind === "file" && row.path === selectedPath)?.key ??
+    rows[0]?.key ??
+    null;
+
+  const focusRow = (index: number) => {
+    const el = treeRef.current?.querySelectorAll<HTMLElement>('[role="treeitem"]')[index];
+    el?.focus();
+  };
+
+  const activate = (row: TreeRowModel) => {
+    if (row.kind === "folder") onToggleFolder(row.path);
+    else onSelectFile(row.path);
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
+    const target = (event.target as HTMLElement).closest<HTMLElement>('[role="treeitem"]');
+    const key = target?.dataset.key;
+    const index = rows.findIndex((row) => row.key === key);
+    if (index === -1) return;
+    const row = rows[index];
+
+    switch (event.key) {
+      case "Enter":
+      case " ":
+        event.preventDefault();
+        activate(row);
+        return;
+      case "ArrowRight":
+        event.preventDefault();
+        if (row.kind !== "folder") return;
+        if (!row.expanded) onToggleFolder(row.path);
+        else if (rows[index + 1]?.parentKey === row.key) focusRow(index + 1);
+        return;
+      case "ArrowLeft": {
+        event.preventDefault();
+        if (row.kind === "folder" && row.expanded) {
+          onToggleFolder(row.path);
+          return;
+        }
+        const parent = rows.findIndex((candidate) => candidate.key === row.parentKey);
+        if (parent !== -1) focusRow(parent);
+        return;
+      }
+      default:
+        break;
+    }
+
+    const next = rovingTarget(event.key, index, rows.length, {
+      orientation: "vertical",
+      wrap: false,
+    });
+    if (next !== null) {
+      event.preventDefault();
+      focusRow(next);
+      return;
+    }
+
+    if (isTypeaheadKey(event.nativeEvent, typeahead.searching)) {
+      event.preventDefault();
+      const found = findByTypeahead(
+        rows.map((candidate) => candidate.label),
+        typeahead.push(event.key),
+        index,
+      );
+      if (found !== -1) focusRow(found);
+    }
+  };
+
   return (
-    <>
-      {node.folders.map((folder) => {
-        const { label, node: target } = collapseFolderChain(folder);
-        const isCollapsed = collapsed[target.path] ?? false;
-        const Chevron = isCollapsed ? ChevronRight : ChevronDown;
-        return (
-          <React.Fragment key={target.path}>
-            <div
-              role="treeitem"
-              aria-expanded={!isCollapsed}
-              aria-level={depth + 1}
-              tabIndex={0}
-              className="ivy-changes-tree-row"
-              style={{ paddingLeft: ROW_LEAD_PX + depth * INDENT_PX }}
-              title={target.path}
-              onClick={() => onToggleFolder(target.path)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  onToggleFolder(target.path);
-                }
-              }}
-            >
-              <Chevron className="ivy-changes-tree-chevron" />
-              <span className="ivy-changes-tree-name">{label}</span>
-            </div>
-            {!isCollapsed && (
-              <TreeRows
-                node={target}
-                depth={depth + 1}
-                selectedPath={selectedPath}
-                collapsed={collapsed}
-                onToggleFolder={onToggleFolder}
-                onSelectFile={onSelectFile}
-              />
-            )}
-          </React.Fragment>
-        );
-      })}
-      {node.files.map((file) => {
-        const isSelected = selectedPath === file.filePath;
+    <div
+      ref={treeRef}
+      role="tree"
+      aria-label="Changed files"
+      className="ivy-changes-tree"
+      onKeyDown={handleKeyDown}
+    >
+      {rows.map((row) => {
+        const isSelected = row.kind === "file" && selectedPath === row.path;
         return (
           <div
-            key={file.filePath}
+            key={row.key}
             role="treeitem"
-            aria-selected={isSelected}
-            aria-level={depth + 1}
-            tabIndex={0}
+            data-key={row.key}
+            aria-expanded={row.kind === "folder" ? row.expanded : undefined}
+            aria-selected={row.kind === "file" ? isSelected : undefined}
+            aria-level={row.depth + 1}
+            aria-setsize={row.setSize}
+            aria-posinset={row.posInSet}
+            tabIndex={row.key === stopKey ? 0 : -1}
             className={`ivy-changes-tree-row${isSelected ? " ivy-changes-tree-row-selected" : ""}`}
-            style={{ paddingLeft: ROW_LEAD_PX + depth * INDENT_PX }}
-            title={file.filePath}
-            onClick={() => onSelectFile(file.filePath)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                onSelectFile(file.filePath);
-              }
-            }}
+            style={{ paddingLeft: ROW_LEAD_PX + row.depth * INDENT_PX }}
+            title={row.path}
+            onFocus={() => setActiveKey(row.key)}
+            onClick={() => activate(row)}
           >
-            <Code className="ivy-changes-tree-icon" />
-            <span className="ivy-changes-tree-name">{getBasename(file.filePath)}</span>
-            <FileStats additions={file.additions} deletions={file.deletions} />
+            {row.kind === "folder" ? (
+              <>
+                {row.expanded ? (
+                  <ChevronDown className="ivy-changes-tree-chevron" />
+                ) : (
+                  <ChevronRight className="ivy-changes-tree-chevron" />
+                )}
+                <span className="ivy-changes-tree-name">{row.label}</span>
+              </>
+            ) : (
+              <>
+                <Code className="ivy-changes-tree-icon" />
+                <span className="ivy-changes-tree-name">{row.label}</span>
+                <FileStats additions={row.file!.additions} deletions={row.file!.deletions} />
+              </>
+            )}
           </div>
         );
       })}
-    </>
+    </div>
   );
 }
 
@@ -258,16 +376,13 @@ export const PlanChangesView: React.FC<PlanChangesViewProps> = ({
       className={`ivy-changes-view${isNarrow ? " ivy-changes-view-narrow" : ""}`}
     >
       {!isNarrow && showTree && (
-        <div role="tree" aria-label="Changed files" className="ivy-changes-tree">
-          <TreeRows
-            node={tree}
-            depth={0}
-            selectedPath={selectedPath}
-            collapsed={collapsed}
-            onToggleFolder={toggleFolder}
-            onSelectFile={selectFile}
-          />
-        </div>
+        <FileTree
+          root={tree}
+          selectedPath={selectedPath}
+          collapsed={collapsed}
+          onToggleFolder={toggleFolder}
+          onSelectFile={selectFile}
+        />
       )}
       {isNarrow && (
         <div className="ivy-changes-jump">

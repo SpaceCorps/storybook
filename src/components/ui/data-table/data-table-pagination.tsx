@@ -43,8 +43,12 @@ function rowCountLabel(total: number): string {
 }
 
 /**
- * The page navigator, rendered below the `<table>`. Boundary controls stay in the DOM disabled so
- * the control set does not reflow between pages.
+ * The page navigator, rendered below the `<table>`. Boundary controls stay in the DOM so the control
+ * set does not reflow between pages, and they are soft-disabled (`focusableWhenDisabled`, so
+ * `aria-disabled` rather than `disabled`): a natively disabled button that has focus drops it to
+ * `<body>`, so paging to the last page with the keyboard threw the user back to the top of the
+ * document. A soft-disabled button keeps focus, is still announced as unavailable, and ignores a
+ * click, Enter and Space.
  *
  * With a single page there is nothing to navigate, so the first/previous/next/last buttons and the
  * "Page 1 of 1" text drop out and only a row count remains. The rows-per-page select stays while it
@@ -52,8 +56,9 @@ function rowCountLabel(total: number): string {
  * large page size could never be switched back.
  *
  * It is a size container: below `40rem` of its own width (a half-width card, a side panel) the
- * layout is a count and the page-size select on one row with the buttons centred underneath, and
- * from `40rem` up it is a single row. Each group is unbreakable, so nothing wraps mid-label.
+ * layout is a count and the page-size select on one row with the buttons centred underneath, from
+ * `40rem` up it is a single row, and below `24rem` (a phone) the three groups stack in one column.
+ * Each group is unbreakable, so nothing wraps mid-label and nothing overlaps.
  */
 const DataTablePagination = React.forwardRef<HTMLElement, DataTablePaginationProps>(
   (
@@ -121,7 +126,9 @@ const DataTablePagination = React.forwardRef<HTMLElement, DataTablePaginationPro
       >
         <div
           className={cn(
-            "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2",
+            // One column on a phone, where the count would otherwise be squeezed to nothing between
+            // the page-size label and the edge.
+            "grid grid-cols-1 items-center gap-x-4 gap-y-2 @[24rem]:grid-cols-[minmax(0,1fr)_auto]",
             // One auto column per control that is present, so a lone control sits flush right.
             hasMultiplePages && canChangePageSize
               ? "@[40rem]:grid-cols-[minmax(0,1fr)_auto_auto]"
@@ -137,13 +144,14 @@ const DataTablePagination = React.forwardRef<HTMLElement, DataTablePaginationPro
           {pageSizeControl}
 
           {hasMultiplePages ? (
-            <div className="col-span-2 flex shrink-0 items-center justify-center gap-1 whitespace-nowrap @[40rem]:col-span-1 @[40rem]:justify-end">
+            <div className="col-span-full flex shrink-0 items-center justify-center gap-1 whitespace-nowrap @[40rem]:col-span-1 @[40rem]:justify-end">
               <Button
                 type="button"
                 variant="ghost"
                 size={iconSize}
                 aria-label="Go to first page"
                 disabled={atFirst}
+                focusableWhenDisabled
                 onClick={() => onPageChange(1)}
               >
                 <ChevronsLeft aria-hidden="true" />
@@ -154,6 +162,7 @@ const DataTablePagination = React.forwardRef<HTMLElement, DataTablePaginationPro
                 size={iconSize}
                 aria-label="Go to previous page"
                 disabled={atFirst}
+                focusableWhenDisabled
                 onClick={() => onPageChange(page - 1)}
               >
                 <ChevronLeft aria-hidden="true" />
@@ -169,6 +178,7 @@ const DataTablePagination = React.forwardRef<HTMLElement, DataTablePaginationPro
                 size={iconSize}
                 aria-label="Go to next page"
                 disabled={atLast}
+                focusableWhenDisabled
                 onClick={() => onPageChange(page + 1)}
               >
                 <ChevronRight aria-hidden="true" />
@@ -179,6 +189,7 @@ const DataTablePagination = React.forwardRef<HTMLElement, DataTablePaginationPro
                 size={iconSize}
                 aria-label="Go to last page"
                 disabled={atLast}
+                focusableWhenDisabled
                 onClick={() => onPageChange(pageCount)}
               >
                 <ChevronsRight aria-hidden="true" />

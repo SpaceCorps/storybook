@@ -2,6 +2,7 @@ import * as React from "react";
 import * as SwitchPrimitives from "@radix-ui/react-switch";
 import type { VariantProps } from "class-variance-authority";
 
+import { useFieldControl } from "@/components/ui/field/field-context";
 import { cn } from "@/lib/utils";
 import { switchVariant, switchThumbVariant } from "./input/switch-variant";
 
@@ -11,7 +12,8 @@ const Switch = React.forwardRef<
     VariantProps<typeof switchVariant> & {
       icon?: React.ReactNode;
     }
->(({ className, density, icon, ...props }, ref) => {
+>((props, ref) => {
+  const { className, density, icon, ...rest } = useFieldControl(props);
   const isInvalid = className?.includes("border-destructive") || className?.includes("bg-red-50");
   const baseClass = switchVariant({ density });
   const finalClass = isInvalid
@@ -21,10 +23,13 @@ const Switch = React.forwardRef<
           "hover:data-[state=checked]:bg-primary/90",
           "hover:data-[state=checked]:bg-destructive/90",
         )
-        .replace("focus-visible:ring-ring", "focus-visible:ring-destructive")
+        .replace(
+          "focus-visible:ring-ring",
+          "focus-visible:ring-destructive dark:focus-visible:ring-red",
+        )
     : baseClass;
   return (
-    <SwitchPrimitives.Root className={cn(finalClass, className)} {...props} ref={ref}>
+    <SwitchPrimitives.Root className={cn(finalClass, className)} {...rest} ref={ref}>
       <SwitchPrimitives.Thumb className={cn(switchThumbVariant({ density }))}>
         {icon && (
           <div className="flex items-center justify-center w-full h-full">

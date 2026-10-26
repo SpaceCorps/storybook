@@ -167,3 +167,18 @@ export function getPageCount(total: number, pageSize: number): number {
   if (pageSize <= 0) return 1;
   return Math.max(1, Math.ceil(total / pageSize));
 }
+
+/**
+ * Sets a cell's `title` to its full text, but only while that text is actually cut off. A permanent
+ * `title` would put a redundant tooltip on every short cell and be read out as a description by
+ * assistive tech; the browser shows it after the pointer has rested, so setting it on enter is early
+ * enough. Reads the DOM rather than the row value so custom `cell` renderers are covered too.
+ */
+export function revealTruncatedText(cell: HTMLElement): void {
+  const text = cell.textContent?.trim();
+  if (text && cell.scrollWidth > cell.clientWidth) {
+    cell.title = text;
+  } else {
+    cell.removeAttribute("title");
+  }
+}

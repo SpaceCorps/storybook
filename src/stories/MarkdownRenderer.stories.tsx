@@ -57,3 +57,27 @@ export const Default: Story = {
     content: sampleMarkdown,
   },
 };
+
+// Storybook serves its own logo from every host it runs on, so the image needs no network. The
+// renderer only passes http(s) image URLs through, which rules out a data: URI.
+const sampleImageUrl = () =>
+  `${typeof window === "undefined" ? "" : window.location.origin}/sb-common-assets/favicon.svg`;
+
+const imagesAndPopoverLinks = (
+  imageUrl: string,
+) => `Open a picture or a hint from the keyboard: Tab to it, then press Enter or Space.
+
+A [popover link](## "This hint opens from the keyboard too, and Escape gives focus back to the link.") sits inside a sentence.
+
+![The Storybook logo](${imageUrl})
+
+![](${imageUrl})
+`;
+
+export const ImagesAndPopoverLinks: Story = {
+  parameters: {
+    // New story: no baseline image yet, and the viewer and popover portal out of the screenshotted root.
+    visual: { disable: true },
+  },
+  render: () => <MarkdownRenderer content={imagesAndPopoverLinks(sampleImageUrl())} />,
+};

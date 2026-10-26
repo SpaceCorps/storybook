@@ -1,5 +1,6 @@
 import "@testing-library/jest-dom";
 import { fireEvent, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vite-plus/test";
 import {
   ConnectVaultDialog,
@@ -7,6 +8,7 @@ import {
   GatedActionButton,
   ImportFromVaultDialog,
   PushToVaultDialog,
+  VaultDialogShell,
   VaultEmptyState,
   computeVaultGate,
   suggestLocalProjectName,
@@ -99,7 +101,7 @@ describe("computeVaultGate", () => {
 });
 
 describe("GatedActionButton", () => {
-  it("disables the button, exposes the reason, and swallows no click silently", () => {
+  it("is soft-disabled, exposes the reason, and swallows no click silently", () => {
     const onClick = vi.fn();
     render(
       <GatedActionButton
@@ -111,9 +113,12 @@ describe("GatedActionButton", () => {
     );
 
     const button = screen.getByRole("button", { name: "Sync" });
-    expect(button).toBeDisabled();
+    // Not natively disabled: a native `disabled` button leaves the tab order, so its reason would
+    // reach nobody on a keyboard.
+    expect(button).not.toBeDisabled();
     expect(button).toHaveAttribute("aria-disabled", "true");
     expect(button).toHaveAttribute("title", "Connect a vault first");
+    expect(button).toHaveAccessibleDescription("Connect a vault first");
 
     fireEvent.click(button);
     expect(onClick).not.toHaveBeenCalled();
@@ -127,8 +132,134 @@ describe("GatedActionButton", () => {
       </GatedActionButton>,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Sync" }));
+    const button = screen.getByRole("button", { name: "Sync" });
+    expect(button).not.toHaveAttribute("aria-disabled");
+    expect(button).toHaveAccessibleDescription("");
+    fireEvent.click(button);
     expect(onClick).toHaveBeenCalledTimes(1);
+  });
+
+  it("stays a tab stop while the gate is closed, between its neighbours", async () => {
+    const user = userEvent.setup();
+    const { container } = render(
+      <>
+        <button type="button">Before</button>
+        <GatedActionButton gate={{ disabled: true, reason: "Unlock the vault first" }}>
+          Deploy
+        </GatedActionButton>
+        <button type="button">After</button>
+      </>,
+    );
+
+    await user.tab();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Before" }));
+    await user.tab();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Deploy" }));
+    await user.tab();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "After" }));
+    // The old fix was a focusable wrapper around a natively disabled button. There is none now.
+    expect(container.querySelector(".tui-tooltip-trigger-wrap")).toBeNull();
+  });
+
+  it("shows the reason in a tooltip when the button takes keyboard focus", async () => {
+    const user = userEvent.setup();
+    render(
+      <GatedActionButton gate={{ disabled: true, reason: "Unlock the vault first" }}>
+        Deploy
+      </GatedActionButton>,
+    );
+
+    await user.tab();
+
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("Unlock the vault first");
+  });
+
+  it("keeps focus when the gate closes and opens under it", () => {
+    function Gated(props: { disabled: boolean }) {
+      return (
+        <GatedActionButton
+          gate={
+            props.disabled
+              ? { disabled: true, reason: "Action already in progress" }
+              : { disabled: false }
+          }
+        >
+          Sync
+        </GatedActionButton>
+      );
+    }
+    const { rerender } = render(<Gated disabled={false} />);
+    const button = screen.getByRole("button", { name: "Sync" });
+    button.focus();
+
+    rerender(<Gated disabled />);
+    expect(screen.getByRole("button", { name: "Sync" })).toBe(button);
+    expect(document.activeElement).toBe(button);
+
+    rerender(<Gated disabled={false} />);
+    expect(screen.getByRole("button", { name: "Sync" })).toBe(button);
+    expect(document.activeElement).toBe(button);
+  });
+});
+
+describe("VaultDialogShell submit", () => {
+  function Shell(props: { submitDisabled: boolean; reason?: string; onSubmit?: () => void }) {
+    return (
+      <VaultDialogShell
+        open
+        onClose={vi.fn()}
+        title="Rename"
+        testId="shell"
+        submitLabel="Rename"
+        submitDisabled={props.submitDisabled}
+        submitDisabledReason={props.reason}
+        onSubmit={props.onSubmit ?? vi.fn()}
+      >
+        <input aria-label="New name" />
+      </VaultDialogShell>
+    );
+  }
+
+  it("keeps a disabled submit in the tab order and says why", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+    render(<Shell submitDisabled reason="Enter a name first" onSubmit={onSubmit} />);
+    const submit = screen.getByRole("button", { name: "Rename" });
+
+    expect(submit).not.toBeDisabled();
+    expect(submit).toHaveAttribute("aria-disabled", "true");
+    expect(submit).toHaveAccessibleDescription("Enter a name first");
+
+    submit.focus();
+    expect(document.activeElement).toBe(submit);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("Enter a name first");
+
+    await user.click(submit);
+    await user.keyboard("{Enter}");
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("is reachable by Tab from Cancel when disabled, with or without a reason", async () => {
+    const user = userEvent.setup();
+    render(<Shell submitDisabled />);
+
+    screen.getByRole("button", { name: "Cancel" }).focus();
+    await user.tab();
+
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Rename" }));
+  });
+
+  it("submits once enabled", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+    render(<Shell submitDisabled={false} reason="Enter a name first" onSubmit={onSubmit} />);
+    const submit = screen.getByRole("button", { name: "Rename" });
+
+    expect(submit).not.toHaveAttribute("aria-disabled");
+    expect(submit).toHaveAccessibleDescription("");
+    await user.click(submit);
+
+    expect(onSubmit).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -143,15 +274,17 @@ describe("CreateVaultDialog", () => {
     render(<CreateVaultDialog open onClose={vi.fn()} accounts={accounts} onSubmit={onSubmit} />);
 
     const submit = screen.getByRole("button", { name: "Create Vault" });
-    expect(submit).not.toBeDisabled();
+    expect(submit).not.toHaveAttribute("aria-disabled");
 
     fireEvent.change(screen.getByLabelText("Repository Name"), { target: { value: "   " } });
-    expect(submit).toBeDisabled();
+    // Soft-disabled, not native: the button stays in the tab order.
+    expect(submit).toHaveAttribute("aria-disabled", "true");
+    expect(submit).not.toBeDisabled();
     fireEvent.click(submit);
     expect(onSubmit).not.toHaveBeenCalled();
 
     fireEvent.change(screen.getByLabelText("Repository Name"), { target: { value: "Team-Vault" } });
-    expect(submit).not.toBeDisabled();
+    expect(submit).not.toHaveAttribute("aria-disabled");
   });
 
   it("lists the accounts as 'login (type)' and submits the picked owner", () => {
@@ -203,15 +336,15 @@ describe("ConnectVaultDialog", () => {
     render(<ConnectVaultDialog open onClose={vi.fn()} discovered={[]} onSubmit={vi.fn()} />);
 
     const submit = screen.getByRole("button", { name: "Connect Vault" });
-    expect(submit).toBeDisabled();
+    expect(submit).toHaveAttribute("aria-disabled", "true");
 
     fireEvent.change(screen.getByLabelText("Git Repository URL"), { target: { value: "   " } });
-    expect(submit).toBeDisabled();
+    expect(submit).toHaveAttribute("aria-disabled", "true");
 
     fireEvent.change(screen.getByLabelText("Git Repository URL"), {
       target: { value: "https://github.com/acme/Vault.git" },
     });
-    expect(submit).not.toBeDisabled();
+    expect(submit).not.toHaveAttribute("aria-disabled");
   });
 
   it("fills the URL and display name from a detected repo", () => {
@@ -231,7 +364,7 @@ describe("ConnectVaultDialog", () => {
     expect(screen.getByLabelText("Display Name (Optional)")).toHaveValue("acme/Tendril-Vault");
 
     const submit = screen.getByRole("button", { name: "Connect Vault" });
-    expect(submit).not.toBeDisabled();
+    expect(submit).not.toHaveAttribute("aria-disabled");
     fireEvent.click(submit);
     expect(onSubmit).toHaveBeenCalledWith({
       repoUrl: "https://github.com/acme/Tendril-Vault.git",
@@ -414,12 +547,12 @@ describe("PushToVaultDialog", () => {
     );
 
     const submit = screen.getByRole("button", { name: "Publish & Open PR" });
-    expect(submit).not.toBeDisabled();
+    expect(submit).not.toHaveAttribute("aria-disabled");
 
     /* Dropping the only selected project is what leaves nothing to publish. */
-    fireEvent.click(screen.getAllByRole("button", { name: "Remove" })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Remove Alpha" }));
 
-    expect(submit).toBeDisabled();
+    expect(submit).toHaveAttribute("aria-disabled", "true");
     fireEvent.click(submit);
     expect(onSubmit).not.toHaveBeenCalled();
   });

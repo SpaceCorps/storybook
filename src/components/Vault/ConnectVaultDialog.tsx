@@ -69,6 +69,13 @@ export const ConnectVaultDialog: React.FC<ConnectVaultDialogProps> = ({
       error={error}
       submitLabel="Connect Vault"
       submitDisabled={submitDisabled}
+      submitDisabledReason={
+        isBusy
+          ? "Action already in progress"
+          : effectiveUrl === ""
+            ? "Enter a repository URL or pick a detected vault"
+            : undefined
+      }
       onSubmit={() => {
         if (submitDisabled) return;
         onSubmit({ repoUrl: effectiveUrl, displayName: displayName.trim() });

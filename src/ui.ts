@@ -10,6 +10,9 @@ export * from "./types/density";
 // Density Scales
 export * from "./components/ui/density-scale";
 
+// Hooks for building custom overlays
+export * from "./hooks/use-return-focus";
+
 // Primitives
 export * from "./components/ui/accordion";
 export * from "./components/ui/alert";
@@ -29,6 +32,10 @@ export * from "./components/ui/command";
 export * from "./components/ui/context-menu";
 export * from "./components/ui/data-table";
 export * from "./components/ui/date-picker";
+export * from "./components/ui/field";
+export * from "./components/ui/time-input";
+export * from "./components/ui/time-calendar";
+export * from "./components/ui/gamepad-navigation";
 export * from "./components/ui/detail.tsx";
 export * as DetailVariants from "./components/ui/detail/index";
 export * from "./components/ui/dialog";

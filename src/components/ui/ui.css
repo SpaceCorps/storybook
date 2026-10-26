@@ -87,13 +87,10 @@
   white-space: nowrap;
 }
 
-/* Anchor for a control that can be disabled; a disabled button emits no pointer events. */
+/* Pointer anchor for a natively disabled control, which emits no pointer events. Never focusable:
+   a wrapper tab stop would be unnamed and, with no outline, invisible. */
 .tui-tooltip-trigger-wrap {
   display: inline-flex;
-}
-
-.tui-tooltip-trigger-wrap:focus-visible {
-  outline: none;
 }
 
 /* ---------- Keyboard hint ---------- */
@@ -333,25 +330,33 @@
   height: 32px;
 }
 
-.tui-icon-btn:hover:not(:disabled),
+.tui-icon-btn:hover:not(:disabled):not([aria-disabled="true"]),
 .tui-icon-btn[data-active="true"],
 .tui-icon-btn[aria-expanded="true"] {
   background: var(--tui-surface);
   opacity: 1;
 }
 
+/* A solid ring, not a tint of the text colour: 40% of it measured 2.7:1 against a white page. */
 .tui-icon-btn:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--tui-fg) 40%, transparent);
+  outline: 2px solid var(--ring, var(--tui-fg));
   outline-offset: 1px;
   opacity: 1;
 }
 
-.tui-icon-btn:disabled {
+.tui-icon-btn:disabled,
+.tui-icon-btn[aria-disabled="true"] {
   opacity: 0.35;
   cursor: not-allowed;
 }
 
-.tui-icon-btn[data-variant="danger"]:hover:not(:disabled) {
+/* A soft-disabled button is still focusable; at 0.35 its focus ring would all but vanish. At 0.6 the
+   solid ring above still reads at better than 4:1 on a light and on a dark page. */
+.tui-icon-btn[aria-disabled="true"]:focus-visible {
+  opacity: 0.6;
+}
+
+.tui-icon-btn[data-variant="danger"]:hover:not(:disabled):not([aria-disabled="true"]) {
   background: color-mix(in srgb, var(--tui-danger) 14%, transparent);
   color: var(--tui-danger);
 }
@@ -362,7 +367,7 @@
   opacity: 1;
 }
 
-.tui-icon-btn[data-variant="solid"]:hover:not(:disabled) {
+.tui-icon-btn[data-variant="solid"]:hover:not(:disabled):not([aria-disabled="true"]) {
   background: color-mix(in srgb, var(--primary, #000000) 85%, var(--background, #ffffff));
 }
 

@@ -24,10 +24,13 @@ const SyntaxHighlighter = lazyWithRetry(() =>
 function CodeBlockChromeWithCopy({
   textToCopy,
   scrollClassName = markdownCodeBlockScrollClass,
+  label = "Code",
   children,
 }: {
   textToCopy: string;
   scrollClassName?: string;
+  /** What a screen reader calls the block while it is a scrollable region. */
+  label?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -36,6 +39,7 @@ function CodeBlockChromeWithCopy({
         <CopyToClipboardButton textToCopy={textToCopy} />
       </div>
       <ScrollArea
+        aria-label={label}
         className={scrollClassName}
         viewportClassName="min-w-0"
         viewportStyle={codeCopyViewportInsetStyle(markdownCodeCopyGutterLength)}
@@ -126,6 +130,7 @@ export const MarkdownCodeBlock = memo(
           <CodeBlockChromeWithCopy
             textToCopy={cleanContent}
             scrollClassName={markdownTerminalBlockScrollClass}
+            label="Terminal output"
           >
             <pre
               className="p-4 font-mono text-sm"

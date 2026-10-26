@@ -64,17 +64,29 @@ const sampleTabs: ShellTabDto[] = [
   { id: "session-2", title: "Interactive Chat" },
 ];
 
+/** Enough sessions to outgrow the content row, with one title long enough to be cut short. */
+const manyTabs: ShellTabDto[] = [
+  { id: "session-1", title: "00063-ExecutePlan" },
+  { id: "session-2", title: "Interactive Chat" },
+  { id: "session-3", title: "00057-ReviewWidgets" },
+  { id: "session-4", title: "Scratch" },
+  { id: "session-5", title: "00042-Implement Agent Execution Viewer Card" },
+  { id: "session-6", title: "Release 0.1.2" },
+];
+
 function InteractiveShellDemo({
   initialCollapsed = false,
   initialActiveSession = null as number | null,
+  initialTabs = sampleTabs,
 }: {
   initialCollapsed?: boolean;
   initialActiveSession?: number | null;
+  initialTabs?: ShellTabDto[];
 }) {
   const [collapsed, setCollapsed] = useState(initialCollapsed);
   const [activeNav, setActiveNav] = useState("plans");
   const [selectedPlanId, setSelectedPlanId] = useState("00063");
-  const [tabs, setTabs] = useState<ShellTabDto[]>(sampleTabs);
+  const [tabs, setTabs] = useState<ShellTabDto[]>(initialTabs);
   const [activeTabId, setActiveTabId] = useState<string>("session-1");
   const [activeSession, setActiveSession] = useState<number | null>(initialActiveSession);
 
@@ -212,8 +224,10 @@ function InteractiveShellDemo({
                   const tabId = args[0] as string;
                   setTabs((prev) => prev.filter((t) => t.id !== tabId));
                 } else if (event === "OnNew") {
-                  const newId = `session-${tabs.length + 1}`;
-                  setTabs((prev) => [...prev, { id: newId, title: `Session ${tabs.length + 1}` }]);
+                  // After the highest number in use, so closing a tab never makes two share an id.
+                  const next =
+                    Math.max(0, ...tabs.map((t) => Number(t.id.replace("session-", "")) || 0)) + 1;
+                  setTabs((prev) => [...prev, { id: `session-${next}`, title: `Session ${next}` }]);
                 }
               }}
             />
@@ -234,4 +248,39 @@ export const CollapsedRail: Story = {
 
 export const WithActiveSessionPane: Story = {
   render: () => <InteractiveShellDemo initialActiveSession={0} />,
+};
+
+/** Six sessions in a 1280px window: the tabs share the row and shrink, none runs off its end. */
+export const ManyAgentSessions: Story = {
+  parameters: {
+    // New story: no baseline image yet.
+    visual: { disable: true },
+  },
+  render: () => <InteractiveShellDemo initialActiveSession={0} initialTabs={manyTabs} />,
+};
+
+const twentyFourTabs: ShellTabDto[] = Array.from({ length: 24 }, (_, index) => ({
+  id: `session-${index + 1}`,
+  title: `${String(index + 1).padStart(5, "0")}-${["ExecutePlan", "Interactive Chat", "ReviewWidgets", "Scratch"][index % 4]}`,
+}));
+
+/**
+ * Two dozen sessions: the tabs stop shrinking at 144px and the strip scrolls sideways (wheel,
+ * trackpad, keyboard focus), with the new-session button staying at its end.
+ */
+export const TwentyFourAgentSessions: Story = {
+  parameters: {
+    // New story: no baseline image yet.
+    visual: { disable: true },
+  },
+  render: () => <InteractiveShellDemo initialActiveSession={0} initialTabs={twentyFourTabs} />,
+};
+
+/** One session: closing it from the keyboard leaves the new-session button holding focus. */
+export const SingleAgentSession: Story = {
+  parameters: {
+    // New story: no baseline image yet.
+    visual: { disable: true },
+  },
+  render: () => <InteractiveShellDemo initialActiveSession={0} initialTabs={[sampleTabs[0]]} />,
 };

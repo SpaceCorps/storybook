@@ -67,6 +67,11 @@ export interface UseDataTableVirtualizationResult {
    * which is what keeps `padStart + rendered + gaps + padEnd === totalSize` true in that case too.
    */
   gapAfter: (position: number) => number;
+  /**
+   * Index of the first row inside the viewport itself (not the overscan), or `undefined` while
+   * inactive. The row to put in the tab order when the active one has been scrolled out of the DOM.
+   */
+  firstVisibleIndex: number | undefined;
   /** Pass as each data row's `ref`. Requires `data-index` on the same element. */
   measureRowElement: (node: HTMLTableRowElement | null) => void;
   scrollToIndex: (index: number) => void;
@@ -177,6 +182,9 @@ export function useDataTableVirtualization({
     padStart,
     padEnd,
     gapAfter,
+    firstVisibleIndex: virtualItems?.length
+      ? (virtualizer.range?.startIndex ?? virtualItems[0].index)
+      : undefined,
     measureRowElement: measureElement,
     scrollToIndex: scrollToIndexStable,
     totalSize,

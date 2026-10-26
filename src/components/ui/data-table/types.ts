@@ -1,6 +1,15 @@
 import type * as React from "react";
 
 export type DataTableAlign = "Left" | "Center" | "Right";
+
+/**
+ * How the table presents itself.
+ *
+ * - `"bordered"` draws its own rounded border, for a table that stands alone on the page.
+ * - `"embedded"` draws no box, for a host that already supplies one (a card, a panel). Header and row
+ *   dividers stay; there is no outer frame, so it cannot double up with the host's border.
+ */
+export type DataTableVariant = "bordered" | "embedded";
 export type DataTableSortDirection = "Ascending" | "Descending";
 
 export interface DataTableSort {
@@ -21,7 +30,11 @@ export interface DataTableColumn<TRow> {
   sortable?: boolean;
   /** Defaults to "Left". Applies to both header and cells. */
   align?: DataTableAlign;
-  /** CSS width for the <th>, e.g. "110px" or "auto". */
+  /**
+   * CSS width for the <th>, e.g. "110px" or "auto". It is a preferred width: a column whose text
+   * cannot truncate is never narrower than its content. Truncating cells are capped at
+   * `--ivy-data-table-truncate-width` (20rem by default), settable on the table's `className`.
+   */
   width?: string;
   /** Defaults to false. Hidden columns are absent from the DOM. */
   hidden?: boolean;
@@ -29,11 +42,20 @@ export interface DataTableColumn<TRow> {
   order?: number;
   /** Tooltip on the header. */
   help?: string;
-  /** Aggregate footer value for this column (legacy `footer`). */
+  /**
+   * Aggregate footer value for this column (legacy `footer`). Rendered as given, so it is whatever
+   * the caller computed: under pagination a sum over the visible page and a sum over the whole
+   * range look identical on every page, so say which one it is in the label next to it.
+   */
   footer?: React.ReactNode;
   /**
    * Defaults to false — cells stay on one line and truncate with an ellipsis. Set to let a long text
    * column wrap instead. Overridden by `nowrap`.
+   *
+   * How a truncated cell is read in full: a mouse sees it as a tooltip (`title`), a keyboard user
+   * sees the focused row show its truncating cells in full, and a screen reader always has the whole
+   * text. A touch screen has none of those, so set `wrapText` on a column whose text matters on a
+   * phone.
    */
   wrapText?: boolean;
   /**

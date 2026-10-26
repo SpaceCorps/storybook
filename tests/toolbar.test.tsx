@@ -1,6 +1,7 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vite-plus/test";
-import type { ComponentProps } from "react";
+import type { ComponentProps, MouseEvent as ReactMouseEvent } from "react";
 import { Bold, Redo2, Undo2 } from "lucide-react";
 
 import {
@@ -218,5 +219,287 @@ describe("Toolbar component", () => {
     // wrapping returns to Undo rather than reaching the slot buttons
     fireEvent.keyDown(redo, { key: "ArrowRight" });
     expect(document.activeElement).toBe(undo);
+  });
+});
+
+describe("Toolbar keys that are not the toolbar's", () => {
+  function withSearch(slot: "leading" | "trailing") {
+    const search = <input aria-label="Search" defaultValue="hello" />;
+    return render(
+      <Toolbar aria-label="Plan actions" {...{ [slot]: search }}>
+        <ToolbarButton label="Undo" />
+        <ToolbarButton label="Redo" />
+      </Toolbar>,
+    );
+  }
+
+  it.each([
+    ["leading", "Home"],
+    ["leading", "End"],
+    ["leading", "ArrowLeft"],
+    ["leading", "ArrowRight"],
+    ["trailing", "Home"],
+    ["trailing", "End"],
+    ["trailing", "ArrowLeft"],
+    ["trailing", "ArrowRight"],
+  ] as const)("leaves %s-slot input %s to the caret", (slot, key) => {
+    withSearch(slot);
+    const input = screen.getByRole("textbox", { name: "Search" });
+    input.focus();
+    // fireEvent returns false when a handler called preventDefault, which would stop the caret.
+    expect(fireEvent.keyDown(input, { key })).toBe(true);
+    expect(document.activeElement).toBe(input);
+  });
+
+  it("lets a person type through the toolbar around a search field", async () => {
+    const user = userEvent.setup();
+    withSearch("leading");
+    const input = screen.getByRole("textbox", { name: "Search" }) as HTMLInputElement;
+    await user.click(input);
+    await user.keyboard("{End} world{Home}>");
+    expect(input.value).toBe(">hello world");
+  });
+
+  it("leaves the caret keys of an editable item in the toolbar itself to the field", () => {
+    render(
+      <Toolbar aria-label="Plan actions">
+        <ToolbarButton label="Undo" />
+        <input aria-label="Zoom" data-toolbar-item="" defaultValue="100" />
+        <ToolbarButton label="Redo" />
+      </Toolbar>,
+    );
+    const zoom = screen.getByRole("textbox", { name: "Zoom" });
+    zoom.focus();
+    for (const key of ["ArrowLeft", "ArrowRight", "Home", "End"]) {
+      expect(fireEvent.keyDown(zoom, { key })).toBe(true);
+      expect(document.activeElement).toBe(zoom);
+    }
+    // Arriving at it from a button still works.
+    const undo = screen.getByRole("button", { name: "Undo" });
+    undo.focus();
+    expect(fireEvent.keyDown(undo, { key: "ArrowRight" })).toBe(false);
+    expect(document.activeElement).toBe(zoom);
+  });
+
+  it("does not take the keys of a button in a slot either", () => {
+    render(
+      <Toolbar aria-label="Plan actions" leading={<ToolbarButton label="Leading" />}>
+        <ToolbarButton label="Undo" />
+      </Toolbar>,
+    );
+    const leading = screen.getByRole("button", { name: "Leading" });
+    leading.focus();
+    expect(fireEvent.keyDown(leading, { key: "ArrowRight" })).toBe(true);
+    expect(document.activeElement).toBe(leading);
+  });
+
+  it.each([
+    ["Alt", { altKey: true }],
+    ["Ctrl", { ctrlKey: true }],
+    ["Meta", { metaKey: true }],
+  ])("leaves %s chords to the browser", (_name, modifier) => {
+    renderToolbar();
+    const [undo] = items();
+    undo.focus();
+    for (const key of ["ArrowRight", "ArrowLeft", "Home", "End"]) {
+      expect(fireEvent.keyDown(undo, { key, ...modifier })).toBe(true);
+      expect(document.activeElement).toBe(undo);
+    }
+  });
+
+  it("still navigates with the bare keys, and with Shift held", () => {
+    renderToolbar();
+    const [undo, redo] = items();
+    undo.focus();
+    expect(fireEvent.keyDown(undo, { key: "ArrowRight" })).toBe(false);
+    expect(document.activeElement).toBe(redo);
+    expect(fireEvent.keyDown(redo, { key: "ArrowLeft", shiftKey: true })).toBe(false);
+    expect(document.activeElement).toBe(undo);
+  });
+
+  it("keeps the overflow menu's keys inside the menu", async () => {
+    const user = userEvent.setup();
+    render(
+      <Toolbar aria-label="Formatting" overflow="menu" maxVisibleItems={1}>
+        <ToolbarButton label="First" />
+        <ToolbarButton label="Second" />
+        <ToolbarButton label="Third" />
+      </Toolbar>,
+    );
+    screen.getByRole("button", { name: "More actions" }).focus();
+    await user.keyboard("{Enter}");
+    const menu = screen.getByRole("menu");
+    expect(menu.contains(document.activeElement)).toBe(true);
+
+    await user.keyboard("{End}");
+    expect(document.activeElement).toBe(screen.getByRole("menuitem", { name: "Third" }));
+    await user.keyboard("{Home}");
+    expect(document.activeElement).toBe(screen.getByRole("menuitem", { name: "Second" }));
+  });
+});
+
+describe("Toolbar pressed toggle cue", () => {
+  it("adds a bar under a pressed toggle, in a colour forced-colors mode keeps", () => {
+    render(
+      <Toolbar aria-label="Formatting">
+        <ToolbarToggleButton icon={<Bold />} tooltip="Bold" pressed />
+        <ToolbarToggleButton icon={<Bold />} tooltip="Italic" pressed={false} />
+      </Toolbar>,
+    );
+    const bold = screen.getByRole("button", { name: "Bold" });
+    expect(bold.className).toContain("after:bg-foreground");
+    expect(bold.className).toContain("forced-colors:after:bg-[Highlight]");
+    // The bar sits on the button, so the button is its positioning context.
+    expect(bold.className.split(/\s+/)).toContain("relative");
+
+    const italic = screen.getByRole("button", { name: "Italic" });
+    expect(italic.className).not.toContain("after:bg-foreground");
+  });
+});
+
+describe("Toolbar roving tab stop", () => {
+  it("returns to the last focused item on Shift+Tab, however focus got there", async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <Toolbar aria-label="Plan actions">
+          <ToolbarButton label="Undo" />
+          <ToolbarButton label="Redo" />
+          <ToolbarButton label="Save" />
+        </Toolbar>
+        <button type="button">After</button>
+      </>,
+    );
+
+    // A pointer press picks the item; the arrow keys are never involved.
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await user.tab();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "After" }));
+
+    await user.tab({ shift: true });
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Save" }));
+  });
+
+  it("moves the tab stop with programmatic focus", async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <Toolbar aria-label="Plan actions">
+          <ToolbarButton label="Undo" />
+          <ToolbarButton label="Redo" />
+          <ToolbarButton label="Save" />
+        </Toolbar>
+        <button type="button">After</button>
+      </>,
+    );
+
+    act(() => screen.getByRole("button", { name: "Redo" }).focus());
+    expect(screen.getByRole("button", { name: "Redo" }).getAttribute("tabindex")).toBe("0");
+    expect(screen.getByRole("button", { name: "Undo" }).getAttribute("tabindex")).toBe("-1");
+
+    await user.tab();
+    await user.tab({ shift: true });
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Redo" }));
+  });
+
+  it("keeps arrow navigation starting from the focused item after a click", async () => {
+    const user = userEvent.setup();
+    renderToolbar();
+    await user.click(screen.getByRole("button", { name: "Redo" }));
+    await user.keyboard("{ArrowRight}");
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Save" }));
+  });
+
+  it("still calls the consumer's onFocus", () => {
+    const onFocus = vi.fn();
+    renderToolbar({ onFocus });
+    screen.getByRole("button", { name: "Redo" }).focus();
+    expect(onFocus).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("Toolbar overflow menu", () => {
+  function renderOverflowing(extra?: {
+    onBold?: (pressed: boolean) => void;
+    onSave?: (event: ReactMouseEvent) => void;
+  }) {
+    return render(
+      <Toolbar aria-label="Formatting" overflow="menu" maxVisibleItems={1}>
+        <ToolbarButton label="First" />
+        <ToolbarToggleButton icon={<Bold />} label="Bold" pressed onPressedChange={extra?.onBold} />
+        <ToolbarToggleButton icon={<Bold />} label="Italic" pressed={false} />
+        <ToolbarButton label="Save" onClick={extra?.onSave} />
+      </Toolbar>,
+    );
+  }
+
+  function openMenu() {
+    fireEvent.keyDown(screen.getByRole("button", { name: "More actions" }), { key: "Enter" });
+    return screen.getByRole("menu");
+  }
+
+  it("shows a toggle's pressed state as a checked menu item", () => {
+    renderOverflowing();
+    const menu = openMenu();
+    expect(
+      within(menu).getByRole("menuitemcheckbox", { name: "Bold" }).getAttribute("aria-checked"),
+    ).toBe("true");
+    expect(
+      within(menu).getByRole("menuitemcheckbox", { name: "Italic" }).getAttribute("aria-checked"),
+    ).toBe("false");
+    // A plain button is an ordinary item, not a checkbox.
+    expect(within(menu).getByRole("menuitem", { name: "Save" })).toBeDefined();
+  });
+
+  it("reports the new pressed state when a toggle is chosen in the menu", () => {
+    const onBold = vi.fn();
+    renderOverflowing({ onBold });
+    const menu = openMenu();
+    fireEvent.click(within(menu).getByRole("menuitemcheckbox", { name: "Bold" }));
+    expect(onBold).toHaveBeenCalledTimes(1);
+    expect(onBold).toHaveBeenCalledWith(false);
+  });
+
+  it("hands a plain button's onClick a real event it can cancel", () => {
+    const onSave = vi.fn((event: ReactMouseEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+    });
+    renderOverflowing({ onSave });
+    const menu = openMenu();
+    expect(() =>
+      fireEvent.click(within(menu).getByRole("menuitem", { name: "Save" })),
+    ).not.toThrow();
+    expect(onSave).toHaveBeenCalledTimes(1);
+    const event = onSave.mock.calls[0][0];
+    expect(typeof event.preventDefault).toBe("function");
+    expect(event.type).toBe("click");
+  });
+
+  it("chooses a toggle with the keyboard alone", async () => {
+    const user = userEvent.setup();
+    const onBold = vi.fn();
+    renderOverflowing({ onBold });
+    const trigger = screen.getByRole("button", { name: "More actions" });
+    trigger.focus();
+    await user.keyboard("{Enter}");
+    expect(screen.getByRole("menu")).toBeDefined();
+
+    // Opened from the keyboard, Radix lands on the first item.
+    expect(document.activeElement).toBe(screen.getByRole("menuitemcheckbox", { name: "Bold" }));
+    await user.keyboard("{ArrowDown}");
+    expect(document.activeElement).toBe(screen.getByRole("menuitemcheckbox", { name: "Italic" }));
+    await user.keyboard("{ArrowUp}{Enter}");
+    expect(onBold).toHaveBeenCalledWith(false);
+  });
+
+  it("returns focus to the overflow trigger when the menu closes", async () => {
+    const user = userEvent.setup();
+    renderOverflowing();
+    const trigger = screen.getByRole("button", { name: "More actions" });
+    trigger.focus();
+    await user.keyboard("{Enter}");
+    await user.keyboard("{Escape}");
+    expect(document.activeElement).toBe(trigger);
   });
 });
