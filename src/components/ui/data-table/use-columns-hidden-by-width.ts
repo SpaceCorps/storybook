@@ -2,8 +2,9 @@ import * as React from "react";
 
 import {
   estimateColumnWidth,
-  getColumnsHiddenByWidth,
+  getResponsiveFit,
   sameColumnNames,
+  type ResponsiveFit,
 } from "./responsive-columns";
 import type { DataTableColumn } from "./types";
 
@@ -18,57 +19,119 @@ export interface UseColumnsHiddenByWidthOptions<TRow> {
   enabled: boolean;
 }
 
+export interface UseResponsiveFitOptions<TRow> extends UseColumnsHiddenByWidthOptions<TRow> {
+  /** The pinned columns' px while the row actions are folded into one menu button. Defaults to `reservedWidth`. */
+  reservedFoldedWidth?: number;
+  /** Fold row actions below this container width. Not a finite number: never fold. */
+  collapseBelow?: number;
+  /** Whether folding does anything here (some row has more than one action). Defaults to true. */
+  collapseApplies?: boolean;
+  /** The root font size in px, which `rem` widths and the default estimate follow. Defaults to 16. */
+  remPx?: number;
+}
+
+export interface UseResponsiveFitResult {
+  /** The names of the columns the container is too narrow for. */
+  hidden: ReadonlySet<string>;
+  /** Whether the row actions are folded into one menu button. */
+  rowActionsCollapsed: boolean;
+}
+
 const NONE: ReadonlySet<string> = new Set();
 
+interface FitState {
+  hidden: ReadonlySet<string>;
+  trigger: boolean;
+}
+
 /**
- * The names of the columns the container is too narrow for.
+ * The columns the container is too narrow for, and whether its row actions fold into one menu button.
  *
  * The container is measured with a `ResizeObserver`, once synchronously before the first paint and on
  * every change after, as the width of its border box. The answer is held as state and only replaced
- * when it is a different set of names, so dragging a divider across a table re-renders it at each
+ * when it is a different answer, so dragging a divider across a table re-renders it at each
  * breakpoint it crosses and not on every frame in between. The width itself is kept in a ref for the
  * same reason.
  *
- * Until a width is known the answer is the narrow one (see `getColumnsHiddenByWidth`), which is what
- * a server render and the first client pass show. A width of 0 is not a measurement: it is a hidden
+ * Until a width is known the answer is the narrow one (see `getResponsiveFit`), which is what a
+ * server render and the first client pass show. A width of 0 is not a measurement: it is a hidden
  * tab, a closed sheet or a test without layout, and keeps the last real one.
  *
  * The observed element is the table's outer wrapper, whose width is the room the host gives it and
  * does not depend on which columns are showing, so hiding a column cannot change the measurement that
  * hid it. The one input that can is a scrollbar that a change of height brings or takes away (15 px
- * for a classic one). The previous set is fed back to `getColumnsHiddenByWidth`, whose reveal margin
- * is larger than that, so a width that jitters by less than the margin can move the set one way and
- * never back. That holds for a table that mixes `hideBelow` and `priority` columns as well: there a
- * `hideBelow` column held back by the margin takes no room from the `priority` budget.
+ * for a classic one). The previous answer is fed back to `getResponsiveFit`, whose reveal margin is
+ * larger than that, so a width that jitters by less than the margin can move the answer one way and
+ * never back. That holds for a table that mixes `hideBelow` and `priority` columns as well, and for
+ * the fold: the fold is decided from the width and its own history alone, never from the columns.
+ *
+ * `reservedWidth`, `reservedFoldedWidth`, `collapseBelow`, `collapseApplies` and `remPx` are read when
+ * the container changes and re-run the fit when they change; they are not themselves a function of
+ * the width, so a change of one is a discrete event that the history absorbs.
  */
-export function useColumnsHiddenByWidth<TRow>({
+export function useResponsiveFit<TRow>({
   containerRef,
   columns,
   reservedWidth,
+  reservedFoldedWidth,
+  collapseBelow,
+  collapseApplies = true,
+  remPx,
   enabled,
-}: UseColumnsHiddenByWidthOptions<TRow>): ReadonlySet<string> {
-  const [hidden, setHidden] = React.useState<ReadonlySet<string>>(() =>
-    enabled ? getColumnsHiddenByWidth(columns, { width: null, reservedWidth }) : NONE,
-  );
-  const hiddenRef = React.useRef(hidden);
+}: UseResponsiveFitOptions<TRow>): UseResponsiveFitResult {
+  const [state, setState] = React.useState<FitState>(() => {
+    if (!enabled) return { hidden: NONE, trigger: false };
+    const first = getResponsiveFit(columns, {
+      width: null,
+      reservedWidth,
+      reservedFoldedWidth,
+      remPx,
+      collapseBelow,
+      collapseApplies,
+    });
+    return { hidden: first.hidden, trigger: first.trigger };
+  });
+  const stateRef = React.useRef(state);
   const widthRef = React.useRef<number | null>(null);
   const measuredRef = React.useRef(false);
-  const latest = React.useRef({ columns, reservedWidth });
-  latest.current = { columns, reservedWidth };
+  const latest = React.useRef({
+    columns,
+    reservedWidth,
+    reservedFoldedWidth,
+    collapseBelow,
+    collapseApplies,
+    remPx,
+  });
+  latest.current = {
+    columns,
+    reservedWidth,
+    reservedFoldedWidth,
+    collapseBelow,
+    collapseApplies,
+    remPx,
+  };
 
   const recompute = React.useCallback(() => {
-    const { columns: current, reservedWidth: reserved } = latest.current;
     const width = widthRef.current;
-    const next = getColumnsHiddenByWidth(current, {
+    const next: ResponsiveFit = getResponsiveFit(latest.current.columns, {
       width,
-      reservedWidth: reserved,
+      reservedWidth: latest.current.reservedWidth,
+      reservedFoldedWidth: latest.current.reservedFoldedWidth,
+      remPx: latest.current.remPx,
+      collapseBelow: latest.current.collapseBelow,
+      collapseApplies: latest.current.collapseApplies,
       // The first measurement replaces the narrow-first guess outright: nothing to be steady about.
-      previouslyHidden: measuredRef.current ? hiddenRef.current : undefined,
+      previous: measuredRef.current ? stateRef.current : undefined,
     });
     if (width !== null) measuredRef.current = true;
-    if (sameColumnNames(next, hiddenRef.current)) return;
-    hiddenRef.current = next;
-    setHidden(next);
+    if (
+      sameColumnNames(next.hidden, stateRef.current.hidden) &&
+      next.trigger === stateRef.current.trigger
+    ) {
+      return;
+    }
+    stateRef.current = { hidden: next.hidden, trigger: next.trigger };
+    setState(stateRef.current);
   }, []);
 
   React.useLayoutEffect(() => {
@@ -94,18 +157,44 @@ export function useColumnsHiddenByWidth<TRow>({
     return () => observer.disconnect();
   }, [containerRef, enabled, recompute]);
 
-  // The columns themselves can change under a width that has not: a user hiding one, a caller
-  // swapping the set, a `width` edit that moves the estimate. Their inputs, not their identity: an
-  // inline `columns` array is a new object on every render.
+  // The inputs can change under a width that has not: a user hiding a column, a caller swapping the
+  // set, a `width` edit that moves the estimate, a new measurement of the pinned cells, a page whose
+  // rows have more actions. Their values, not their identity: an inline `columns` array is a new
+  // object on every render.
   const signature = columns
     .map(
       (column) =>
-        `${column.name}:${column.hideBelow ?? ""}:${column.priority ?? ""}:${estimateColumnWidth(column)}`,
+        `${column.name}:${column.hideBelow ?? ""}:${column.priority ?? ""}:${estimateColumnWidth(column, remPx)}`,
     )
     .join("|");
   React.useLayoutEffect(() => {
     if (enabled) recompute();
-  }, [enabled, recompute, reservedWidth, signature]);
+  }, [
+    enabled,
+    recompute,
+    reservedWidth,
+    reservedFoldedWidth,
+    collapseBelow,
+    collapseApplies,
+    remPx,
+    signature,
+  ]);
 
-  return enabled ? hidden : NONE;
+  return React.useMemo(
+    () =>
+      enabled
+        ? { hidden: state.hidden, rowActionsCollapsed: state.trigger && collapseApplies }
+        : { hidden: NONE, rowActionsCollapsed: false },
+    [collapseApplies, enabled, state],
+  );
+}
+
+/**
+ * The names of the columns the container is too narrow for: {@link useResponsiveFit} without the
+ * folding of row actions, for a custom layout that only needs the set.
+ */
+export function useColumnsHiddenByWidth<TRow>(
+  options: UseColumnsHiddenByWidthOptions<TRow>,
+): ReadonlySet<string> {
+  return useResponsiveFit(options).hidden;
 }

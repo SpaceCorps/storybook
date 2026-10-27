@@ -49,14 +49,25 @@ export {
   DATA_TABLE_COLUMN_WIDTH_ESTIMATE,
   DATA_TABLE_RESERVED_WIDTH,
   DATA_TABLE_REVEAL_MARGIN,
+  DATA_TABLE_SPACING_REM,
+  estimateActionsColumnWidth,
   estimateColumnWidth,
+  estimateStartColumnWidth,
   getColumnsHiddenByWidth,
+  getResponsiveFit,
+  getRowActionsCollapsed,
   reservedColumnsWidth,
   type ColumnsHiddenByWidthOptions,
+  type PinnedColumnMetrics,
+  type ResponsiveFit,
+  type ResponsiveFitOptions,
 } from "./responsive-columns";
 export {
   useColumnsHiddenByWidth,
+  useResponsiveFit,
   type UseColumnsHiddenByWidthOptions,
+  type UseResponsiveFitOptions,
+  type UseResponsiveFitResult,
 } from "./use-columns-hidden-by-width";
 export {
   useColumnVisibility,
