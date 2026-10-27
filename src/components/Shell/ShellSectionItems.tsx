@@ -12,6 +12,7 @@ import {
   Trash2,
 } from "lucide-react";
 import type { ShellItemState, ShellSectionItemDto } from "./types";
+import { rovingTarget } from "../keyboard/roving";
 import { TuiBadge } from "../ui/TuiBadge";
 import { IconButton } from "../ui/IconButton";
 import "./shell.css";
@@ -94,13 +95,18 @@ const ItemMenu: React.FC<ItemMenuProps> = ({
         close();
         return;
       }
-      if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+      // The menu is portaled to the end of the body, so a Tab out of it would leave the page. Put
+      // focus back on the button first and let Tab carry on from there.
+      if (e.key === "Tab") {
+        close();
+        return;
+      }
       const items = [...(menuRef.current?.querySelectorAll<HTMLElement>("[role=menuitem]") ?? [])];
-      if (items.length === 0) return;
-      e.preventDefault();
       const current = items.indexOf(document.activeElement as HTMLElement);
-      const delta = e.key === "ArrowDown" ? 1 : -1;
-      items[(current + delta + items.length) % items.length].focus();
+      const next = rovingTarget(e.key, current, items.length, { orientation: "vertical" });
+      if (next === null) return;
+      e.preventDefault();
+      items[next].focus();
     };
     const onPointerDown = (e: Event) => {
       const target = e.target as Node | null;
@@ -121,8 +127,10 @@ const ItemMenu: React.FC<ItemMenuProps> = ({
     };
   }, [open, close]);
 
+  // Focus goes back to the button before the action runs, so an action that moves focus on (the
+  // rename field) wins, and one that does not leaves it somewhere findable.
   const pick = (action?: () => void) => {
-    setOpen(false);
+    close();
     action?.();
   };
 

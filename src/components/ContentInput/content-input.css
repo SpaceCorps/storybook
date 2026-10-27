@@ -97,6 +97,15 @@
   border-color: var(--ring);
 }
 
+/* The card has no border to recolour and the textarea inside it draws no outline of its own (below), so
+   typing would show nothing at all. The card carries the ring instead, as an outline: forced-colors
+   mode keeps an outline and drops box-shadows. It follows the textarea alone, not the buttons in the
+   control bar, which have their own. */
+.civ-input-card:has(.civ-textarea:focus-visible) {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
 /* Text Area */
 .civ-textarea {
   background: transparent;

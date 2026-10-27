@@ -57,6 +57,13 @@ export const CreateVaultDialog: React.FC<CreateVaultDialogProps> = ({
       error={error}
       submitLabel="Create Vault"
       submitDisabled={submitDisabled}
+      submitDisabledReason={
+        isBusy
+          ? "Action already in progress"
+          : trimmedName === ""
+            ? "Enter a repository name"
+            : undefined
+      }
       onSubmit={() => {
         if (submitDisabled) return;
         const trimmedOwner = owner.trim();

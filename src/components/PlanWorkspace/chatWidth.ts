@@ -23,7 +23,9 @@ export const writeStoredChatWidth = (width: number | null) => {
   }
 };
 
-export const clampChatWidth = (width: number, rootWidth: number): number => {
-  const max = Math.max(MIN_CHAT_WIDTH, Math.floor(rootWidth * MAX_CHAT_SHARE));
-  return Math.min(Math.max(Math.round(width), MIN_CHAT_WIDTH), max);
-};
+/** The widest the chat may be in a workspace `rootWidth` wide. */
+export const maxChatWidth = (rootWidth: number): number =>
+  Math.max(MIN_CHAT_WIDTH, Math.floor(rootWidth * MAX_CHAT_SHARE));
+
+export const clampChatWidth = (width: number, rootWidth: number): number =>
+  Math.min(Math.max(Math.round(width), MIN_CHAT_WIDTH), maxChatWidth(rootWidth));

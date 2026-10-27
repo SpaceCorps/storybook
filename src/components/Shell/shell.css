@@ -861,6 +861,11 @@
   animation: tui-tooltip-in 150ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* Focus lands on the menu itself only when it has no control to hold it. */
+.tsh-rail-menu:focus {
+  outline: 2px solid transparent;
+}
+
 .dark .tsh-rail-menu {
   box-shadow:
     0 10px 15px -3px rgb(0 0 0 / 0.5),
@@ -1122,7 +1127,7 @@
   font-size: 12px;
   font-weight: 500;
   line-height: 16px;
-  outline: none;
+  outline: 2px solid transparent;
 }
 
 .tsh-section-item-input:focus {
@@ -1260,23 +1265,37 @@
   height: 40px;
 }
 
-.tsh-tab {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 200px;
+/* The tabs and the close buttons are two grids with the same columns stacked in one cell, so each
+   close button lands on its tab without being inside it. A column is 144 to 200px wide: the tabs
+   share the row and shrink together while they fit, and below 144px each they stop shrinking and
+   the strip scrolls sideways instead, so a label never collapses to nothing and two tabs never
+   overlap. The scrollbar is hidden (it would take its height out of the 40px row); the wheel, a
+   trackpad, a touch drag, keyboard focus and selecting a tab all scroll it. The new-session button
+   is outside the scrolling strip, so it is always on screen. */
+.tsh-tabstrip {
+  display: grid;
   min-width: 0;
-  padding: 10px 16px;
-  border: none;
-  border-right: 1px solid var(--tsh-tab-border);
-  background: transparent;
-  cursor: pointer;
-  transition: background-color 150ms ease;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
 }
 
-.tsh-tab:hover {
-  background: var(--tsh-row-active);
-  color: var(--tsh-row-active-fg);
+.tsh-tabstrip::-webkit-scrollbar {
+  display: none;
+}
+
+.tsh-tablist,
+.tsh-tab-closes {
+  grid-area: 1 / 1;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(144px, 200px);
+  align-items: stretch;
+}
+
+.tsh-tab-closes {
+  pointer-events: none;
+  z-index: 1;
 }
 
 .tsh-tab-main {
@@ -1284,17 +1303,34 @@
   align-items: center;
   gap: 8px;
   min-width: 0;
+  margin: 0;
+  /* The right padding keeps the label clear of the close button drawn over that edge, hit area
+     included, so a press on the end of a label selects the tab and never closes it. */
+  padding: 10px 36px 10px 16px;
+  border: none;
+  border-right: 1px solid var(--tsh-tab-border);
+  border-radius: 0;
+  background: transparent;
+  font: inherit;
+  text-align: left;
   color: var(--tsh-fg);
+  cursor: pointer;
+  transition: background-color 150ms ease;
 }
 
-.tsh-tab[data-active="false"] .tsh-tab-main {
+.tsh-tab-main:hover,
+.tsh-tab-main[data-close-hover] {
+  background: var(--tsh-row-active);
+  color: var(--tsh-row-active-fg);
+}
+
+.tsh-tab-main[data-active="false"] > * {
   opacity: 0.6;
 }
 
 .tsh-tab-main:focus-visible {
   outline: 2px solid var(--ring, var(--primary));
-  outline-offset: 1px;
-  border-radius: 2px;
+  outline-offset: -2px;
 }
 
 .tsh-tab-icon {
@@ -1311,16 +1347,27 @@
   text-overflow: ellipsis;
 }
 
+/* A 24px square to hit around a 16px glyph. The padding is the extra hit area and the background
+   is clipped to the content box, so the hover chip is the size it always was. The box sits 12px
+   from the tab's edge, which puts the glyph where it was when the button was 16px at 16px. */
 .tsh-tab-close {
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 16px;
-  height: 16px;
+  align-self: center;
+  justify-self: end;
+  margin-right: 12px;
+  pointer-events: auto;
+  box-sizing: border-box;
+  width: 24px;
+  height: 24px;
+  padding: 4px;
   border: none;
   background: transparent;
-  border-radius: 3px;
+  background-clip: content-box;
+  /* 3px at the chip, which is inset by the 4px padding. */
+  border-radius: 7px;
   color: var(--tsh-fg);
   opacity: 0.6;
   cursor: pointer;

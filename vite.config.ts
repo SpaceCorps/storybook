@@ -39,6 +39,9 @@ export default defineConfig({
     include: ["**/*.test.ts", "**/*.test.tsx"],
     environment: "jsdom",
     globals: true,
+    // Several suites spawn tsx or drive Radix overlays with user-event; on a loaded runner they pass in
+    // a few seconds but not within the 5 s default.
+    testTimeout: 20_000,
     setupFiles: ["./tests/setup.ts"],
     globalSetup: ["./tests/global-setup.ts"],
   },

@@ -15,3 +15,34 @@ export const Default: StoryObj<typeof Slider> = {
     </div>
   ),
 };
+
+export const Range: StoryObj<typeof Slider> = {
+  parameters: {
+    // New story: no baseline image yet.
+    visual: { disable: true },
+  },
+  render: () => (
+    <div className="w-[300px] pt-8">
+      <Slider defaultValue={[20, 80]} max={100} step={1} aria-label="Price range" />
+    </div>
+  ),
+};
+
+export const CurrencyWithSpokenValues: StoryObj<typeof Slider> = {
+  parameters: {
+    // New story: no baseline image yet.
+    visual: { disable: true },
+  },
+  render: () => (
+    <div className="w-[300px] pt-8">
+      <Slider
+        defaultValue={[250, 1200]}
+        max={5000}
+        step={50}
+        currency="USD"
+        aria-label="Budget"
+        thumbLabels={["Minimum budget", "Maximum budget"]}
+      />
+    </div>
+  ),
+};

@@ -1,5 +1,5 @@
-import { readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { readdirSync, readFileSync } from "node:fs";
+import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vite-plus/test";
 
@@ -85,5 +85,57 @@ describe("README Catalog Section Structure", () => {
     }
 
     expect(orphanedBullets).toHaveLength(0);
+  });
+});
+
+describe("README visual regression opt-outs", () => {
+  const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+  const readme = readFileSync(resolve(rootDir, "README.md"), "utf8");
+
+  // The list the README keeps of stories left out of the screenshot pass, up to the sentence after it.
+  const listStart = readme.indexOf("Currently opted out");
+  const listEnd = readme.indexOf("Animated stories do **not**", listStart);
+  const optOutList = listStart === -1 || listEnd === -1 ? "" : readme.slice(listStart, listEnd);
+
+  function storyFiles(dir: string): string[] {
+    return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) return storyFiles(path);
+      return /\.stories\.(?:js|jsx|mjs|ts|tsx)$/.test(entry.name) ? [path] : [];
+    });
+  }
+
+  // `visual: { disable: true }` on one line or several, in the meta or in a story or in a const that
+  // a story spreads in. An `a11y: { disable: true }` is a different opt-out and does not match.
+  const VISUAL_DISABLE = /\bvisual:\s*\{[^{}]*?\bdisable:\s*true\b/;
+  // Titles are hierarchical ("UI/Calendar"), which is what tells the meta's apart from other `title`s.
+  // The last segment may hold spaces ("Patterns/Auth forms").
+  const META_TITLE = /\btitle:\s*["'`]([A-Za-z]+\/[A-Za-z][A-Za-z ]*)["'`]/;
+
+  const optedOut = new Map<string, string>();
+  for (const file of storyFiles(join(rootDir, "src"))) {
+    const source = readFileSync(file, "utf8");
+    if (!VISUAL_DISABLE.test(source)) continue;
+    optedOut.set(META_TITLE.exec(source)?.[1] ?? `(no title) ${relative(rootDir, file)}`, file);
+  }
+
+  it("finds the list and at least one opted-out story file", () => {
+    expect(optOutList).not.toBe("");
+    expect(optedOut.size).toBeGreaterThan(0);
+  });
+
+  it("names every story title that sets parameters.visual.disable", () => {
+    const missing = [...optedOut.keys()].filter((title) => !optOutList.includes(`\`${title}\``));
+    // Each missing title sets `visual: { disable: true }` on the meta or on a story. Add it to the
+    // "Currently opted out" list in the README, under the reason it is left out.
+    expect(missing).toEqual([]);
+  });
+
+  it("names no title that no longer opts out", () => {
+    const named = [...optOutList.matchAll(/`([A-Z][A-Za-z]*\/[A-Za-z][A-Za-z ]*)`/g)].map(
+      (match) => match[1],
+    );
+    const stale = named.filter((title) => !optedOut.has(title));
+    expect(stale).toEqual([]);
   });
 });

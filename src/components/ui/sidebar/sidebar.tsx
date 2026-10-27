@@ -4,9 +4,11 @@ import type { VariantProps } from "class-variance-authority";
 import { PanelLeft } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+import { useMergedRefs } from "@/lib/merge-refs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -21,6 +23,96 @@ import {
 } from "./constants";
 import { SidebarContext, useSidebar } from "./context";
 import { sidebarMenuButtonVariant } from "./variant";
+
+/** Radix skips its own pointer and focus handlers once the event is prevented, so a tooltip held shut stays shut. */
+const cancelTooltipOpen = (event: React.SyntheticEvent) => event.preventDefault();
+
+function isEditable(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return (
+    target.isContentEditable === true ||
+    target.closest('input, textarea, select, [contenteditable=""], [contenteditable="true"]') !==
+      null
+  );
+}
+
+/**
+ * Whether a click on a menu button should close the mobile drawer. The drawer covers the page, so
+ * choosing a destination closes it. A control that opens something else must not: a dropdown or
+ * popover trigger, a group expander and a dialog opener would unmount, with the drawer, the very
+ * menu they just opened.
+ *
+ * `closeOnSelect` decides when it is given. Otherwise only navigation closes the drawer: the
+ * element that was clicked is a link with an `href`, the caller's own `onClick` did not cancel
+ * the click, and the element does not declare a popup (`aria-haspopup`, which Radix sets on every
+ * trigger).
+ */
+function closesDrawer(event: React.MouseEvent<HTMLElement>, closeOnSelect?: boolean): boolean {
+  if (closeOnSelect !== undefined) return closeOnSelect;
+  if (event.defaultPrevented) return false;
+  const element = event.currentTarget;
+  const popup = element.getAttribute("aria-haspopup");
+  if (popup && popup !== "false") return false;
+  return element.tagName === "A" && element.hasAttribute("href");
+}
+
+/** What a keyboard can reach by Tab: links, controls, fields and anything with a tabindex. */
+const TABBABLE_SELECTOR =
+  'a[href],area[href],button,input:not([type="hidden"]),select,textarea,summary,iframe,audio[controls],video[controls],[contenteditable=""],[contenteditable="true"],[tabindex]';
+
+function hasTabbableContent(root: HTMLElement): boolean {
+  return Array.from(root.querySelectorAll<HTMLElement>(TABBABLE_SELECTOR)).some((element) => {
+    if (element.tabIndex < 0 || element.matches(":disabled")) return false;
+    // Hidden things are not reached: a collapsed panel, a closed tab, `display: none`.
+    return typeof element.checkVisibility === "function"
+      ? element.checkVisibility({ visibilityProperty: true })
+      : !element.closest("[hidden],[inert]");
+  });
+}
+
+/**
+ * True while `ref`'s element scrolls and nothing inside it can take focus. A scroller like that has
+ * to be a tab stop itself, or a keyboard cannot scroll it at all. Chromium and Firefox make one
+ * focusable on their own, but Safari does not and the accessibility rules do not credit it, so the
+ * page says so explicitly. A scroller that holds a link or a field is reached through that, and
+ * stays out of the tab order.
+ */
+function useKeyboardScrollable(ref: React.RefObject<HTMLElement | null>): boolean {
+  const [scrollable, setScrollable] = React.useState(false);
+
+  React.useLayoutEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+    const measure = () => {
+      const overflows =
+        element.scrollHeight > element.clientHeight + 1 ||
+        element.scrollWidth > element.clientWidth + 1;
+      setScrollable(overflows && !hasTabbableContent(element));
+    };
+    if (typeof ResizeObserver === "undefined") {
+      measure();
+      return;
+    }
+    // The scroller's own box says little about its content, so its children are watched as well,
+    // and re-watched when they change.
+    const resize = new ResizeObserver(measure);
+    const watch = () => {
+      resize.disconnect();
+      resize.observe(element);
+      Array.from(element.children).forEach((child) => resize.observe(child));
+      measure();
+    };
+    const mutation = new MutationObserver(watch);
+    mutation.observe(element, { childList: true });
+    watch();
+    return () => {
+      resize.disconnect();
+      mutation.disconnect();
+    };
+  }, [ref]);
+
+  return scrollable;
+}
 
 const SidebarProvider = React.forwardRef<
   HTMLDivElement,
@@ -69,13 +161,27 @@ const SidebarProvider = React.forwardRef<
       return isMobile ? setOpenMobile((open) => !open) : setOpen((open) => !open);
     }, [isMobile, setOpen, setOpenMobile]);
 
+    // The mobile drawer belongs to the viewport it was opened in: resizing up to desktop must not
+    // leave it open, waiting to reappear when the window narrows again.
+    React.useEffect(() => {
+      if (!isMobile) setOpenMobile(false);
+    }, [isMobile]);
+
     // Adds a keyboard shortcut to toggle the sidebar.
     React.useEffect(() => {
       const handleKeyDown = (event: KeyboardEvent) => {
-        if (event.key === SIDEBAR_KEYBOARD_SHORTCUT && (event.metaKey || event.ctrlKey)) {
-          event.preventDefault();
-          toggleSidebar();
+        // Browser autofill fires keydown events that carry no `key` at all.
+        if (
+          typeof event.key !== "string" ||
+          event.key.toLowerCase() !== SIDEBAR_KEYBOARD_SHORTCUT
+        ) {
+          return;
         }
+        if (!(event.metaKey || event.ctrlKey) || event.altKey || event.shiftKey) return;
+        // Someone else already used the chord, or a text field is: Ctrl+B is bold in an editor.
+        if (event.defaultPrevented || isEditable(event.target)) return;
+        event.preventDefault();
+        toggleSidebar();
       };
 
       window.addEventListener("keydown", handleKeyDown);
@@ -126,6 +232,17 @@ const SidebarProvider = React.forwardRef<
 );
 SidebarProvider.displayName = "SidebarProvider";
 
+/** Opening the drawer lands on the current page's link, so Tab continues down the menu from there. */
+function focusCurrentPage(event: Event) {
+  const root = event.currentTarget as HTMLElement | null;
+  const target =
+    root?.querySelector<HTMLElement>('[data-sidebar="menu-button"][data-active="true"]') ??
+    root?.querySelector<HTMLElement>('[data-sidebar="menu-button"]');
+  if (!target) return;
+  event.preventDefault();
+  target.focus();
+}
+
 const Sidebar = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<"div"> & {
@@ -137,6 +254,13 @@ const Sidebar = React.forwardRef<
     collapsible?: "offcanvas" | "icon" | "none";
     /** Show the collapse toggle inside the sidebar, in its top corner. Defaults to true. */
     showTrigger?: boolean;
+    /** The mobile drawer's accessible name. Defaults to "Navigation". */
+    mobileLabel?: string;
+    /**
+     * The accessible name of the sidebar's landmark on desktop, where it is a complementary region
+     * holding the brand, the navigation and the footer. Defaults to "Sidebar".
+     */
+    label?: string;
   }
 >(
   (
@@ -145,17 +269,20 @@ const Sidebar = React.forwardRef<
       variant = "inset",
       collapsible = "icon",
       showTrigger = true,
+      mobileLabel = "Navigation",
+      label = "Sidebar",
       className,
       children,
       ...props
     },
     ref,
   ) => {
-    const { isMobile, state, openMobile } = useSidebar();
+    const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
 
     if (collapsible === "none") {
       return (
-        <div
+        <aside
+          aria-label={label}
           className={cn(
             "flex h-full flex-col bg-secondary text-foreground",
             "w-[var(--sidebar-width)]",
@@ -165,28 +292,40 @@ const Sidebar = React.forwardRef<
           {...props}
         >
           {children}
-        </div>
+        </aside>
       );
     }
 
     if (isMobile) {
+      // A drawer is a modal: it traps focus, closes on Escape or a tap outside, and hands focus
+      // back to the header toggle that opened it. A bare fixed div did none of that, and covered
+      // the very toggle needed to close it.
       return (
-        <div className="md:hidden">
-          {openMobile && (
-            <div
-              className="fixed inset-0 z-50 bg-secondary p-0 text-foreground"
-              style={{ width: SIDEBAR_WIDTH_MOBILE }}
-            >
-              {children}
-            </div>
-          )}
-        </div>
+        <Sheet open={openMobile} onOpenChange={setOpenMobile}>
+          <SheetContent
+            side={side}
+            data-sidebar="sidebar"
+            data-mobile="true"
+            aria-describedby={undefined}
+            className={cn(
+              "flex flex-col gap-0 bg-secondary p-0 text-foreground",
+              // Keep header content clear of the drawer's own close button.
+              "[&_[data-sidebar=header]]:pr-10",
+            )}
+            style={{ width: SIDEBAR_WIDTH_MOBILE, maxWidth: "85vw" }}
+            onOpenAutoFocus={focusCurrentPage}
+          >
+            <SheetTitle className="sr-only">{mobileLabel}</SheetTitle>
+            {children}
+          </SheetContent>
+        </Sheet>
       );
     }
 
     return (
-      <div
+      <aside
         ref={ref}
+        aria-label={label}
         className="group peer hidden md:block text-foreground"
         data-state={state}
         data-collapsible={state === "collapsed" ? collapsible : ""}
@@ -250,7 +389,7 @@ const Sidebar = React.forwardRef<
             className={cn("fixed top-3 z-20", side === "left" ? "left-3" : "right-3")}
           />
         )}
-      </div>
+      </aside>
     );
   },
 );
@@ -260,7 +399,7 @@ const SidebarTrigger = React.forwardRef<
   React.ElementRef<typeof Button>,
   React.ComponentProps<typeof Button>
 >(({ className, onClick, ...props }, ref) => {
-  const { toggleSidebar } = useSidebar();
+  const { toggleSidebar, isMobile, openMobile, open } = useSidebar();
 
   return (
     <Button
@@ -268,6 +407,7 @@ const SidebarTrigger = React.forwardRef<
       data-sidebar="trigger"
       variant="ghost"
       size="icon"
+      aria-expanded={isMobile ? openMobile : open}
       className={cn("size-7", className)}
       onClick={(event) => {
         onClick?.(event);
@@ -347,16 +487,55 @@ const SidebarInsetHeader = React.forwardRef<HTMLElement, React.ComponentProps<"h
 );
 SidebarInsetHeader.displayName = "SidebarInsetHeader";
 
-/** The island's scrolling page area, below `SidebarInsetHeader`. */
-const SidebarInsetContent = React.forwardRef<HTMLDivElement, React.ComponentProps<"div">>(
-  ({ className, ...props }, ref) => (
-    <div
-      ref={ref}
-      data-sidebar="inset-content"
-      className={cn("min-h-0 flex-1 overflow-y-auto", className)}
-      {...props}
-    />
-  ),
+/**
+ * The island's scrolling page area, below `SidebarInsetHeader`.
+ *
+ * When the page is longer than the island and holds nothing a keyboard can reach (a report, a read-only
+ * view), the area becomes a tab stop labelled `scrollLabel`, so the arrow and page keys can scroll it.
+ * It is otherwise left out of the tab order: `tabIndex` is only used while it is not needed, for example
+ * `-1` to make it the target of a skip link.
+ */
+const SidebarInsetContent = React.forwardRef<
+  HTMLDivElement,
+  React.ComponentProps<"div"> & {
+    /** The accessible name of the area while it is a tab stop. Defaults to "Page content". */
+    scrollLabel?: string;
+  }
+>(
+  (
+    {
+      className,
+      tabIndex,
+      role,
+      "aria-label": ariaLabel,
+      "aria-labelledby": ariaLabelledBy,
+      scrollLabel = "Page content",
+      ...props
+    },
+    ref,
+  ) => {
+    const node = React.useRef<HTMLDivElement>(null);
+    const keyboardScrollable = useKeyboardScrollable(node);
+    const merged = useMergedRefs<HTMLDivElement>(ref, node);
+
+    return (
+      <div
+        ref={merged}
+        data-sidebar="inset-content"
+        tabIndex={keyboardScrollable ? 0 : tabIndex}
+        role={keyboardScrollable ? (role ?? "region") : role}
+        aria-label={keyboardScrollable && !ariaLabelledBy ? (ariaLabel ?? scrollLabel) : ariaLabel}
+        aria-labelledby={ariaLabelledBy}
+        className={cn(
+          "min-h-0 flex-1 overflow-y-auto",
+          // Focus is drawn inside the area: the island clips anything outside its edge.
+          "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+          className,
+        )}
+        {...props}
+      />
+    );
+  },
 );
 SidebarInsetContent.displayName = "SidebarInsetContent";
 
@@ -563,6 +742,13 @@ const SidebarMenuButton = React.forwardRef<
     asChild?: boolean;
     isActive?: boolean;
     tooltip?: string | React.ComponentProps<typeof TooltipContent>;
+    /**
+     * Whether a click closes the mobile drawer. By default only navigation does: a link with an
+     * `href` that nothing cancelled. Pass `true` for a destination that is not an `<a href>` (a
+     * button that routes in script) and `false` to keep the drawer open. A dropdown or popover
+     * trigger needs neither: it never closes the drawer, so its menu can open.
+     */
+    closeOnSelect?: boolean;
   } & VariantProps<typeof sidebarMenuButtonVariant>
 >(
   (
@@ -573,12 +759,14 @@ const SidebarMenuButton = React.forwardRef<
       size = "default",
       tooltip,
       className,
+      onClick,
+      closeOnSelect,
       ...props
     },
     ref,
   ) => {
     const Comp = asChild ? Slot : "button";
-    const { isMobile, state } = useSidebar();
+    const { isMobile, state, setOpenMobile } = useSidebar();
 
     const button = (
       <Comp
@@ -587,11 +775,18 @@ const SidebarMenuButton = React.forwardRef<
         data-size={size}
         data-active={isActive}
         className={cn(sidebarMenuButtonVariant({ variant, size }), className)}
+        onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
+          onClick?.(event);
+          // The drawer covers the page; choosing a destination is what it was opened for.
+          if (isMobile && closesDrawer(event, closeOnSelect)) setOpenMobile(false);
+        }}
         {...props}
       />
     );
 
-    if (!tooltip) {
+    // The drawer shows full labels, so there is nothing to reveal. An open tooltip is a Radix layer
+    // even while hidden, and the first Escape would dismiss it instead of closing the drawer.
+    if (!tooltip || isMobile) {
       return button;
     }
 
@@ -601,15 +796,19 @@ const SidebarMenuButton = React.forwardRef<
       };
     }
 
+    // The tooltip only repeats the label, so it exists for the icon rail alone. While the sidebar is
+    // expanded it is held shut rather than left out: the button keeps its place in the tree, so
+    // collapsing the sidebar with Ctrl+B does not remount the link that has focus. Held shut also
+    // means no `aria-describedby` pointing at a copy of the link's own name.
+    const railOnly = state === "collapsed" ? undefined : false;
+    const keepShut = railOnly === false ? cancelTooltipOpen : undefined;
+
     return (
-      <Tooltip>
-        <TooltipTrigger asChild>{button}</TooltipTrigger>
-        <TooltipContent
-          side="right"
-          align="center"
-          hidden={state !== "collapsed" || isMobile}
-          {...tooltip}
-        />
+      <Tooltip open={railOnly}>
+        <TooltipTrigger asChild onPointerMove={keepShut} onFocus={keepShut}>
+          {button}
+        </TooltipTrigger>
+        <TooltipContent side="right" align="center" {...tooltip} />
       </Tooltip>
     );
   },
@@ -724,42 +923,55 @@ const SidebarMenuSubButton = React.forwardRef<
     asChild?: boolean;
     size?: "sm" | "md";
     isActive?: boolean;
+    /** Whether a click closes the mobile drawer; see `SidebarMenuButton`. */
+    closeOnSelect?: boolean;
   }
->(({ asChild = false, size = "md", isActive, className, ...props }, ref) => {
-  const Comp = asChild ? Slot : "a";
-  const [isPenHovered, setIsPenHovered] = React.useState(false);
+>(
+  (
+    { asChild = false, size = "md", isActive, className, onClick, closeOnSelect, ...props },
+    ref,
+  ) => {
+    const Comp = asChild ? Slot : "a";
+    // Read without the throwing hook: a sub-link has always worked outside a provider.
+    const sidebar = React.useContext(SidebarContext);
+    const [isPenHovered, setIsPenHovered] = React.useState(false);
 
-  return (
-    <Comp
-      ref={ref}
-      data-sidebar="menu-sub-button"
-      data-size={size}
-      data-active={isActive}
-      className={cn(
-        "flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 text-foreground outline-hidden ring-ring hover:bg-secondary focus-visible:ring-2 active:bg-secondary disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 cursor-pointer",
-        "data-[active=true]:bg-secondary",
-        size === "sm" && "text-xs",
-        size === "md" && "text-sm",
-        "group-data-[collapsible=icon]:hidden",
-        isPenHovered && "bg-secondary",
-        className,
-      )}
-      onPointerEnter={(e: React.PointerEvent<HTMLAnchorElement>) => {
-        if (e.pointerType === "pen") {
-          setIsPenHovered(true);
-        }
-        props.onPointerEnter?.(e);
-      }}
-      onPointerLeave={(e: React.PointerEvent<HTMLAnchorElement>) => {
-        if (e.pointerType === "pen") {
-          setIsPenHovered(false);
-        }
-        props.onPointerLeave?.(e);
-      }}
-      {...props}
-    />
-  );
-});
+    return (
+      <Comp
+        ref={ref}
+        data-sidebar="menu-sub-button"
+        data-size={size}
+        data-active={isActive}
+        className={cn(
+          "flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 text-foreground outline-hidden ring-ring hover:bg-secondary focus-visible:ring-2 active:bg-secondary disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 cursor-pointer",
+          "data-[active=true]:bg-secondary",
+          size === "sm" && "text-xs",
+          size === "md" && "text-sm",
+          "group-data-[collapsible=icon]:hidden",
+          isPenHovered && "bg-secondary",
+          className,
+        )}
+        onClick={(event: React.MouseEvent<HTMLAnchorElement>) => {
+          onClick?.(event);
+          if (sidebar?.isMobile && closesDrawer(event, closeOnSelect)) sidebar.setOpenMobile(false);
+        }}
+        onPointerEnter={(e: React.PointerEvent<HTMLAnchorElement>) => {
+          if (e.pointerType === "pen") {
+            setIsPenHovered(true);
+          }
+          props.onPointerEnter?.(e);
+        }}
+        onPointerLeave={(e: React.PointerEvent<HTMLAnchorElement>) => {
+          if (e.pointerType === "pen") {
+            setIsPenHovered(false);
+          }
+          props.onPointerLeave?.(e);
+        }}
+        {...props}
+      />
+    );
+  },
+);
 SidebarMenuSubButton.displayName = "SidebarMenuSubButton";
 
 export {

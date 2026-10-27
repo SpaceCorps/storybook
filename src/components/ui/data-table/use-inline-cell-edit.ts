@@ -15,8 +15,17 @@ export interface UseInlineCellEditResult {
   session: DataTableEditSession | null;
   isEditing: (rowId: string, column: string) => boolean;
   beginEdit: (rowId: string, column: string) => void;
-  /** Close the session and return focus to the cell wrapper it was opened from. */
-  endEdit: () => void;
+  /**
+   * Close the session and return focus to the cell wrapper it was opened from. Pass
+   * `{ restoreFocus: false }` when focus has already gone somewhere the user chose, so the cell does
+   * not pull it back.
+   */
+  endEdit: (options?: { restoreFocus?: boolean }) => void;
+  /**
+   * Send the focus that `endEdit` releases to `element` instead of the cell that was edited. Call it
+   * in the same handler as `endEdit`, e.g. to move on to the next editable cell.
+   */
+  redirectFocus: (element: HTMLElement | null) => void;
   /**
    * Stable ref callback for a cell's focusable wrapper, so `endEdit` can release focus back to it.
    * Identity is stable per `rowId`/`column` pair.
@@ -37,15 +46,18 @@ export function useInlineCellEdit({
   const cellsRef = React.useRef(new Map<string, HTMLElement>());
   const callbacksRef = React.useRef(new Map<string, (element: HTMLElement | null) => void>());
   const pendingFocusRef = React.useRef<string | null>(null);
+  const redirectRef = React.useRef<HTMLElement | null>(null);
 
   // Closing the session unmounts the editor, so focus can only be released once the cell wrapper is
   // back in the DOM — hence a layout effect rather than a call inside endEdit.
   React.useLayoutEffect(() => {
     if (session !== null) return;
     const key = pendingFocusRef.current;
-    if (key === null) return;
+    const redirect = redirectRef.current;
     pendingFocusRef.current = null;
-    cellsRef.current.get(key)?.focus();
+    redirectRef.current = null;
+    if (key === null) return;
+    (redirect?.isConnected ? redirect : cellsRef.current.get(key))?.focus();
   }, [session]);
 
   React.useEffect(() => {
@@ -67,12 +79,19 @@ export function useInlineCellEdit({
     [editable],
   );
 
-  const endEdit = React.useCallback(() => {
-    if (session) {
-      pendingFocusRef.current = cellKey(session.rowId, session.column);
-    }
-    setSession(null);
-  }, [session]);
+  const endEdit = React.useCallback(
+    (options?: { restoreFocus?: boolean }) => {
+      if (session && options?.restoreFocus !== false) {
+        pendingFocusRef.current = cellKey(session.rowId, session.column);
+      }
+      setSession(null);
+    },
+    [session],
+  );
+
+  const redirectFocus = React.useCallback((element: HTMLElement | null) => {
+    redirectRef.current = element;
+  }, []);
 
   const registerCell = React.useCallback((rowId: string, column: string) => {
     const key = cellKey(rowId, column);
@@ -90,5 +109,5 @@ export function useInlineCellEdit({
     return callback;
   }, []);
 
-  return { session, isEditing, beginEdit, endEdit, registerCell };
+  return { session, isEditing, beginEdit, endEdit, redirectFocus, registerCell };
 }

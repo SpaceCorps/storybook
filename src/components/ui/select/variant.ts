@@ -1,7 +1,7 @@
 import { cva } from "class-variance-authority";
 
 const selectTriggerBase =
-  "box-border flex w-full items-center justify-between whitespace-nowrap rounded-field border border-input bg-transparent shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-hidden focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>span:first-child]:flex-1 [&>span:first-child]:min-w-0 [&>span:first-child]:truncate [&>span:first-child]:text-left cursor-pointer dark:bg-transparent dark:border-white/10";
+  "box-border flex w-full items-center justify-between whitespace-nowrap rounded-field border border-input bg-transparent shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-hidden focus:ring-1 focus:ring-ring aria-invalid:border-destructive aria-invalid:focus:ring-destructive dark:aria-invalid:border-red dark:aria-invalid:focus:ring-red disabled:cursor-not-allowed disabled:opacity-50 [&>span:first-child]:flex-1 [&>span:first-child]:min-w-0 [&>span:first-child]:truncate [&>span:first-child]:text-left cursor-pointer dark:bg-transparent dark:border-white/10";
 
 /** Single-value select trigger (e.g. Assignee). */
 export const selectSingleTriggerVariant = cva(selectTriggerBase, {
@@ -57,7 +57,7 @@ export const selectContentVariant = cva(
 );
 
 export const selectItemVariant = cva(
-  "relative flex w-full cursor-pointer select-none items-center rounded-selector py-1.5 pl-2 pr-8 outline-hidden focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+  "relative flex w-full cursor-pointer select-none items-center rounded-selector py-1.5 pl-2 pr-8 outline-hidden focus:bg-accent focus:text-accent-foreground focus:ring-1 focus:ring-inset focus:ring-ring hover:focus:ring-0 data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
   {
     variants: {
       density: {

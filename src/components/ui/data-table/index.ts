@@ -31,6 +31,7 @@ export type {
   DataTableSort,
   DataTableSortDirection,
   DataTableToolbarSlots,
+  DataTableVariant,
   DataTableVirtualized,
 } from "./types";
 

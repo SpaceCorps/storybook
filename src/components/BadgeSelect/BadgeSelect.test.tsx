@@ -17,7 +17,7 @@ describe("BadgeSelect actions", () => {
   it("renders the action row label below the options when the trigger is opened", () => {
     render(<BadgeSelect id="bs-1" options={projectOptions} actions={addProjectAction} />);
 
-    fireEvent.click(screen.getByRole("button", { name: /select/i }));
+    fireEvent.click(screen.getByRole("combobox", { name: /select/i }));
 
     const optionLabels = screen.getAllByRole("option").map((el) => el.textContent);
     const actionButton = screen.getByText("Add Project");
@@ -39,7 +39,7 @@ describe("BadgeSelect actions", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /select/i }));
+    fireEvent.click(screen.getByRole("combobox", { name: /select/i }));
     fireEvent.click(screen.getByText("Add Project"));
 
     expect(eventHandler).toHaveBeenCalledWith("OnAction", "bs-1", ["__tendril_add_project__"]);
@@ -57,7 +57,7 @@ describe("BadgeSelect actions", () => {
       />,
     );
 
-    const trigger = screen.getByRole("button", { name: /select/i });
+    const trigger = screen.getByRole("combobox", { name: /select/i });
     fireEvent.click(trigger);
     fireEvent.click(screen.getByText("Add Project"));
 
@@ -77,7 +77,7 @@ describe("BadgeSelect actions", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /select/i }));
+    fireEvent.click(screen.getByRole("combobox", { name: /select/i }));
     fireEvent.click(screen.getByText("Tendril-Services"));
 
     expect(eventHandler).toHaveBeenCalledWith("OnChange", "bs-1", [["Tendril-Services"]]);
@@ -88,7 +88,7 @@ describe("BadgeSelect actions", () => {
   it("renders no separator and no extra row when actions is omitted", () => {
     render(<BadgeSelect id="bs-1" options={projectOptions} />);
 
-    fireEvent.click(screen.getByRole("button", { name: /select/i }));
+    fireEvent.click(screen.getByRole("combobox", { name: /select/i }));
 
     expect(document.querySelector(".bselect-separator")).toBeNull();
     expect(document.querySelectorAll(".bselect-action").length).toBe(0);

@@ -72,6 +72,32 @@ export const TendrilShell: React.FC<TendrilShellProps> = ({
     if (collapsedProp !== collapsed) setCollapsed(collapsedProp);
   }
 
+  // Closing the last session ends `hasTabs`, which would unmount the tab strip along with the tab
+  // the person has focused, and focus would fall to the page. When focus is in the strip at that
+  // moment the strip stays mounted, so it can hand focus on (ShellTabs leaves its new-session
+  // button holding it), until focus or the pointer goes somewhere else.
+  const tabsRowRef = useRef<HTMLDivElement>(null);
+  const [keepTabs, setKeepTabs] = useState(false);
+  const prevHasTabsRef = useRef(hasTabs);
+  if (hasTabs !== prevHasTabsRef.current) {
+    prevHasTabsRef.current = hasTabs;
+    if (!hasTabs && tabsRowRef.current?.contains(document.activeElement)) setKeepTabs(true);
+    else if (hasTabs && keepTabs) setKeepTabs(false);
+  }
+
+  useEffect(() => {
+    if (!keepTabs) return;
+    const movedOn = (e: Event) => {
+      if (!tabsRowRef.current?.contains(e.target as Node)) setKeepTabs(false);
+    };
+    document.addEventListener("focusin", movedOn);
+    document.addEventListener("pointerdown", movedOn, true);
+    return () => {
+      document.removeEventListener("focusin", movedOn);
+      document.removeEventListener("pointerdown", movedOn, true);
+    };
+  }, [keepTabs]);
+
   const toggle = useCallback(() => {
     setCollapsed((prev) => {
       const next = !prev;
@@ -139,7 +165,11 @@ export const TendrilShell: React.FC<TendrilShellProps> = ({
                 </div>
               ))}
             </div>
-            {hasTabs && slots?.Tabs && <div className="tsh-tabs-row">{slots.Tabs}</div>}
+            {(hasTabs || keepTabs) && slots?.Tabs && (
+              <div ref={tabsRowRef} className="tsh-tabs-row">
+                {slots.Tabs}
+              </div>
+            )}
           </div>
         </div>
         {slots?.Hidden && <div style={{ display: "none" }}>{slots.Hidden}</div>}

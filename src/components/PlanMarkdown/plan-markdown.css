@@ -142,11 +142,11 @@
 }
 /* Block elements (code blocks, diagrams, tables, images) get generous,
    symmetric vertical spacing so they breathe regardless of neighbours. */
-.pmv-markdown > * + :is(pre, table, img, details),
+.pmv-markdown > * + :is(pre, table, img, .pmv-img-button, details),
 .pmv-markdown > * + :is(.pmv-code-block, .pmv-diagram-container) {
   margin-top: 1rem;
 }
-.pmv-markdown > :is(pre, table, img, details) + *,
+.pmv-markdown > :is(pre, table, img, .pmv-img-button, details) + *,
 .pmv-markdown > :is(.pmv-code-block, .pmv-diagram-container) + * {
   margin-top: 1rem;
 }
@@ -403,7 +403,7 @@
 }
 /* A paragraph that only wraps an image shouldn't add its own spacing on top
    of the image's margin. */
-.pmv-markdown p:has(> img:only-child) {
+.pmv-markdown p:has(> :is(img, .pmv-img-button):only-child) {
   margin: 0;
 }
 .pmv-markdown hr {
@@ -593,7 +593,7 @@
   padding: 0.375rem 0.5rem;
   font-size: 0.875rem;
   resize: none;
-  outline: none;
+  outline: 2px solid transparent;
   font-family: inherit;
   color: inherit;
 }
@@ -1127,6 +1127,42 @@
   cursor: pointer;
 }
 
+/* The button an image sits in so it can be opened from the keyboard. It stands in for the image in
+   the flow (block, centred, same margin), so the focus ring hugs the picture, not its margin. */
+.pmv-img-button {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin: 1rem auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  border-radius: 0.375rem;
+  cursor: default;
+}
+.pmv-img-button:not(:disabled) {
+  cursor: pointer;
+}
+.pmv-img-button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.pmv-markdown .pmv-img-button img {
+  margin: 0;
+}
+
+.pmv-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
 .pmv-img-error {
   display: flex;
   flex-direction: column;
@@ -1199,6 +1235,10 @@
 .pmv-img-overlay-close:hover {
   background: rgba(255, 255, 255, 0.2);
 }
+.pmv-img-overlay-close:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
 
 /* ─── In-page Search Overlay ────────────────────────────────────────── */
 .pmv-search-overlay {
@@ -1258,7 +1298,7 @@
   background: var(--background);
   color: var(--foreground);
   font-size: 0.8125rem;
-  outline: none;
+  outline: 2px solid transparent;
   transition:
     border-color 0.15s ease,
     box-shadow 0.15s ease;

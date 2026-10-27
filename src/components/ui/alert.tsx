@@ -1,6 +1,7 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 
+import { fieldErrorTextClass } from "@/components/ui/field/field-variant";
 import { cn } from "@/lib/utils";
 
 const alertVariant = cva(
@@ -9,8 +10,12 @@ const alertVariant = cva(
     variants: {
       variant: {
         default: "bg-background text-foreground",
-        destructive:
-          "border-destructive/50 text-destructive dark:border-destructive [&>svg]:text-destructive",
+        // `text-destructive` is a fill colour (3.8:1 on white, 2.0:1 on the dark page), so the text takes
+        // the step pair FormMessage uses and the icon follows it. The border keeps the fill colour.
+        destructive: [
+          "border-destructive/50 dark:border-destructive [&>svg]:text-current",
+          fieldErrorTextClass,
+        ],
       },
     },
     defaultVariants: {

@@ -1,5 +1,6 @@
 export * from "./variant";
 export * from "./text-input-variant";
+export * from "./semantics";
 export * from "./bool-input-variant";
 export * from "./switch-variant";
 export * from "./file-input-variant";

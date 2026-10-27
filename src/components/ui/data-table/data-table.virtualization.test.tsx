@@ -273,6 +273,47 @@ describe("DataTable virtualization", () => {
   });
 });
 
+describe("DataTable virtualization tab stop", () => {
+  const tabStops = (container: HTMLElement) =>
+    renderedRows(container).filter((row) => row.getAttribute("tabindex") === "0");
+
+  it("starts with the first row as the one tab stop of the body", () => {
+    const { container } = renderVirtualized();
+
+    expect(tabStops(container).map((row) => row.dataset.index)).toEqual(["0"]);
+  });
+
+  it("keeps a tab stop on screen after the mouse scrolled the first row out of the DOM", () => {
+    const { container } = renderVirtualized();
+
+    // Scrolled with the wheel or the scrollbar, before any row was focused: nothing is pinned yet, so
+    // row 0 unmounts, and with it the body's only tab stop.
+    scrollTo(scrollerFor(container), 500 * ROW_HEIGHT);
+    expect(container.querySelector('tr[data-row-id="w1"]')).toBeNull();
+
+    const stops = tabStops(container);
+    expect(stops).toHaveLength(1);
+    // The first row in the viewport itself, not the first one of the overscan above it.
+    expect(stops[0].dataset.index).toBe("500");
+    expect(renderedRows(container)[0].dataset.index).not.toBe("500");
+  });
+
+  it("hands the tab stop to the row that was focused, wherever the viewport goes next", () => {
+    const { container } = renderVirtualized();
+
+    scrollTo(scrollerFor(container), 500 * ROW_HEIGHT);
+    act(() => {
+      tabStops(container)[0].focus();
+    });
+    scrollTo(scrollerFor(container), 900 * ROW_HEIGHT);
+
+    const stops = tabStops(container);
+    expect(stops).toHaveLength(1);
+    expect(stops[0].dataset.index).toBe("500");
+    expect(document.activeElement).toBe(stops[0]);
+  });
+});
+
 describe("DataTable without virtualization", () => {
   it("renders every row, with no spacers and no bounded viewport", () => {
     const twelve = rows.slice(0, 12);

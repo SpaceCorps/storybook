@@ -154,6 +154,13 @@ export const ImportFromVaultDialog: React.FC<ImportFromVaultDialogProps> = ({
       error={collision ?? error}
       submitLabel={mergeMode ? "Link & Merge" : "Import Project"}
       submitDisabled={submitDisabled}
+      submitDisabledReason={
+        isBusy
+          ? "Action already in progress"
+          : effectiveName === ""
+            ? "Enter a local project name"
+            : undefined
+      }
       onSubmit={handleSubmit}
     >
       {mergeMode ? (

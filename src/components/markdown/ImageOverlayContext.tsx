@@ -1,5 +1,4 @@
 import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { ImageOverlay } from "./ImageOverlay";
 
 interface ImageEntry {
@@ -63,18 +62,17 @@ export const ImageOverlayProvider: React.FC<{ children: React.ReactNode }> = ({ 
   return (
     <ImageOverlayContext.Provider value={contextValue}>
       {children}
-      {overlayState &&
-        createPortal(
-          <ImageOverlay
-            src={overlayState.images[overlayState.currentIndex].src}
-            alt={overlayState.images[overlayState.currentIndex].alt}
-            images={overlayState.images}
-            currentIndex={overlayState.currentIndex}
-            onNavigate={handleNavigate}
-            onClose={handleClose}
-          />,
-          document.body,
-        )}
+      {overlayState && (
+        // The overlay is a Radix dialog and portals itself.
+        <ImageOverlay
+          src={overlayState.images[overlayState.currentIndex].src}
+          alt={overlayState.images[overlayState.currentIndex].alt}
+          images={overlayState.images}
+          currentIndex={overlayState.currentIndex}
+          onNavigate={handleNavigate}
+          onClose={handleClose}
+        />
+      )}
     </ImageOverlayContext.Provider>
   );
 };

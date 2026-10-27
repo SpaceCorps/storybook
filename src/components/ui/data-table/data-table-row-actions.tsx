@@ -21,6 +21,13 @@ export interface DataTableRowActionsProps<TRow> {
   className?: string;
 }
 
+/**
+ * `text-destructive` is a fill colour: #ef4444 is 3.8:1 on white and the dark theme's #7f1d1d is 2.0:1
+ * on the page, both under the 4.5:1 text needs. These are the steps that field errors and the
+ * destructive badge use, picked per theme.
+ */
+const DESTRUCTIVE_TEXT = "text-[var(--destructive-800)] dark:text-[var(--destructive-200)]";
+
 function withTooltip(trigger: React.ReactElement, tooltip: string | undefined): React.ReactElement {
   if (!tooltip) return trigger;
   return (
@@ -28,6 +35,74 @@ function withTooltip(trigger: React.ReactElement, tooltip: string | undefined): 
       <TooltipTrigger asChild>{trigger}</TooltipTrigger>
       <TooltipContent>{tooltip}</TooltipContent>
     </Tooltip>
+  );
+}
+
+interface RowActionMenuProps<TRow> {
+  action: DataTableRowAction<TRow>;
+  items: DataTableRowAction<TRow>[];
+  destructive: boolean;
+  invoke: (action: DataTableRowAction<TRow>) => void;
+}
+
+/**
+ * One dropdown action. It owns the "did an item run" flag because that decides where focus goes
+ * when the menu closes, and a flag per menu cannot live in the row's `map`.
+ */
+function RowActionMenu<TRow>({ action, items, destructive, invoke }: RowActionMenuProps<TRow>) {
+  const ranRef = React.useRef(false);
+
+  return (
+    <DropdownMenu>
+      {withTooltip(
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size={action.icon ? "icon" : "sm"}
+            aria-label={action.label}
+            disabled={action.disabled}
+            className={cn(destructive && DESTRUCTIVE_TEXT)}
+            onMouseDown={(event) => event.stopPropagation()}
+            onClick={(event) => event.stopPropagation()}
+          >
+            {action.icon ?? action.label}
+          </Button>
+        </DropdownMenuTrigger>,
+        action.tooltip,
+      )}
+      <DropdownMenuContent
+        align="end"
+        onCloseAutoFocus={(event) => {
+          // Escape or a click outside: Radix puts focus back on the trigger, which is where a
+          // keyboard user expects to be. After an item ran, the action may have opened a dialog that
+          // already took focus, and pulling it back to the trigger would fight it; only when focus
+          // has landed on nothing is the trigger the right place for it.
+          if (!ranRef.current) return;
+          const active = document.activeElement;
+          const container = event.target instanceof Node ? event.target : null;
+          if (active && active !== document.body && !container?.contains(active)) {
+            event.preventDefault();
+          }
+        }}
+      >
+        {items.map((child) => (
+          <DropdownMenuItem
+            key={child.tag}
+            disabled={child.disabled}
+            className={cn(child.variant === "destructive" && DESTRUCTIVE_TEXT)}
+            onClick={(event) => {
+              event.stopPropagation();
+              ranRef.current = true;
+              invoke(child);
+            }}
+          >
+            {child.icon}
+            {child.label}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -62,41 +137,13 @@ function DataTableRowActionsInner<TRow>(
 
         if (children.length > 0) {
           return (
-            <DropdownMenu key={action.tag}>
-              {withTooltip(
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size={action.icon ? "icon" : "sm"}
-                    aria-label={action.label}
-                    disabled={action.disabled}
-                    className={cn(destructive && "text-destructive")}
-                    onMouseDown={(event) => event.stopPropagation()}
-                    onClick={(event) => event.stopPropagation()}
-                  >
-                    {action.icon ?? action.label}
-                  </Button>
-                </DropdownMenuTrigger>,
-                action.tooltip,
-              )}
-              <DropdownMenuContent align="end" onCloseAutoFocus={(event) => event.preventDefault()}>
-                {children.map((child) => (
-                  <DropdownMenuItem
-                    key={child.tag}
-                    disabled={child.disabled}
-                    className={cn(child.variant === "destructive" && "text-destructive")}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      invoke(child);
-                    }}
-                  >
-                    {child.icon}
-                    {child.label}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <RowActionMenu
+              key={action.tag}
+              action={action}
+              items={children}
+              destructive={destructive}
+              invoke={invoke}
+            />
           );
         }
 
@@ -109,7 +156,7 @@ function DataTableRowActionsInner<TRow>(
                 size={action.icon ? "icon" : "sm"}
                 aria-label={action.label}
                 disabled={action.disabled}
-                className={cn(destructive && "text-destructive")}
+                className={cn(destructive && DESTRUCTIVE_TEXT)}
                 onMouseDown={(event) => event.stopPropagation()}
                 onClick={(event) => {
                   event.stopPropagation();
