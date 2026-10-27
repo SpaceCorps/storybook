@@ -352,6 +352,32 @@ const SHORT_ENTRIES: TimeCalendarEvent<TimeEntry>[] = [
   color: index % 2 === 0 ? "violet" : "teal",
 }));
 
+/** The `md` breakpoint: from here up a story has room for the week grid. */
+const MD_PX = 768;
+
+/**
+ * Whether the calendars in this story have fallen back to their day agenda. Under `compactBelow`
+ * (640px of the calendar's own width) there is no week grid, and a story about the grid has nothing
+ * to assert: looking for the grid would throw, and the failure be logged as a console error. Below `md`
+ * the calendars measure themselves after their first paint, so this waits for them to settle; a window
+ * just under `md` can still be wide enough for the grid, and then this says so after the wait.
+ */
+async function showsDayAgenda(canvasElement: HTMLElement): Promise<boolean> {
+  if (window.innerWidth >= MD_PX) return false;
+  const calendars = () => [...canvasElement.querySelectorAll('[data-slot="time-calendar"]')];
+  return waitFor(
+    () =>
+      expect(
+        calendars().length > 0 &&
+          calendars().every((calendar) => calendar.hasAttribute("data-compact")),
+      ).toBe(true),
+    { timeout: 1500 },
+  ).then(
+    () => true,
+    () => false,
+  );
+}
+
 /** Rectangles of two elements overlap by more than a pixel in both directions. */
 function overlaps(a: DOMRect, b: DOMRect) {
   return (
@@ -530,6 +556,7 @@ export const AdjacentEntries: Story = {
   render: () => <Demo events={ADJACENT_EVENTS} defaultView="week" defaultDate="2026-10-22" />,
   parameters: { keyboard: { sweep: true, maxStops: 12, forcedColors: true } },
   play: async ({ canvasElement }) => {
+    if (await showsDayAgenda(canvasElement)) return;
     const canvas = within(canvasElement);
     await canvas.findByRole("grid", { name: /week 43/ });
     for (const { date, times, overlap } of ADJACENT_CASES) {
@@ -620,6 +647,7 @@ export const TightLabels: Story = {
     </div>
   ),
   play: async ({ canvasElement }) => {
+    if (await showsDayAgenda(canvasElement)) return;
     for (const density of ["Small", "Medium", "Large"]) {
       const section = canvasElement.querySelector<HTMLElement>(
         `section[data-density="${density}"]`,
