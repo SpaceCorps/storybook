@@ -276,9 +276,14 @@ function sharesWidth(a: PlacedItem, b: PlacedItem): boolean {
  */
 export function layoutDayEvents(input: readonly DaySegment[], minMinutes = 1): PositionedSegment[] {
   const least = Number.isFinite(minMinutes) ? Math.max(minMinutes, 1) : 1;
+  // Entries that start in the same minute truly overlap, and which of them takes the left column is
+  // decided by how far each is drawn (its end lifted to the least height), longer first, then by id.
+  // That is what the layout always did, so a genuine overlap splits as it did; it is the lifted end
+  // and not `end`, which is the true one, that keeps two short entries starting together in id order.
+  const lifted = (s: ClusterItem) => Math.max(s.end, s.startMin + least);
   const items: ClusterItem[] = input
     .map((s) => ({ ...s, end: s.endMin > s.startMin ? s.endMin : s.startMin + least, col: 0 }))
-    .sort((a, b) => a.startMin - b.startMin || b.end - a.end || compareText(a.id, b.id));
+    .sort((a, b) => a.startMin - b.startMin || lifted(b) - lifted(a) || compareText(a.id, b.id));
 
   const placed: PlacedItem[] = [];
   let cluster: ClusterItem[] = [];

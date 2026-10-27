@@ -615,6 +615,43 @@ describe("layoutDayEvents", () => {
       expect(drawnMin(half).s).toBe(560);
     });
 
+    it("is cut only by a block that shares its width, not by one in the column beside it", () => {
+      // B is short and sits in column 1 of three: it is lifted to 541 + 27 = 568. C starts at 560, but
+      // in column 0, beside B, so it must not cut B. A mutant that cut a lift at any later block,
+      // whatever its width, passed every other case here.
+      const input = [
+        seg("A", 540, 560),
+        seg("B", 541, 545),
+        seg("D", 544, 600),
+        seg("C", 560, 640),
+        seg("E", 570, 580),
+      ];
+      expect(placeMin(input)).toEqual({
+        A: [0, 3, 1],
+        B: [1, 3, 1],
+        D: [2, 3, 1],
+        C: [0, 3, 1],
+        E: [1, 3, 1],
+      });
+      expect(drawnMin(input)).toEqual({ A: 560, B: 568, D: 600, C: 640, E: 597 });
+    });
+
+    it("orders entries that start in the same minute as before: longer first, then by id", () => {
+      // Requirement 4: a genuine overlap splits exactly as it did. Two entries that start together and
+      // are both shorter than the minimum used to tie on their lifted end and fall back to the id, so
+      // `a-short` took the left column although `z-long` is the longer one. Judged on the true ends the
+      // longer one would have gone left; the tie is on the lifted end, as it was.
+      const input = [seg("z-long", 600, 610), seg("a-short", 600, 605)];
+      expect(placeMin(input)).toEqual({ "a-short": [0, 2, 1], "z-long": [1, 2, 1] });
+      // Once the longer one is longer than the minimum it is the first, as with no minimum at all.
+      const longer = [seg("z-long", 600, 640), seg("a-short", 600, 605)];
+      expect(placeMin(longer)).toEqual({ "z-long": [0, 2, 1], "a-short": [1, 2, 1] });
+      expect(place([seg("z-long", 600, 610), seg("a-short", 600, 605)])).toEqual({
+        "z-long": [0, 2, 1],
+        "a-short": [1, 2, 1],
+      });
+    });
+
     it("keeps an entry with no known end on the old rule: its extent is the lifted minimum", () => {
       // Without an interval it cannot be mistaken for an overlap, and a cut would leave a sliver, so
       // something that starts inside the minimum is put beside it, and it is always drawn in full.
@@ -963,6 +1000,17 @@ describe("layoutDayEvents on random days, with a minimum drawn height", () => {
           );
           // An entry with no known end is never cut: it is drawn the whole minimum.
           if (p.endMin <= p.startMin) expect(drawnEnd).toBeCloseTo(p.startMin + least, 9);
+          // (f) exactly how far: the lifted end, cut at the nearest block below that shares its width and
+          // nowhere else. The bounds above only say "not more than"; this says "not less", so a lift that
+          // is cut by a block beside it, or not lifted at all, fails here.
+          const lifted = Math.max(p.endMin, p.startMin + least);
+          const cut = Math.min(
+            Number.POSITIVE_INFINITY,
+            ...out
+              .filter((q) => q !== p && q.startMin >= extentEnd(original) && sharesWidth(p, q))
+              .map((q) => q.startMin),
+          );
+          expect(drawnEnd, `${p.id} drawn end`).toBeCloseTo(Math.min(lifted, cut), 9);
         }
 
         for (let i = 0; i < out.length; i++) {
