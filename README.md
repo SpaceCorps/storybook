@@ -271,7 +271,9 @@ function LoginForm() {
   `skipLink` prop (`true` for "Skip to content", or a label string; off by default); when the page overflows and nothing in it is tabbable, `SidebarInsetContent` becomes a
   `role="region"` tab stop named "Page content" (`contentLabel`, or `scrollLabel` on
   `SidebarInsetContent`) so the arrow and Page keys can scroll it. A `role`, `aria-label` or
-  `aria-labelledby` you pass wins. `ScrollArea` does the same for its viewport: it is a tab stop and a
+  `aria-labelledby` you pass wins. In the `inset` variant (the default) the island is exactly one viewport
+  tall with its margin included (`100svh` minus four of `--spacing`, the margin being `m-2`), so a long page
+  scrolls inside it and the document never scrolls as well. `ScrollArea` does the same for its viewport: it is a tab stop and a
   `region` (named by `aria-label`, `aria-labelledby` or "Scrollable content") only while the content
   overflows. `VirtualList` does the same for its scroll container (default name "Scrollable list"), and
   stays a tab stop when its rows hold buttons. Name each list once a page has more than one: two unnamed
@@ -877,7 +879,8 @@ from this list:
   `ControlledOpen`, `ChainedDialogs`, `EscapeWithAToastOver`, `EscapeVetoedWithAToastOver`, `OpenedFromContextMenu`,
   `AsChild`; `UI/AlertDialog` →
   `ControlledOpen`, `ConfirmThenReason`; `UI/Sheet` → `ControlledOpen`; `UI/Sidebar` →
-  `AppShellKeyboard`, `DrawerWithAMenu`, `AppShellCollapsedFooter`; `UI/MultiSelect` → `Chips`,
+  `AppShellKeyboard`, `DrawerWithAMenu`, `AppShellCollapsedFooter`, `InsetFitsViewport`,
+  `InsetFitsViewportDark`; `UI/MultiSelect` → `Chips`,
   `InsideDialog`, `WithActions`, `LongListInsideDialog`; `UI/Toolbar` → `OverflowWithToggles`;
   `UI/DataTable` → `DialogOpenedFromCard`; `Components/PlanWorkspace`; `Components/PlanMarkdown` →
   `WithImage`; `Renderers/MarkdownRenderer` → `ImagesAndPopoverLinks`.

@@ -80,3 +80,40 @@ describe("floating island sidebar", () => {
     expect(screen.getByText("Page").getAttribute("data-sidebar")).toBe("inset-content");
   });
 });
+
+describe("the island's height", () => {
+  // jsdom does no layout, so the sum is checked where it is written: the margin and the height are
+  // classes, and the height has to take off exactly what the margin adds. A fixed `1rem` against an
+  // `m-2` was 1.28px short in this theme (0.27rem per unit) and made the whole document scroll; the
+  // real measurement is the `InsetFitsViewport` stories.
+  function islandClasses() {
+    const { container } = render(<Shell />);
+    const main = container.querySelector("main");
+    return (main?.className ?? "").split(/\s+/);
+  }
+
+  it("takes the margin off the viewport in the unit the margin is written in", () => {
+    const classes = islandClasses();
+    const margin = classes
+      .map((name) => /^md:peer-data-\[variant=inset\]:m-(\d+)$/.exec(name)?.[1])
+      .find(Boolean);
+    const taken = classes
+      .map(
+        (name) =>
+          /^md:peer-data-\[variant=inset\]:h-\[calc\(100svh-(\d+)\*var\(--spacing\)\)\]$/.exec(
+            name,
+          )?.[1],
+      )
+      .find(Boolean);
+    expect(margin, "the inset margin class").toBeDefined();
+    expect(taken, "the inset height class").toBeDefined();
+    // A margin above and below.
+    expect(Number(taken)).toBe(2 * Number(margin));
+  });
+
+  it("does not subtract a fixed length from the viewport", () => {
+    expect(islandClasses().filter((name) => /100[sdl]?vh-\d*\.?\d*(rem|px)/.test(name))).toEqual(
+      [],
+    );
+  });
+});
