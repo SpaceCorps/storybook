@@ -150,7 +150,7 @@ import {
 
 function LoginForm() {
   return (
-    <form onSubmit={signIn}>
+    <form onSubmit={signIn} className="flex flex-col gap-4">
       <Field label="Username" name="username">
         <Input autoComplete="username" />
       </Field>
@@ -163,6 +163,12 @@ function LoginForm() {
 }
 ```
 
+- **Form spacing** is one rule: `Field` and the react-hook-form `FormItem` space their own label,
+  control, hint and message (`gap-1.5`), and whatever stacks them spaces the steps between them. Put
+  an error `Alert`, every field and the submit button in one `flex flex-col gap-4` (or `grid gap-4`)
+  container, as in the example above. Without it a bare `<form>` stacks them with no gap at all: the
+  next label sits on the input above it and the button on the last input. `Patterns/Auth forms` →
+  `SignInSpacing` and `SignInSpacingWithFormComponents` measure it.
 - **Field** wires `id`, `aria-describedby` (hint and error), `aria-invalid`, `aria-required`, `name`
   and `disabled` into `Input`, `Textarea`, `Select`, `Checkbox`, `Switch`, `RadioGroup`, `NumberInput`,
   `DatePicker`, `DateRangePicker`, `TimeInput` and `MultipleSelector`; the react-hook-form `FormItem`
@@ -426,7 +432,9 @@ each. Additive props and new components are in the sections above.
   `focus:outline-hidden`, and the Small trailing hit target is `size-6` (was `size-5`).
 - **react-hook-form `Form`**: `FormControl` no longer emits `aria-invalid="false"` or a dangling
   `aria-describedby`; `FormMessage` has `role="alert"`; `FormItem` reports `hasLabel` only while a
-  `FormLabel` is mounted; error text uses the destructive-800/200 steps.
+  `FormLabel` is mounted; error text uses the destructive-800/200 steps. `FormItem` is `grid gap-1.5`
+  (its `gap-y-4` did nothing on a block `div`), so a label no longer sits flush on its control; an item
+  you already spaced yourself, for example with `space-y-2`, now has both.
 - **`Calendar` caption**: Enter in the month or year box no longer blurs it.
 
 **Overlays, focus and keyboard**

@@ -93,7 +93,9 @@ const FormItem = React.forwardRef<HTMLDivElement, FormItemProps>(
     return (
       <FormItemContext.Provider value={item}>
         <FieldContext.Provider value={field}>
-          <div ref={ref} className={cn("gap-y-4", className)} {...props} />
+          {/* Label, control, hint and message are one group, spaced like a `Field`. The space between
+              items belongs to whatever stacks them (`flex flex-col gap-4`), not to the item. */}
+          <div ref={ref} className={cn("grid gap-1.5", className)} {...props} />
         </FieldContext.Provider>
       </FormItemContext.Provider>
     );
