@@ -640,10 +640,15 @@ each. Additive props and new components are in the sections above.
   first, one at a time, until the estimated width fits; `width` in px or rem is the estimate, else
   8rem) move a column into a row details panel, reached by a disclosure button that exists only
   while a column is hidden. `hidden` and the column options menu still win. Before the container is
-  measured (server render, first paint) every `hideBelow` column and every `priority` column except the
-  most important one counts as hidden. Columns with neither prop never move, so
-  existing tables are unchanged. `DataTableRowDetail`, `DataTableRowExpander`, `DataTableFooterDetail`
-  and `useColumnsHiddenByWidth` are exported for a custom layout.
+  measured (server render, first paint) every `hideBelow` column and every `priority` column counts as
+  hidden; the most important one (lowest `priority`, else lowest `hideBelow`) is kept only when that
+  would leave the table with no column at all. A hidden column comes back once the container is 24px
+  wider than it took to hide it, so a scrollbar (15px) appearing or disappearing cannot make a table
+  flip between two layouts; a `hideBelow` column held back that way takes no room from the
+  `priority` columns, so none of them is hidden to pay for a column that is not showing. Columns with
+  neither prop never move, so existing tables are unchanged. `DataTableRowDetail`,
+  `DataTableRowExpander`, `DataTableFooterDetail` and `useColumnsHiddenByWidth` are exported for a
+  custom layout.
 - **`DataTable` in a `CardContent`** defaults to `variant="embedded"` (no border of its own), padded or
   flush; one in a dialog, alert dialog, sheet or popover opened from a card stays `"bordered"`. Pass `variant="bordered"` to keep the old look. `Card` gained `min-w-0`; use `min-w-fit` on a
   `Card` that should grow with a wide child.
