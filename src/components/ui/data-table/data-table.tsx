@@ -45,8 +45,13 @@ import type {
   DataTableVariant,
   DataTableVirtualized,
 } from "./types";
-import { isResponsiveColumn, reservedColumnsWidth } from "./responsive-columns";
-import { useColumnsHiddenByWidth } from "./use-columns-hidden-by-width";
+import {
+  estimateActionsColumnWidth,
+  estimateStartColumnWidth,
+  isResponsiveColumn,
+} from "./responsive-columns";
+import { useResponsiveFit } from "./use-columns-hidden-by-width";
+import { ACTIONS_WIDTH_VAR, usePinnedMetrics } from "./use-pinned-metrics";
 import { useColumnVisibility } from "./use-column-visibility";
 import { useDataTablePagination } from "./use-data-table-pagination";
 import { INTERACTIVE_WITHIN_ROW, useDataTableRowFocus } from "./use-data-table-row-focus";
@@ -140,6 +145,24 @@ export interface DataTableProps<TRow> extends Omit<
    * where it is.
    */
   onRowAction?: (event: DataTableRowActionEvent<TRow>) => void;
+  /**
+   * Fold every row's actions into one "..." menu button while the table's own container is narrower
+   * than this many px, as `hideBelow` hides a column. The menu holds the same actions (an action with
+   * `children` becomes a labelled group) and its button is named "Actions for <row label>". It frees
+   * the room of the extra buttons for the data columns, which matters on a phone: two icon buttons
+   * take about 100px, the menu button about 57px.
+   *
+   * Absent or not a finite number: the actions are buttons at every width. Folding applies only to a
+   * table in which some row on the page has more than one action, and only to those rows; a row with
+   * one action keeps its button. Before the container is measured (a server render, a test without
+   * layout) the actions are folded, so a phone never paints a row of buttons that then folds. Once
+   * folded the actions come back at this width plus a margin, so a scrollbar that comes and goes
+   * does not make them flip.
+   *
+   * The room freed is spent on the `hideBelow` and `priority` columns, so a table that is widened
+   * across this width can lose a `priority` column to the buttons that came back.
+   */
+  collapseRowActionsBelow?: number;
 
   /**
    * Inline editing gate. A cell is editable only when `editable && column.editable`. An editable cell
@@ -284,6 +307,7 @@ function DataTableInner<TRow>(
     onSelectedRowIdsChange,
     rowActions,
     onRowAction,
+    collapseRowActionsBelow,
     editable = false,
     onCellCommit,
     onRowClick,
@@ -404,24 +428,68 @@ function DataTableInner<TRow>(
     [rowActions],
   );
 
-  const hasActionsColumn = React.useMemo(() => {
-    if (!rowActions) return false;
-    if (typeof rowActions !== "function") {
-      return getRenderableActions(rowActions).length > 0;
-    }
-    return pageRows.some((row) => getRenderableActions(rowActions(row)).length > 0);
+  // The most actions any row on the page has: a column exists if one has any, and it is as wide as
+  // the widest row needs.
+  const maxActionCount = React.useMemo(() => {
+    if (!rowActions) return 0;
+    if (typeof rowActions !== "function") return getRenderableActions(rowActions).length;
+    return pageRows.reduce(
+      (most, row) => Math.max(most, getRenderableActions(rowActions(row)).length),
+      0,
+    );
   }, [pageRows, rowActions]);
+  const hasActionsColumn = maxActionCount > 0;
 
-  // Columns the container is too narrow for. Measured on the wrapper below, whose width is the room
-  // the host gives the table and not what the columns want, so hiding one cannot move the number that
-  // hid it. Only tables that ask for it (`hideBelow`, `priority`) observe anything.
+  // The scroller: declared here because what the pinned cells measure is read from it, before the
+  // fit below decides what to render.
+  const scrollContainerRef = React.useRef<HTMLDivElement | null>(null);
+
+  // Columns the container is too narrow for, and whether the row actions fold into a menu button.
+  // Measured on the wrapper below, whose width is the room the host gives the table and not what the
+  // columns want, so hiding one cannot move the number that hid it. Only tables that ask for it
+  // (`hideBelow`, `priority`, `collapseRowActionsBelow`) observe anything.
   const rootRef = React.useRef<HTMLDivElement | null>(null);
-  const hiddenByWidth = useColumnsHiddenByWidth({
+  const foldRowActions =
+    typeof collapseRowActionsBelow === "number" && Number.isFinite(collapseRowActionsBelow);
+  // What the pinned cells take. Their model is exact for icon buttons; the page is asked about the
+  // rest (see `usePinnedMetrics`). Counted with the details button whether or not it is showing yet,
+  // so the amount reserved does not change when the fit puts it there.
+  const collapsedRef = React.useRef(false);
+  const pinned = usePinnedMetrics({
+    containerRef: scrollContainerRef,
+    enabled: visibleColumns.some(isResponsiveColumn) || foldRowActions,
+    collapsedRef,
+  });
+  const pinnedMetrics = { density, inset, unitPx: pinned.unitPx } as const;
+  const reservedStart = estimateStartColumnWidth({
+    selectable,
+    checkboxPx: pinned.checkboxPx,
+    ...pinnedMetrics,
+  });
+  const reservedActions = (measured: number | null, count: number) =>
+    hasActionsColumn
+      ? Math.max(
+          estimateActionsColumnWidth({ actionCount: count, ...pinnedMetrics }),
+          measured ?? 0,
+          pinned.configuredActionsPx ?? 0,
+        )
+      : 0;
+  // The bordered table draws a border on each side that the wrapper's width includes.
+  const borderWidth = resolvedVariant === "bordered" ? 2 : 0;
+  const reservedUnfolded =
+    reservedStart + reservedActions(pinned.unfoldedActionsPx, maxActionCount) + borderWidth;
+  const reservedFolded = reservedStart + reservedActions(pinned.foldedActionsPx, 1) + borderWidth;
+  const { hidden: hiddenByWidth, rowActionsCollapsed } = useResponsiveFit({
     containerRef: rootRef,
     columns: visibleColumns,
-    reservedWidth: reservedColumnsWidth({ selectable, actions: hasActionsColumn }),
-    enabled: visibleColumns.some(isResponsiveColumn),
+    reservedWidth: reservedUnfolded,
+    reservedFoldedWidth: reservedFolded,
+    collapseBelow: foldRowActions ? collapseRowActionsBelow : undefined,
+    collapseApplies: maxActionCount > 1,
+    remPx: pinned.remPx,
+    enabled: visibleColumns.some(isResponsiveColumn) || foldRowActions,
   });
+  collapsedRef.current = rowActionsCollapsed;
   const { renderedColumns, detailColumns } = React.useMemo(() => {
     const narrowed = visibleColumns.filter((column) => hiddenByWidth.has(column.name));
     // The width logic keeps one column, but it is computed after the render that changed the columns;
@@ -463,9 +531,8 @@ function DataTableInner<TRow>(
   const showToolbar = Boolean(toolbar?.left || toolbar?.right || showColumnOptions);
 
   // Windowing and roving row focus are mutually dependent — the virtualizer pins the focused row
-  // into its rendered range, and moving focus scrolls through the virtualizer — so the scroll
-  // container ref lives here and `scrollToIndex` is reached through a ref rather than a closure.
-  const scrollContainerRef = React.useRef<HTMLDivElement | null>(null);
+  // into its rendered range, and moving focus scrolls through the virtualizer — so `scrollToIndex`
+  // is reached through a ref rather than a closure.
   const scrollToIndexRef = React.useRef<(index: number) => void>(() => undefined);
   const scrollToIndex = React.useCallback((index: number) => {
     scrollToIndexRef.current(index);
@@ -490,6 +557,23 @@ function DataTableInner<TRow>(
       .find((row) => row.dataset.rowId === rowId)
       ?.focus();
   }, [hasDetail]);
+
+  // The row whose actions have focus. When the container crosses `collapseRowActionsBelow` the
+  // buttons are swapped for the menu button or back, and focus goes with whichever unmounted; it
+  // belongs on the same row's actions, not on the page (a keyboard user would start over from the top).
+  const actionsFocus = React.useRef<string | null>(null);
+  React.useLayoutEffect(() => {
+    const rowId = actionsFocus.current;
+    if (rowId === null) return;
+    const active = document.activeElement;
+    if (active && active !== document.body) return;
+    actionsFocus.current = null;
+    const rows = scrollContainerRef.current?.querySelectorAll<HTMLElement>("tr[data-row-id]");
+    Array.from(rows ?? [])
+      .find((row) => row.dataset.rowId === rowId)
+      ?.querySelector<HTMLElement>("[data-pin='end'] button:not(:disabled)")
+      ?.focus();
+  }, [rowActionsCollapsed]);
 
   const rowFocus = useDataTableRowFocus({
     count: pageRows.length,
@@ -532,15 +616,32 @@ function DataTableInner<TRow>(
 
   /**
    * Under `table-layout: fixed` a `w-0` utility is taken literally, collapsing the selection and
-   * row-action columns and painting their controls over the neighbouring cell. Swap in real widths
-   * for the windowed variant; auto layout keeps `w-0`'s shrink-to-fit behaviour.
+   * row-action columns and painting their controls over the neighbouring cell. Windowed tables get
+   * the width the fit reserves for them instead (the same numbers, so what the fit counts is what the
+   * layout gives); auto layout keeps `w-0`'s shrink-to-fit behaviour. The actions width is the
+   * `--ivy-data-table-actions-width` custom property when a consumer sets it, else what the cell needs.
    */
-  const fitColumnClass = (kind: "select" | "actions") => {
-    if (!virtualization.active) return "w-0";
-    if (kind === "actions") return "w-[var(--ivy-data-table-actions-width,5rem)]";
-    // A checkbox, the details button, or both side by side.
-    if (!hasDetail) return "w-[2.75rem]";
-    return selectable ? "w-[5rem]" : "w-[3.5rem]";
+  const fitColumn = (
+    kind: "select" | "actions",
+  ): { className: string; style?: React.CSSProperties } => {
+    if (!virtualization.active) return { className: "w-0" };
+    if (kind === "actions") {
+      const needed = rowActionsCollapsed
+        ? reservedActions(pinned.foldedActionsPx, 1)
+        : reservedActions(pinned.unfoldedActionsPx, maxActionCount);
+      return { className: "", style: { width: `var(${ACTIONS_WIDTH_VAR}, ${needed}px)` } };
+    }
+    return {
+      className: "",
+      style: {
+        width: estimateStartColumnWidth({
+          selectable,
+          withDetails: hasDetail,
+          checkboxPx: pinned.checkboxPx,
+          ...pinnedMetrics,
+        }),
+      },
+    };
   };
 
   /**
@@ -735,10 +836,11 @@ function DataTableInner<TRow>(
             <TableCell
               data-pin="start"
               className={cn(
-                fitColumnClass("select"),
+                fitColumn("select").className,
                 dataTablePinClass("start", "cell"),
                 "[&:has([role=checkbox])]:pr-2",
               )}
+              style={fitColumn("select").style}
             >
               <div
                 className="flex items-center gap-1"
@@ -799,13 +901,24 @@ function DataTableInner<TRow>(
           {hasActionsColumn ? (
             <TableCell
               data-pin="end"
-              className={cn(fitColumnClass("actions"), dataTablePinClass("end", "cell"))}
+              className={cn(fitColumn("actions").className, dataTablePinClass("end", "cell"))}
+              style={fitColumn("actions").style}
+              // Focus inside the cell is what has to be found again if the actions fold or unfold
+              // under it and take the button with them, see `actionsFocus`.
+              onFocus={() => {
+                actionsFocus.current = rowId;
+              }}
+              onBlur={() => {
+                actionsFocus.current = null;
+              }}
             >
               <DataTableRowActions
                 actions={actions}
                 row={row}
                 rowId={rowId}
                 onRowAction={onRowAction}
+                collapsed={rowActionsCollapsed}
+                menuLabel={`Actions for ${label}`}
               />
             </TableCell>
           ) : null}
@@ -968,10 +1081,11 @@ function DataTableInner<TRow>(
                 <TableHead
                   data-pin="start"
                   className={cn(
-                    fitColumnClass("select"),
+                    fitColumn("select").className,
                     dataTablePinClass("start", "head"),
                     "[&:has([role=checkbox])]:pr-2",
                   )}
+                  style={fitColumn("select").style}
                 >
                   {selectable ? (
                     <div className="flex items-center">
@@ -1008,7 +1122,8 @@ function DataTableInner<TRow>(
                 <TableHead
                   aria-label="Row actions"
                   data-pin="end"
-                  className={cn(fitColumnClass("actions"), dataTablePinClass("end", "head"))}
+                  className={cn(fitColumn("actions").className, dataTablePinClass("end", "head"))}
+                  style={fitColumn("actions").style}
                 >
                   <span className="sr-only">Row actions</span>
                 </TableHead>
