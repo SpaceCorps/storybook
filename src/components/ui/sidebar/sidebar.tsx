@@ -458,8 +458,11 @@ const SidebarInset = React.forwardRef<HTMLDivElement, React.ComponentProps<"main
         className={cn(
           "relative flex min-h-svh min-w-0 flex-1 flex-col bg-secondary overflow-hidden",
           // The floating island: a rounded, bordered panel on the shell background. It is exactly the
-          // viewport minus its margin, so a header stays put and the page scrolls inside it.
-          "peer-data-[variant=inset]:bg-background md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:h-[calc(100svh-1rem)] md:peer-data-[variant=inset]:min-h-0 md:peer-data-[variant=inset]:rounded-2xl md:peer-data-[variant=inset]:border md:peer-data-[variant=inset]:border-border md:peer-data-[variant=inset]:shadow-sm",
+          // viewport minus its margin, so a header stays put and the page scrolls inside it. The margin
+          // is `m-2`, two spacing units a side, and this theme's `--spacing` is 0.27rem and not the
+          // 0.25rem that a fixed `1rem` assumed: a height of `100svh - 1rem` left the shell 1.28px
+          // taller than the viewport and the whole document scrolled. Subtract four of the same unit.
+          "peer-data-[variant=inset]:bg-background md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:h-[calc(100svh-4*var(--spacing))] md:peer-data-[variant=inset]:min-h-0 md:peer-data-[variant=inset]:rounded-2xl md:peer-data-[variant=inset]:border md:peer-data-[variant=inset]:border-border md:peer-data-[variant=inset]:shadow-sm",
           // An offcanvas sidebar that is collapsed leaves no rail, so the island needs its left margin back.
           "md:peer-data-[collapsible=offcanvas]:peer-data-[variant=inset]:ml-2",
           className,
