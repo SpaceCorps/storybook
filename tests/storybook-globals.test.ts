@@ -38,6 +38,19 @@ describe("Storybook Globals Typing", () => {
       const globals = { theme: "dark" as const, density: "Small" as const };
       expect(readStoryGlobals({ globals })).toEqual(globals);
     });
+
+    it("reads the story-level globals of a prepared story, which has no `globals`", () => {
+      expect(readStoryGlobals({ storyGlobals: { theme: "dark" } })).toEqual({ theme: "dark" });
+    });
+
+    it("lets the story's own globals win over the toolbar's", () => {
+      expect(
+        readStoryGlobals({
+          globals: { theme: "light", density: "Small" },
+          storyGlobals: { theme: "dark" },
+        }),
+      ).toEqual({ theme: "dark", density: "Small" });
+    });
   });
 
   describe("test-runner postVisit with visual regression", () => {
