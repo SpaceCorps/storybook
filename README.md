@@ -647,8 +647,73 @@ each. Additive props and new components are in the sections above.
   flip between two layouts; a `hideBelow` column held back that way takes no room from the
   `priority` columns, so none of them is hidden to pay for a column that is not showing. Columns with
   neither prop never move, so existing tables are unchanged. `DataTableRowDetail`,
-  `DataTableRowExpander`, `DataTableFooterDetail` and `useColumnsHiddenByWidth` are exported for a
-  custom layout.
+  `DataTableRowExpander`, `DataTableFooterDetail` and `useColumnsHiddenByWidth` (it still returns the
+  `Set` of hidden names) are exported for a custom layout, with `useResponsiveFit` below.
+  - **The pinned columns are counted at their real width.** 0.2.1 set aside 36px for the details
+    button (plus 40px for a selection checkbox) and 80px for the actions, about 32px less than two icon
+    buttons take (116px against 148px, or 156 against 170 with a checkbox), so on a phone it kept
+    columns that then lay under the pinned actions. The fit now reserves what the cells take at Medium
+    density and a 16px root font. `DATA_TABLE_RESERVED_WIDTH` changed with it, to
+    `{ select: 22, detail: 48, actions: 100 }`: `detail` is the start cell with its details button,
+    `select` is what a checkbox _adds_ to that cell (70 in all), and `actions` is the actions cell with
+    two icon buttons. A table near a breakpoint therefore hides a column that 0.2.1 kept; which
+    columns go first did not change.
+  - **How the pinned width is computed.** The cells are whole numbers of spacing steps
+    (`DATA_TABLE_SPACING_REM`, 0.27rem = 4.32px): cell padding 1, 2 or 3 steps for Small, Medium or
+    Large, a checkbox 3, 4 or 5, the details button 7, an icon action button 9 with 1 between them.
+    `estimateStartColumnWidth` and `estimateActionsColumnWidth` return that without rendering anything
+    (Medium: 48, 70 with a checkbox, 100 for two actions and 57 for one; Small 39, 61, 91, 48; Large 57,
+    78, 108, 65), and `reservedColumnsWidth` takes `density`, `inset` (a flush card's padding on the
+    first and last cell), `unitPx` and `actionCount`. What a model cannot know is measured from the
+    page after every render and before paint: where the buttons actually sit in the actions cell (so a
+    text button such as "Approve" is counted at its label's width, once the page's fonts have loaded,
+    and a cell that was handed spare room does not read wider), `--spacing`, the root font size and the
+    rendered checkbox. The measurement only ever raises the actions width above the model, and
+    `--ivy-data-table-actions-width`, when set, counts too. In jsdom nothing is laid out and the model
+    alone applies.
+  - **Undeclared widths are still estimates.** A column counts as its `width` when that is a plain px
+    or rem length, else 128px (8rem, following the root font size). A column whose cells truncate (one
+    that is not right-aligned, `nowrap` or `wrapText`) is as wide as its text up to
+    `--ivy-data-table-truncate-width` (20rem), whatever its `width` says: the table cannot know that a
+    column declared 130px holds names 250px long. Declare the width the text really needs, or set the
+    cap to what the `width`s claim (`className="[--ivy-data-table-truncate-width:8rem]"`).
+  - **`collapseRowActionsBelow`** (a number of px, opt-in) folds the row actions into one "..." menu
+    button while the table's own container is narrower than that. It frees the room of the extra
+    buttons for the data columns: 100px for two icon actions at Medium, 57px for the menu button. The
+    button is named `Actions for <getRowLabel(row)>` (the row id without `getRowLabel`); the menu holds
+    the same actions in the same order, an action with `children` becomes a labelled group of items
+    (not a sub-menu, which on a phone is a second tap), and a `tooltip` that says more than the label
+    is shown under it, since a phone has no hover. Pressing an item calls `onRowAction` as the button
+    would, closes the menu and returns focus to the "..." button (unless the action moved it, as
+    opening a dialog does).
+    - **Per table, then per row.** It applies only when some row on the current page has more than one
+      action, and then folds only the rows that have more than one: a row with a single action keeps
+      its button, which is already as small as the menu button. Absent, `NaN` or `Infinity`: the
+      actions are buttons at every width.
+    - **Narrow first.** Before the container is measured (a server render, the first client pass, and
+      jsdom, where nothing is laid out) the actions are folded, as `hideBelow` columns are hidden, so a
+      phone never paints a row of buttons that folds afterwards. To test the wide layout give the
+      table's wrapper a width, as `tests/data-table-responsive.test.tsx` does, with
+      `vi.spyOn(HTMLElement.prototype, "offsetWidth", "get")` returning 800 for the element whose
+      `dataset.slot` is `"data-table"` and 0 for every other.
+    - **A margin, and a cost.** Folded actions come back at the threshold plus 24px
+      (`DATA_TABLE_REVEAL_MARGIN`), so a scrollbar that comes and goes cannot make them flip; inside
+      that band a table keeps what it had, and one first measured there shows the buttons. Unfolding
+      takes the room back from the columns: a table widened across the threshold can lose a `priority`
+      column that the folded actions left room for, and folding brings one back.
+  - **New exports.** `useResponsiveFit` (the fit hook, returning `{ hidden, rowActionsCollapsed }`),
+    `getResponsiveFit(columns, options)` (`options` has `width`, `reservedWidth`, `reservedFoldedWidth`,
+    `collapseBelow`, `collapseApplies`, `remPx` and `previous`; it returns `{ hidden, trigger, collapsed }`),
+    `getRowActionsCollapsed({ width, below, wasCollapsed })`, `estimateStartColumnWidth`,
+    `estimateActionsColumnWidth`, `DATA_TABLE_SPACING_REM` and the types
+    `PinnedColumnMetrics`, `ResponsiveFit`, `ResponsiveFitOptions`, `UseResponsiveFitOptions` and
+    `UseResponsiveFitResult`. `getColumnsHiddenByWidth` and `estimateColumnWidth` take a `remPx`
+    (default 16). `DataTableRowActions` has two new props, `collapsed` and `menuLabel` (default "More
+    actions").
+  - **Windowed tables** (`table-layout: fixed`) size their pinned columns from the same model, as
+    inline widths: the actions column is `var(--ivy-data-table-actions-width, <needed>px)`, so the
+    property still overrides it. It was a fixed 5rem (80px) before, which two icon buttons did not fit
+    in, so the buttons spilled into the neighbouring column.
 - **`DataTable` in a `CardContent`** defaults to `variant="embedded"` (no border of its own), padded or
   flush; one in a dialog, alert dialog, sheet or popover opened from a card stays `"bordered"`. Pass `variant="bordered"` to keep the old look. `Card` gained `min-w-0`; use `min-w-fit` on a
   `Card` that should grow with a wide child.
@@ -962,7 +1027,9 @@ from this list:
   `UI/Card` → `WithFlushTable`, `FlushTableWithoutHeader`; `UI/DataTable` → the `InsideCard*` stories,
   `Bordered`, `Embedded`, `RowClick`, `RemovableRows`, `ResponsiveColumns`, `ResponsiveColumnsDark`,
   `PriorityColumns`, `HideBelowDetail`, `HideBelowDetailDark`, `HideBelowDetailDensities`,
-  `HideBelowDetailVirtualized`, `ResizesLive`, `ColumnOptionsAtNarrowWidth`;
+  `HideBelowDetailVirtualized`, `ResizesLive`, `ColumnOptionsAtNarrowWidth`, `PinnedColumnsFit`,
+  `PinnedColumnsDensities`, `RowActionsCollapsed`, `RowActionsCollapsedDark`,
+  `RowActionsCollapsedGroups`, `TextLabelledActions`, `WindowedRowActions`;
   `UI/Sidebar` → the `CompactRail*` stories; `UI/Tabs` → `DefaultDark`, `Inline`, `InlineDark`,
   `InCard`, `InCardDark`, `Overflowing`, `OverflowingDark`, `OverflowingInCard`,
   `OverflowingInCardDark`, `OverflowingKeyboard`, `ActiveOffscreen`, `ActiveOffscreenDark`,

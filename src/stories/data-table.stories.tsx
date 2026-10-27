@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { expect, userEvent, waitFor } from "@storybook/test";
-import { MoreHorizontal, Pencil } from "lucide-react";
+import { expect, fn, userEvent, waitFor, within } from "@storybook/test";
+import { Download, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import * as React from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,8 @@ import {
   DataTable,
   type DataTableColumn,
   type DataTableRowAction,
+  type DataTableRowActionEvent,
+  estimateActionsColumnWidth,
 } from "@/components/ui/data-table";
 import {
   Dialog,
@@ -22,6 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { DensityProvider } from "@/contexts/density-context";
 import { Densities } from "@/types/density";
 
 const meta: Meta = {
@@ -1406,5 +1409,478 @@ export const HideBelowDetailDensities: StoryObj = {
     }
     for (const first of [0, 3, 6]) await userEvent.click(buttons[first]);
     await expect(canvasElement.querySelectorAll("tr[data-detail-for]")).toHaveLength(3);
+  },
+};
+
+// ---------------------------------------------------------------------------------------------
+// The pinned columns: counted at their real width, and row actions that fold into a menu.
+// ---------------------------------------------------------------------------------------------
+
+const pinnedRowActions: DataTableRowAction<TimeEntry>[] = [
+  { tag: "edit", label: "Edit entry", icon: <Pencil aria-hidden="true" />, tooltip: "Edit entry" },
+  {
+    tag: "delete",
+    label: "Delete entry",
+    icon: <Trash2 aria-hidden="true" />,
+    tooltip: "Delete entry",
+    variant: "destructive",
+  },
+];
+
+/**
+ * Ranked columns with widths that are true: each is at least as wide as its widest cell, which is what
+ * the fit needs to be right (it can only count what it is told). Amount outranks Hours here so that
+ * the room a folded menu button frees is spent on a column you can see (Date and Amount).
+ */
+const pinnedFitColumns: DataTableColumn<TimeEntry>[] = timeColumns.map((column) => {
+  const ranked: Record<string, { priority: number; width: string }> = {
+    date: { priority: 1, width: "100px" },
+    amount: { priority: 2, width: "104px" },
+    hours: { priority: 3, width: "84px" },
+    start: { priority: 4, width: "64px" },
+    end: { priority: 4, width: "64px" },
+    project: { priority: 5, width: "130px" },
+    activity: { priority: 6, width: "92px" },
+    message: { priority: 7, width: "200px" },
+  };
+  return { ...column, ...ranked[column.name] };
+});
+
+/**
+ * The library cannot know that a truncating column is wider than its `width`: a cell that is cut off
+ * with an ellipsis is as wide as its text up to `--ivy-data-table-truncate-width` (20rem), whatever
+ * `width` says. So the cap is set to what the widths above claim (Project says 130px, Message 200px,
+ * the cap is 128px), and the truth is then the same as the declaration. A table that leaves the cap
+ * at 20rem and declares 130px for a column of long names is the one that overflows.
+ */
+const honestTruncation = "[--ivy-data-table-truncate-width:8rem]";
+
+const pinnedRowLabel = (entry: TimeEntry) => `${entry.date} ${entry.project}`;
+
+/** The labels the first four rows are named by (`Actions for <label>`). */
+const pinnedRowLabels = timeEntries.slice(0, 4).map(pinnedRowLabel);
+
+interface PinnedFrameProps {
+  label: string;
+  width: number;
+  columns?: DataTableColumn<TimeEntry>[];
+  actions?: DataTableRowAction<TimeEntry>[];
+  /** `collapseRowActionsBelow`: absent, the actions are buttons at every width. */
+  collapseBelow?: number;
+  density?: Densities;
+  selectable?: boolean;
+  /** Windowed rows (all 27 entries) instead of the first four. */
+  virtualized?: boolean;
+  onRowAction?: (event: DataTableRowActionEvent<TimeEntry>) => void;
+}
+
+function PinnedFrame({
+  label,
+  width,
+  columns = pinnedFitColumns,
+  actions = pinnedRowActions,
+  collapseBelow,
+  density,
+  selectable = false,
+  virtualized = false,
+  onRowAction,
+}: PinnedFrameProps) {
+  const table = (
+    <section data-testid={label} style={{ width }}>
+      <h3 className="mb-2 text-sm font-medium">
+        {label}, {width}px
+      </h3>
+      <DataTable
+        className={honestTruncation}
+        density={density}
+        columns={columns}
+        rows={virtualized ? timeEntries : timeEntries.slice(0, 4)}
+        getRowId={(entry) => entry.id}
+        getRowLabel={pinnedRowLabel}
+        caption={`Time entries, ${label.toLowerCase()}`}
+        paginated={false}
+        virtualized={virtualized}
+        selectable={selectable}
+        rowActions={actions}
+        onRowAction={onRowAction}
+        collapseRowActionsBelow={collapseBelow}
+      />
+    </section>
+  );
+  return (
+    <FrameScroller label={label}>
+      {/* The selection checkbox follows the density context and not the table's `density` prop, so a
+          frame at another density sets both, as an app that is built at that density does. */}
+      {density ? <DensityProvider density={density}>{table}</DensityProvider> : table}
+    </FrameScroller>
+  );
+}
+
+const pinnedFrame = (root: ParentNode, label: string) =>
+  pick<HTMLElement>(root, `[data-testid='${label}']`);
+
+/** The accessible names of the buttons in the actions cells, row by row. */
+function actionButtonNames(root: ParentNode): string[] {
+  return Array.from(root.querySelectorAll<HTMLElement>("tbody td[data-pin='end'] button")).map(
+    (button) => button.getAttribute("aria-label") ?? button.textContent?.trim() ?? "",
+  );
+}
+
+/**
+ * What the pinned columns exist to guarantee, in every row that is rendered: the table does not
+ * scroll sideways, no data cell lies under a pinned one (the last data cell ends before the actions
+ * cell starts, the first begins after the selection/details cell), and the controls stay inside the
+ * cell that holds them instead of spilling into a neighbour.
+ */
+async function expectPinnedCellsClear(frame: HTMLElement) {
+  const scroller = pick<HTMLElement>(frame, "[data-slot='table-container']");
+  await expect(scroller.scrollWidth).toBeLessThanOrEqual(scroller.clientWidth + 1);
+
+  const rows = Array.from(scroller.querySelectorAll<HTMLElement>("tbody tr[data-row-id]"));
+  await expect(rows.length).toBeGreaterThan(0);
+  for (const row of rows) {
+    const data = Array.from(row.querySelectorAll<HTMLElement>("td:not([data-pin])"));
+    const start = row.querySelector<HTMLElement>("td[data-pin='start']");
+    const end = row.querySelector<HTMLElement>("td[data-pin='end']");
+    if (start) {
+      const edge = start.getBoundingClientRect().right;
+      await expect(data[0].getBoundingClientRect().left).toBeGreaterThanOrEqual(edge - 1);
+    }
+    if (end) {
+      const box = end.getBoundingClientRect();
+      await expect(data[data.length - 1].getBoundingClientRect().right).toBeLessThanOrEqual(
+        box.left + 1,
+      );
+      for (const button of Array.from(end.querySelectorAll("button"))) {
+        const inner = button.getBoundingClientRect();
+        await expect(inner.left).toBeGreaterThanOrEqual(box.left - 0.5);
+        await expect(inner.right).toBeLessThanOrEqual(box.right + 0.5);
+      }
+    }
+  }
+}
+
+/**
+ * The columns the table keeps at four widths, with two icon actions and no fold. The pinned cells (the
+ * details chevron, the pair of buttons) are counted at the width they take, about 30px less than the
+ * 0.2.1 estimate: a column that count kept on a phone, and that then lay under the buttons, is hidden
+ * instead. At 330 the room is for Date alone.
+ */
+export const PinnedColumnsFit: StoryObj = {
+  parameters: noVisualBaseline,
+  render: () => (
+    <div className="flex flex-col gap-8">
+      <PinnedFrame label="Small phone" width={330} />
+      <PinnedFrame label="Phone" width={390} />
+      <PinnedFrame label="Phone, selectable" width={390} selectable />
+      <PinnedFrame label="Tablet" width={600} />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await document.fonts.ready;
+    const frame = (label: string) => pinnedFrame(canvasElement, label);
+    await expect(dataHeaders(frame("Small phone"))).toEqual(["Date"]);
+    await expect(dataHeaders(frame("Phone"))).toEqual(["Date", "Amount"]);
+    // The checkbox beside the chevron takes 22px more (70px against 48px) and 390 still has room for it.
+    await expect(dataHeaders(frame("Phone, selectable"))).toEqual(["Date", "Amount"]);
+    await expect(dataHeaders(frame("Tablet"))).toEqual(["Date", "Start", "End", "Hours", "Amount"]);
+
+    // Something is hidden at every width here, so each row has the chevron.
+    for (const label of ["Small phone", "Phone", "Phone, selectable", "Tablet"]) {
+      await expect(detailButtons(frame(label))).toHaveLength(4);
+      await expectPinnedCellsClear(frame(label));
+    }
+  },
+};
+
+interface RowActionArgs {
+  onRowAction: (event: DataTableRowActionEvent<TimeEntry>) => void;
+}
+
+/** Below this the two buttons become one menu button; the frames below sit on either side of it. */
+const FOLD_BELOW = 480;
+
+function RowActionsCollapsedFrames({ onRowAction }: RowActionArgs) {
+  return (
+    <div className="flex flex-col gap-8">
+      <PinnedFrame
+        label="Small phone"
+        width={330}
+        collapseBelow={FOLD_BELOW}
+        onRowAction={onRowAction}
+      />
+      {/* 10px over the threshold, inside the 24px margin: mounted here it has no history of being
+          folded, so it shows the buttons. */}
+      <PinnedFrame label="At the threshold" width={490} collapseBelow={FOLD_BELOW} />
+      <PinnedFrame label="Tablet" width={600} collapseBelow={FOLD_BELOW} />
+    </div>
+  );
+}
+
+/** The menu is in a portal on the body, outside the canvas, so it is looked up there. */
+const page = () => within(document.body);
+
+const editAndDelete = ["Edit entry", "Delete entry"];
+const bothButtons = pinnedRowLabels.flatMap(() => editAndDelete);
+
+async function expectRowActionsCollapsed(canvasElement: HTMLElement, args: RowActionArgs) {
+  await document.fonts.ready;
+  const narrow = pinnedFrame(canvasElement, "Small phone");
+  const band = pinnedFrame(canvasElement, "At the threshold");
+  const wide = pinnedFrame(canvasElement, "Tablet");
+
+  // Folded: one button per row, named for its row. The room of the second button goes to Amount, which
+  // the same phone shows only Date in without the fold (PinnedColumnsFit).
+  await expect(actionButtonNames(narrow)).toEqual(
+    pinnedRowLabels.map((label) => `Actions for ${label}`),
+  );
+  await expect(dataHeaders(narrow)).toEqual(["Date", "Amount"]);
+  await expectPinnedCellsClear(narrow);
+
+  // The fold is a narrow-width thing: 600 has the two buttons in every row, and the columns of a table
+  // that does not fold.
+  await expect(actionButtonNames(wide)).toEqual(bothButtons);
+  await expect(dataHeaders(wide)).toEqual(["Date", "Start", "End", "Hours", "Amount"]);
+  await expectPinnedCellsClear(wide);
+
+  // Inside the band, and with the two buttons back, the columns are those of the unfolded table.
+  await expect(actionButtonNames(band)).toEqual(bothButtons);
+  await expect(dataHeaders(band)).toEqual(["Date", "Hours", "Amount"]);
+  await expectPinnedCellsClear(band);
+
+  // The menu holds the same actions, and pressing one reports it as the button would have.
+  const trigger = within(narrow).getByRole("button", {
+    name: `Actions for ${pinnedRowLabels[0]}`,
+  });
+  await userEvent.click(trigger);
+  const menu = await page().findByRole("menu");
+  await expect(
+    within(menu)
+      .getAllByRole("menuitem")
+      .map((item) => item.textContent),
+  ).toEqual(editAndDelete);
+  await userEvent.click(within(menu).getByRole("menuitem", { name: "Delete entry" }));
+  await expect(args.onRowAction).toHaveBeenCalledTimes(1);
+  await expect(args.onRowAction).toHaveBeenCalledWith(
+    expect.objectContaining({ id: "t1", tag: "delete", row: timeEntries[0] }),
+  );
+  // The action opened nothing that took focus, so the menu hands it back to its button.
+  await waitFor(() => expect(page().queryByRole("menu")).toBeNull());
+  await waitFor(() => expect(document.activeElement).toBe(trigger));
+
+  // Escape closes it as well, and runs nothing.
+  await userEvent.click(trigger);
+  await page().findByRole("menu");
+  await userEvent.keyboard("{Escape}");
+  await waitFor(() => expect(page().queryByRole("menu")).toBeNull());
+  await waitFor(() => expect(document.activeElement).toBe(trigger));
+  await expect(args.onRowAction).toHaveBeenCalledTimes(1);
+  trigger.blur();
+}
+
+/**
+ * `collapseRowActionsBelow={480}`: while the table's own box is narrower than that, each row's two
+ * buttons are one "..." menu button named for the row. It frees about 43px, which here is the room
+ * Amount needs next to Date. Inside the 24px band above the threshold a table that starts there shows
+ * the buttons; one that was narrower keeps the menu until it is out of the band (see ResizesLive).
+ */
+export const RowActionsCollapsed: StoryObj<RowActionArgs> = {
+  args: { onRowAction: fn() },
+  parameters: noVisualBaseline,
+  render: (args) => <RowActionsCollapsedFrames {...args} />,
+  play: async ({ canvasElement, args }) => expectRowActionsCollapsed(canvasElement, args),
+};
+
+export const RowActionsCollapsedDark: StoryObj<RowActionArgs> = {
+  args: { onRowAction: fn() },
+  globals: { theme: "dark" },
+  parameters: noVisualBaseline,
+  render: (args) => <RowActionsCollapsedFrames {...args} />,
+  play: async ({ canvasElement, args }) => {
+    await assertDarkTheme();
+    await expectRowActionsCollapsed(canvasElement, args);
+  },
+};
+
+const groupedRowActions: DataTableRowAction<TimeEntry>[] = [
+  { tag: "edit", label: "Edit entry", icon: <Pencil aria-hidden="true" /> },
+  {
+    tag: "export",
+    label: "Export",
+    icon: <Download aria-hidden="true" />,
+    children: [
+      { tag: "export-csv", label: "As CSV" },
+      { tag: "export-pdf", label: "As PDF" },
+    ],
+  },
+  {
+    tag: "delete",
+    label: "Delete entry",
+    icon: <Trash2 aria-hidden="true" />,
+    variant: "destructive",
+  },
+];
+
+/**
+ * An action with `children` is a dropdown of its own among the buttons. Folded into the row's menu it
+ * is a labelled group of items instead: a sub-menu is a second tap-and-hover level on a phone.
+ */
+export const RowActionsCollapsedGroups: StoryObj<RowActionArgs> = {
+  args: { onRowAction: fn() },
+  parameters: noVisualBaseline,
+  render: (args) => (
+    <div className="flex flex-col gap-8">
+      <PinnedFrame
+        label="Small phone"
+        width={330}
+        actions={groupedRowActions}
+        collapseBelow={FOLD_BELOW}
+        onRowAction={args.onRowAction}
+      />
+      <PinnedFrame
+        label="Tablet"
+        width={600}
+        actions={groupedRowActions}
+        collapseBelow={FOLD_BELOW}
+      />
+    </div>
+  ),
+  play: async ({ canvasElement, args }) => {
+    await document.fonts.ready;
+    const narrow = pinnedFrame(canvasElement, "Small phone");
+    const wide = pinnedFrame(canvasElement, "Tablet");
+    await expect(actionButtonNames(narrow)).toEqual(
+      pinnedRowLabels.map((label) => `Actions for ${label}`),
+    );
+    await expectPinnedCellsClear(narrow);
+    // Unfolded, the group is a button of its own that opens a menu: three controls a row.
+    await expect(actionButtonNames(wide)).toEqual(
+      pinnedRowLabels.flatMap(() => ["Edit entry", "Export", "Delete entry"]),
+    );
+    await expectPinnedCellsClear(wide);
+
+    const trigger = within(narrow).getByRole("button", {
+      name: `Actions for ${pinnedRowLabels[0]}`,
+    });
+    await userEvent.click(trigger);
+    const menu = await page().findByRole("menu");
+    const group = within(menu).getByRole("group", { name: "Export" });
+    await expect(
+      within(group)
+        .getAllByRole("menuitem")
+        .map((item) => item.textContent),
+    ).toEqual(["As CSV", "As PDF"]);
+    // One flat level: no item opens a sub-menu.
+    await expect(menu.querySelector("[aria-haspopup]")).toBeNull();
+    await expect(
+      within(menu)
+        .getAllByRole("menuitem")
+        .map((item) => item.textContent),
+    ).toEqual(["Edit entry", "As CSV", "As PDF", "Delete entry"]);
+
+    await userEvent.click(within(group).getByRole("menuitem", { name: "As PDF" }));
+    await expect(args.onRowAction).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "t1", tag: "export-pdf" }),
+    );
+    await waitFor(() => expect(page().queryByRole("menu")).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
+    trigger.blur();
+  },
+};
+
+const textRowActions: DataTableRowAction<TimeEntry>[] = [
+  { tag: "approve", label: "Approve" },
+  { tag: "reject", label: "Reject" },
+];
+
+/**
+ * Buttons with a text label are as wide as their text, which no model of the table can know. The
+ * table reads where the buttons actually sit in the rendered cell and reserves that, so the columns it
+ * keeps still leave the labels room: the table does not scroll and nothing lies under them.
+ */
+export const TextLabelledActions: StoryObj = {
+  parameters: noVisualBaseline,
+  render: () => <PinnedFrame label="Phone" width={360} actions={textRowActions} />,
+  play: async ({ canvasElement }) => {
+    await document.fonts.ready;
+    const frame = pinnedFrame(canvasElement, "Phone");
+    await expect(actionButtonNames(frame)).toEqual(
+      pinnedRowLabels.flatMap(() => ["Approve", "Reject"]),
+    );
+    await waitFor(() => expectPinnedCellsClear(frame));
+
+    // Text buttons really are wider than the two icon buttons the model assumes, so this is the
+    // measurement doing the work and not the estimate happening to be enough.
+    const cell = pick<HTMLElement>(frame, "tbody td[data-pin='end']");
+    const buttons = Array.from(cell.querySelectorAll("button")).map((button) =>
+      button.getBoundingClientRect(),
+    );
+    const style = getComputedStyle(cell);
+    const needed =
+      buttons[buttons.length - 1].right -
+      buttons[0].left +
+      parseFloat(style.paddingLeft) +
+      parseFloat(style.paddingRight);
+    await expect(needed).toBeGreaterThan(estimateActionsColumnWidth({ actionCount: 2 }));
+  },
+};
+
+/**
+ * Windowed rows lay out with `table-layout: fixed`, where the pinned columns get their width from the
+ * table instead of from their content. The buttons stay inside their cell whether they are two or
+ * one menu button, and nothing is pushed into the neighbouring column.
+ */
+export const WindowedRowActions: StoryObj = {
+  parameters: noVisualBaseline,
+  render: () => (
+    <div className="flex flex-col gap-8">
+      <PinnedFrame label="Windowed" width={390} virtualized />
+      <PinnedFrame label="Windowed, folded" width={390} virtualized collapseBelow={FOLD_BELOW} />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await document.fonts.ready;
+    const unfolded = pinnedFrame(canvasElement, "Windowed");
+    const folded = pinnedFrame(canvasElement, "Windowed, folded");
+    for (const frame of [unfolded, folded]) {
+      await waitFor(() =>
+        expect(frame.querySelectorAll("tbody tr[data-row-id]").length).toBeGreaterThan(0),
+      );
+      const table = pick<HTMLElement>(frame, "table");
+      await expect(getComputedStyle(table).tableLayout).toBe("fixed");
+      // Windowed: not every one of the 27 entries is in the DOM.
+      await expect(frame.querySelectorAll("tbody tr[data-row-id]").length).toBeLessThan(
+        timeEntries.length,
+      );
+      await expectPinnedCellsClear(frame);
+    }
+    await expect(new Set(actionButtonNames(unfolded))).toEqual(new Set(editAndDelete));
+    await expect(actionButtonNames(folded).every((name) => name.startsWith("Actions for "))).toBe(
+      true,
+    );
+  },
+};
+
+/**
+ * Small and Large density at a phone width, with the selection checkbox: each is laid out at its own
+ * size and counted at it. Small's pinned cells take 152px against Medium's 170, which leaves Date and
+ * Amount room by 2px (358 of 360px); Large's are wider and keep Date alone.
+ */
+export const PinnedColumnsDensities: StoryObj = {
+  parameters: noVisualBaseline,
+  render: () => (
+    <div className="flex flex-col gap-8">
+      <PinnedFrame label="Small density" width={360} density={Densities.Small} selectable />
+      <PinnedFrame label="Large density" width={360} density={Densities.Large} selectable />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await document.fonts.ready;
+    const small = pinnedFrame(canvasElement, "Small density");
+    const large = pinnedFrame(canvasElement, "Large density");
+    await expect(dataHeaders(small)).toEqual(["Date", "Amount"]);
+    await expect(dataHeaders(large)).toEqual(["Date"]);
+    await expectPinnedCellsClear(small);
+    await expectPinnedCellsClear(large);
   },
 };
