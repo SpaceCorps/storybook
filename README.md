@@ -300,12 +300,15 @@ function LoginForm() {
   stays a tab stop when its rows hold buttons. Name each list once a page has more than one: two unnamed
   lists are two regions with the same name, which axe reports as `landmark-unique`.
 - **Collapsed sidebar rail**: `collapsible="icon"` is a compact rail. `SIDEBAR_WIDTH_ICON` keeps its
-  value (`3rem`) and meaning; the `inset`, `floating` and `inset-right` variants add a 0.25rem gutter
-  and are 52px wide (they were 64px), the plain variant is 48px. Section labels hidden in the rail no
-  longer take the pointer, so the bottom of a button above one can be clicked and hovered. When the
-  nav is taller than the window the rail scrolls (hidden scrollbar, `scroll-py-1` so a focus ring is
-  never clipped). The expanded sidebar is unchanged; an app that sets `--sidebar-width-icon` gets that
-  width plus the gutter.
+  value (`3rem`) and meaning; the `inset` and `floating` variants (on either `side`) add a 0.25rem
+  gutter and are 52px wide (they were 64px), the plain variant is 48px. Section labels hidden in the
+  rail no longer take the pointer, so the bottom of a button above one can be clicked and hovered. When
+  the nav is taller than the window the rail scrolls (hidden scrollbar, `scroll-py-1` so a focus ring
+  is never clipped). The expanded sidebar keeps its geometry, but its hover, press and current-page
+  fills are now 8%, 12% and 12% foreground tints instead of `--accent` (which equals the sidebar
+  surface, so the current page had no mark); `sidebarMenuButtonVariant`, `SidebarMenuAction`,
+  `SidebarGroupAction` and `SidebarMenuSubButton` change with it, and `--accent` no longer themes the
+  sidebar. An app that sets `--sidebar-width-icon` gets that width plus the gutter.
 - **Ratings and popover links**: `StarRating` and `EmojiRating` with `allowHalf` are one
   `role="slider"` (Left/Right and Up/Down step 0.5, Page Up / Page Down step 1, Home clears, End gives
   the highest) with `aria-label`; without it they are the usual row of buttons. `PopoverLink` opens
@@ -470,11 +473,12 @@ each. Additive props and new components are in the sections above.
 **Borders, surfaces and contrast**
 
 - **Borders derive from the foreground**: `--border`, `--input` and `--sidebar-border` are
-  `color-mix(in oklab, <foreground> N%, transparent)` and are recomputed per theme (approach adapted
-  from the RioRec Storybook, `src/packages/storybook`). Redeclare them on a subtree that overrides
-  `--foreground` without the `.dark` class. `getCSSVariable("--border")` and `ThemeColors.border` return
-  that colour string, not a hex: fine in a style prop, SVG stroke or stylesheet, not for canvas or
-  colour-math libraries. Do not use `var(--input)` as an opaque fill; use `--muted` or `--popover`.
+  `color-mix(in oklab, <foreground> N%, transparent)` and are recomputed per theme. Redeclare them on a
+  subtree that overrides `--foreground` without the `.dark` class. `getCSSVariable("--border")` and
+  `ThemeColors.border` return that colour string, not a hex: fine in a style prop, SVG stroke or
+  stylesheet, not for canvas or colour-math libraries. Do not use `var(--input)` or `var(--border)` as
+  an opaque fill (a track, thumb or skeleton): they are translucent now, so it is a tint of whatever is
+  behind it; use `--muted` or `--popover`.
 - **Control edges are at 3:1**: input, textarea, select trigger, multiselect (it had none; pass `ghost`
   for the borderless look), checkbox, radio, switch off track, outline Button, Toggle, the calendar
   chips and the pagination select. Dark `--card` and `--popover` are lifted above the page, so cards,
@@ -494,7 +498,9 @@ each. Additive props and new components are in the sections above.
   to the start of each tab, a fade on the side that has more, no scrollbar, the wheel left native) and
   never widens its box or the page. The active tab is brought into view on first render, when `value`
   changes, on keyboard focus and when the width changes; it works right to left. A vertical list does
-  not scroll.
+  not scroll. The list is a scroll container (`overflow-x-auto overflow-y-hidden`) even when it fits, so
+  anything that overhangs its box, such as a badge positioned above a trigger, is clipped; keep such
+  decorations inside the trigger.
 - **Toasts**: `useToast` no longer dismisses on any document click or Escape. A toast times out after
   5 s (12 s when destructive or with an action) unless you pass `duration`. `ToastClose` is named
   "Close". At most three toasts are open at once; closed ones waiting out their exit animation no
@@ -634,7 +640,8 @@ each. Additive props and new components are in the sections above.
   first, one at a time, until the estimated width fits; `width` in px or rem is the estimate, else
   8rem) move a column into a row details panel, reached by a disclosure button that exists only
   while a column is hidden. `hidden` and the column options menu still win. Before the container is
-  measured every `hideBelow` column counts as hidden. Columns with neither prop never move, so
+  measured (server render, first paint) every `hideBelow` column and every `priority` column except the
+  most important one counts as hidden. Columns with neither prop never move, so
   existing tables are unchanged. `DataTableRowDetail`, `DataTableRowExpander`, `DataTableFooterDetail`
   and `useColumnsHiddenByWidth` are exported for a custom layout.
 - **`DataTable` in a `CardContent`** defaults to `variant="embedded"` (no border of its own), padded or
