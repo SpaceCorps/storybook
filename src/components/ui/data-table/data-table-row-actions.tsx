@@ -137,34 +137,43 @@ interface CollapsedRowActionsProps<TRow> {
  */
 function CollapsedActionItem<TRow>({
   action,
+  groupDisabled = false,
   invoke,
   ranRef,
 }: {
   action: DataTableRowAction<TRow>;
+  /** The group this item is in is disabled, which unfolded disables the button that opens its menu. */
+  groupDisabled?: boolean;
   invoke: (action: DataTableRowAction<TRow>) => void;
   ranRef: React.RefObject<boolean>;
 }) {
-  const note = action.tooltip && action.tooltip !== action.label ? action.tooltip : undefined;
+  const disabled = groupDisabled || Boolean(action.disabled);
   return (
     <DropdownMenuItem
-      disabled={action.disabled}
+      disabled={disabled}
       className={cn(action.variant === "destructive" && DESTRUCTIVE_TEXT)}
       onClick={(event) => {
         event.stopPropagation();
+        // A disabled item gets no click from a pointer or the keyboard; a programmatic one is not a run.
+        if (disabled) return;
         ranRef.current = true;
         invoke(action);
       }}
     >
       {action.icon}
-      {note ? (
-        <span className="flex min-w-0 flex-col">
-          <span>{action.label}</span>
-          <span className="text-xs font-normal text-muted-foreground">{note}</span>
-        </span>
-      ) : (
-        action.label
-      )}
+      <LabelWithNote label={action.label} tooltip={action.tooltip} />
     </DropdownMenuItem>
+  );
+}
+
+/** The label, with the tooltip under it when that says more than the label does. */
+function LabelWithNote({ label, tooltip }: { label: string; tooltip: string | undefined }) {
+  if (!tooltip || tooltip === label) return <>{label}</>;
+  return (
+    <span className="flex min-w-0 flex-col">
+      <span>{label}</span>
+      <span className="text-xs font-normal text-muted-foreground">{tooltip}</span>
+    </span>
   );
 }
 
@@ -177,7 +186,7 @@ function CollapsedRowActions<TRow>({ actions, menuLabel, invoke }: CollapsedRowA
   const everyActionDisabled = actions.every((action) => {
     const children = getRenderableActions(action.children);
     return children.length > 0
-      ? children.every((child) => child.disabled)
+      ? Boolean(action.disabled) || children.every((child) => child.disabled)
       : Boolean(action.disabled);
   });
 
@@ -213,11 +222,16 @@ function CollapsedRowActions<TRow>({ actions, menuLabel, invoke }: CollapsedRowA
             <React.Fragment key={action.tag}>
               {index > 0 ? <DropdownMenuSeparator /> : null}
               <DropdownMenuGroup aria-label={action.label}>
-                <DropdownMenuLabel>{action.label}</DropdownMenuLabel>
+                <DropdownMenuLabel
+                  className={cn(action.variant === "destructive" && DESTRUCTIVE_TEXT)}
+                >
+                  <LabelWithNote label={action.label} tooltip={action.tooltip} />
+                </DropdownMenuLabel>
                 {children.map((child) => (
                   <CollapsedActionItem
                     key={child.tag}
                     action={child}
+                    groupDisabled={action.disabled}
                     invoke={invoke}
                     ranRef={ranRef}
                   />

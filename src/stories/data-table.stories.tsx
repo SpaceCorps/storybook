@@ -1682,7 +1682,8 @@ async function expectRowActionsCollapsed(canvasElement: HTMLElement, args: RowAc
  * `collapseRowActionsBelow={480}`: while the table's own box is narrower than that, each row's two
  * buttons are one "..." menu button named for the row. It frees about 43px, which here is the room
  * Amount needs next to Date. Inside the 24px band above the threshold a table that starts there shows
- * the buttons; one that was narrower keeps the menu until it is out of the band (see ResizesLive).
+ * the buttons; one that was narrower keeps the menu until it is out of the band (the hysteresis is
+ * pinned by `tests/data-table-row-actions-fold.test.tsx`; drag a frame's width here to see it).
  */
 export const RowActionsCollapsed: StoryObj<RowActionArgs> = {
   args: { onRowAction: fn() },

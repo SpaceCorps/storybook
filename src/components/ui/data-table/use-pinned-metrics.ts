@@ -125,6 +125,7 @@ export function usePinnedMetrics({
   containerRef,
   enabled,
   collapsedRef,
+  scope,
 }: {
   /** The table's scroll container: what the cells are measured in and the custom properties resolve on. */
   containerRef: React.RefObject<HTMLElement | null>;
@@ -135,9 +136,25 @@ export function usePinnedMetrics({
    * fit's input) but measures after the commit, when the ref holds the answer for what is on the page.
    */
   collapsedRef: React.RefObject<boolean>;
+  /**
+   * What the measured rows are rows of (the data, and what draws their actions). While it stays the
+   * same object the widest actions cell seen is kept and a narrower measurement does not replace it:
+   * a windowed table renders only the rows in view, so a wide row that scrolls out would otherwise
+   * hand back its width, and every column and the actions cell would change with the scroll position.
+   * A new scope measures afresh, and without one each measurement replaces the last.
+   */
+  scope?: object;
 }): PinnedMetrics {
   const [metrics, setMetrics] = React.useState<PinnedMetrics>(DEFAULT_PINNED_METRICS);
   const metricsRef = React.useRef(metrics);
+  const scopeRef = React.useRef(scope);
+  scopeRef.current = scope;
+  // The scope each fold state was last measured in: a state that is off the page keeps a number from
+  // whatever scope it was measured in, and that is not the widest of this one.
+  const measuredScopes = React.useRef<{ unfolded?: object; folded?: object }>({
+    unfolded: scope,
+    folded: scope,
+  });
 
   const measure = React.useCallback(() => {
     const container = containerRef.current;
@@ -150,18 +167,23 @@ export function usePinnedMetrics({
     const actions = measureActionsWidth(container);
 
     const previous = metricsRef.current;
+    const state = collapsedRef.current ? "folded" : "unfolded";
+    const before = collapsedRef.current ? previous.foldedActionsPx : previous.unfoldedActionsPx;
+    const keepWidest =
+      scopeRef.current !== undefined && measuredScopes.current[state] === scopeRef.current;
+    let onPage = before;
+    if (actions !== null) {
+      onPage = keepWidest ? Math.max(actions, before ?? 0) : actions;
+      measuredScopes.current[state] = scopeRef.current;
+    }
     // Only the state that is on the page is measured; the other keeps what it last measured, and a
     // page with no row to measure (one being fetched) leaves both as they were.
     const next: PinnedMetrics = {
       remPx,
       unitPx: unit ?? DATA_TABLE_SPACING_REM * remPx,
       checkboxPx: readCheckboxWidth(container),
-      unfoldedActionsPx: collapsedRef.current
-        ? previous.unfoldedActionsPx
-        : (actions ?? previous.unfoldedActionsPx),
-      foldedActionsPx: collapsedRef.current
-        ? (actions ?? previous.foldedActionsPx)
-        : previous.foldedActionsPx,
+      unfoldedActionsPx: collapsedRef.current ? previous.unfoldedActionsPx : onPage,
+      foldedActionsPx: collapsedRef.current ? onPage : previous.foldedActionsPx,
       configuredActionsPx: configured,
     };
     if (sameMetrics(previous, next)) return;

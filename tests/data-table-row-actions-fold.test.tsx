@@ -471,6 +471,87 @@ describe("DataTableRowActions folded into one menu button", () => {
     ).toBe(false);
   });
 
+  describe("a group action's own state", () => {
+    // Unfolded, a group is a button that opens a menu, and disabling it disables that button: its
+    // children cannot be reached. Folded, the group is a label above its items, so they must carry it.
+    it("disables every child of a disabled group, as the disabled button that opens them does unfolded", async () => {
+      const user = userEvent.setup();
+      const onRowAction = vi.fn();
+      renderActions({ actions: [edit, { ...share, disabled: true }], onRowAction });
+
+      await openMenu(user);
+
+      for (const name of ["Copy link", "Email"]) {
+        expect(screen.getByRole("menuitem", { name }).getAttribute("data-disabled")).not.toBeNull();
+      }
+      await user.click(screen.getByRole("menuitem", { name: "Copy link" }));
+      expect(onRowAction).not.toHaveBeenCalled();
+      // The plain action beside it is its own.
+      expect(
+        screen.getByRole("menuitem", { name: "Edit" }).getAttribute("data-disabled"),
+      ).toBeNull();
+    });
+
+    it("disables the button when the only things left to run are in a disabled group", () => {
+      renderActions({
+        actions: [
+          { ...edit, disabled: true },
+          { ...share, disabled: true },
+        ],
+      });
+
+      expect(
+        (screen.getByRole("button", { name: "More actions" }) as HTMLButtonElement).disabled,
+      ).toBe(true);
+    });
+
+    it("does not let a disabled group's enabled children run through a programmatic click", async () => {
+      const user = userEvent.setup();
+      const onRowAction = vi.fn();
+      renderActions({ actions: [edit, { ...share, disabled: true }], onRowAction });
+
+      await openMenu(user);
+      fireEvent.click(screen.getByRole("menuitem", { name: "Email" }));
+
+      expect(onRowAction).not.toHaveBeenCalled();
+    });
+
+    it("shows the group's tooltip under its label, as a note a phone can read", async () => {
+      const user = userEvent.setup();
+      renderActions({
+        actions: [edit, { ...share, tooltip: "Needs a sharing licence", disabled: true }],
+      });
+
+      await openMenu(user);
+
+      const group = screen.getByRole("group", { name: "Share" });
+      expect(within(group).getByText("Needs a sharing licence")).toBeTruthy();
+    });
+
+    it("leaves the label alone when the tooltip is the label", async () => {
+      const user = userEvent.setup();
+      renderActions({ actions: [edit, { ...share, tooltip: "Share" }] });
+
+      await openMenu(user);
+
+      expect(
+        within(screen.getByRole("group", { name: "Share" })).getAllByText("Share"),
+      ).toHaveLength(1);
+    });
+
+    it("gives a destructive group's label the destructive colour its button has unfolded", async () => {
+      const user = userEvent.setup();
+      renderActions({
+        actions: [edit, { ...share, variant: "destructive" }],
+      });
+
+      await openMenu(user);
+
+      const group = screen.getByRole("group", { name: "Share" });
+      expect(within(group).getByText("Share").closest("[class*='destructive']")).not.toBeNull();
+    });
+  });
+
   it("returns focus to the button when the menu is dismissed with Escape", async () => {
     const user = userEvent.setup();
     renderActions();

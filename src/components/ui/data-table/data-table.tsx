@@ -61,6 +61,7 @@ import {
   DATA_TABLE_OVERSCAN,
   DATA_TABLE_ROW_HEIGHT_ESTIMATES,
   DATA_TABLE_VIRTUALIZATION_THRESHOLD,
+  isDataTableWindowed,
   useDataTableVirtualization,
 } from "./use-data-table-virtualization";
 import { useRevealFocus } from "./use-focus-reveal";
@@ -455,10 +456,25 @@ function DataTableInner<TRow>(
   // rest (see `usePinnedMetrics`). Counted with the details button whether or not it is showing yet,
   // so the amount reserved does not change when the fit puts it there.
   const collapsedRef = React.useRef(false);
+  // A windowed table is laid out with fixed widths, so its pinned cells are sized from these numbers
+  // whether or not anything else asks for them. Its rows scroll in and out of the DOM, and the widest
+  // actions cell seen stays reserved for as long as these are the rows (and the actions) on offer.
+  const windowedLayout = isDataTableWindowed({
+    enabled: !loading,
+    count: pageRowIds.length,
+    virtualized,
+    virtualizationThreshold,
+  });
+  const actionsScope = React.useMemo(
+    () => ({}),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the scope is these, not its own contents
+    [pageRows, density, typeof rowActions === "function" ? undefined : rowActions],
+  );
   const pinned = usePinnedMetrics({
     containerRef: scrollContainerRef,
-    enabled: visibleColumns.some(isResponsiveColumn) || foldRowActions,
+    enabled: visibleColumns.some(isResponsiveColumn) || foldRowActions || windowedLayout,
     collapsedRef,
+    scope: windowedLayout ? actionsScope : undefined,
   });
   const pinnedMetrics = { density, inset, unitPx: pinned.unitPx } as const;
   const reservedStart = estimateStartColumnWidth({
@@ -471,7 +487,8 @@ function DataTableInner<TRow>(
       ? Math.max(
           estimateActionsColumnWidth({ actionCount: count, ...pinnedMetrics }),
           measured ?? 0,
-          pinned.configuredActionsPx ?? 0,
+          // The custom property sets the width of a windowed table's cell and nothing else's.
+          windowedLayout ? (pinned.configuredActionsPx ?? 0) : 0,
         )
       : 0;
   // The bordered table draws a border on each side that the wrapper's width includes.

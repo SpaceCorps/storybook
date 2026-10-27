@@ -14,6 +14,11 @@ import {
   usePinnedMetrics,
   type PinnedMetrics,
 } from "../src/components/ui/data-table/use-pinned-metrics";
+import {
+  DATA_TABLE_SPACING_REM,
+  estimateActionsColumnWidth,
+  estimateStartColumnWidth,
+} from "../src/components/ui/data-table";
 import { Densities } from "../src/types/density";
 
 /**
@@ -435,6 +440,85 @@ describe("usePinnedMetrics", () => {
     rerender(<Harness body={actionsRow(single)} />);
 
     expect(latest().unfoldedActionsPx).toBe(52);
+  });
+
+  describe("a scope, as for a windowed table whose rows scroll in and out", () => {
+    // The Harness has no scope of its own to hold still, so one with the scope as a prop.
+    interface ScopedProps extends HarnessProps {
+      scope?: object;
+    }
+    function Scoped({ scope, body = null, collapsed = false }: ScopedProps) {
+      const ref = React.useRef<HTMLDivElement>(null);
+      const collapsedRef = React.useRef(collapsed);
+      collapsedRef.current = collapsed;
+      const metrics = usePinnedMetrics({ containerRef: ref, enabled: true, collapsedRef, scope });
+      seen.push(metrics);
+      return (
+        <div ref={ref} data-style="" data-room="4000">
+          <table>
+            <tbody>{body}</tbody>
+          </table>
+        </div>
+      );
+    }
+    const rows = {};
+
+    it("keeps the widest cell seen while the rows are the same, when a narrower page is on screen", () => {
+      const { rerender } = render(<Scoped scope={rows} body={actionsRow(triple)} />);
+      expect(latest().unfoldedActionsPx).toBe(132);
+
+      // Scrolled to rows that carry fewer actions: the wide ones are out of the DOM, not gone.
+      rerender(<Scoped scope={rows} body={actionsRow(single)} />);
+      expect(latest().unfoldedActionsPx).toBe(132);
+
+      rerender(<Scoped scope={rows} body={actionsRow(pair)} />);
+      expect(latest().unfoldedActionsPx).toBe(132);
+    });
+
+    it("still grows when a wider row scrolls in", () => {
+      const { rerender } = render(<Scoped scope={rows} body={actionsRow(pair)} />);
+      rerender(<Scoped scope={rows} body={actionsRow(triple)} />);
+
+      expect(latest().unfoldedActionsPx).toBe(132);
+    });
+
+    it("measures afresh for other rows, since a different page is a different table", () => {
+      const { rerender } = render(<Scoped scope={rows} body={actionsRow(triple)} />);
+
+      rerender(<Scoped scope={{}} body={actionsRow(single)} />);
+
+      expect(latest().unfoldedActionsPx).toBe(52);
+    });
+
+    it("keeps the old number for rows it cannot measure yet, and does not take it for the new rows' widest", () => {
+      const { rerender } = render(<Scoped scope={rows} body={actionsRow(triple)} />);
+
+      // The new rows are being fetched: nothing to measure, and the number stands.
+      const next = {};
+      rerender(<Scoped scope={next} body={null} />);
+      expect(latest().unfoldedActionsPx).toBe(132);
+
+      // Once they arrive, the old rows' width is not a floor for them.
+      rerender(<Scoped scope={next} body={actionsRow(single)} />);
+      expect(latest().unfoldedActionsPx).toBe(52);
+    });
+
+    it("keeps the widest of each fold state apart", () => {
+      const { rerender } = render(<Scoped scope={rows} body={actionsRow(triple)} />);
+      rerender(<Scoped scope={rows} collapsed body={actionsRow([[8, 50]])} />);
+      rerender(<Scoped scope={rows} collapsed body={actionsRow(single)} />);
+      expect(latest()).toMatchObject({ unfoldedActionsPx: 132, foldedActionsPx: 66 });
+
+      rerender(<Scoped scope={rows} body={actionsRow(pair)} />);
+      expect(latest()).toMatchObject({ unfoldedActionsPx: 132, foldedActionsPx: 66 });
+    });
+
+    it("replaces each measurement without one, as a page of an ordinary table does", () => {
+      const { rerender } = render(<Scoped body={actionsRow(triple)} />);
+      rerender(<Scoped body={actionsRow(single)} />);
+
+      expect(latest().unfoldedActionsPx).toBe(52);
+    });
   });
 
   it("keeps the old numbers when there is no row to measure, as while a page is being fetched", () => {
@@ -984,6 +1068,81 @@ describe("DataTable reserved width", () => {
 
       expect(styleOf(endHead(container))).toContain(`${ACTIONS_WIDTH_VAR}, 57px)`);
       expect(screen.queryAllByRole("button", { name: /^Actions for / })).toHaveLength(0);
+    });
+
+    it("reads the root font size for the pinned cells although nothing else in the table is responsive", () => {
+      layout.rootFontSize = "20px";
+      const unitPx = DATA_TABLE_SPACING_REM * 20;
+
+      const { container } = windowed();
+
+      // A 16px model would give 35px and 100px: a button that spills over the neighbouring cell.
+      const actions = estimateActionsColumnWidth({ actionCount: 2, unitPx });
+      const start = estimateStartColumnWidth({ selectable: true, withDetails: false, unitPx });
+      expect(actions).toBeGreaterThan(100);
+      expect(styleOf(endHead(container))).toContain(`${ACTIONS_WIDTH_VAR}, ${actions}px)`);
+      expect(styleOf(startHead(container))).toContain(`width: ${start}px`);
+    });
+
+    it("measures text-labelled actions although no column is responsive and nothing folds", () => {
+      layout.room = 4000;
+      layout.override = (element, property) => {
+        const group = element.parentElement;
+        if (group?.dataset.slot !== "data-table-row-actions") return undefined;
+        const index = Array.from(group.children).indexOf(element);
+        return property === "w" ? 70 : index * 74;
+      };
+      const labelled: DataTableRowAction<Item>[] = [
+        { tag: "archive", label: "Archive" },
+        { tag: "delete", label: "Delete" },
+      ];
+
+      const { container } = windowed({ rowActions: labelled });
+
+      expect(styleOf(endHead(container))).toContain(`${ACTIONS_WIDTH_VAR}, 162px)`);
+    });
+
+    describe("the actions width a consumer sets", () => {
+      // The custom property is read on the scroll container, which this test's style stub does not
+      // describe, so the stub answers for it.
+      function setActionsWidth(value: string) {
+        const base = computedStyle.getMockImplementation()!;
+        computedStyle.mockImplementation(((element: Element, pseudo?: string | null) => {
+          const resolved = base(element, pseudo);
+          if (!element.classList?.contains("overflow-auto")) return resolved;
+          return new Proxy(resolved, {
+            get(target, property) {
+              if (property === "getPropertyValue") {
+                return (name: string) =>
+                  name === ACTIONS_WIDTH_VAR ? value : target.getPropertyValue(name);
+              }
+              const member = Reflect.get(target, property);
+              return typeof member === "function" ? member.bind(target) : member;
+            },
+          });
+        }) as typeof window.getComputedStyle);
+      }
+
+      it("is held back from the data columns of a windowed table, whose cell it sizes", () => {
+        setActionsWidth("20rem");
+
+        const { container } = windowed({ columns: ranked, paginated: false });
+        resizeTo(container, 480);
+
+        // 22 + 48 + 320 + 2 leaves 88px: two ranked columns do not fit, let alone three.
+        expect(dataHeaders(container)).not.toEqual(ALL);
+        expect(dataHeaders(container)).not.toContain("Extra");
+      });
+
+      it("is not held back in a table that is not windowed, whose cell ignores it", () => {
+        setActionsWidth("20rem");
+
+        const { container } = windowed({ columns: ranked, virtualized: false });
+        // The checkbox, the details button and two icon buttons: 22 + 48 + 100 + 2 = 172 of 480.
+        resizeTo(container, 480);
+
+        expect(dataHeaders(container)).toEqual(ALL);
+      });
     });
 
     it("widens the actions cell to what text-labelled buttons were measured to need", () => {

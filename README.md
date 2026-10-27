@@ -668,9 +668,11 @@ each. Additive props and new components are in the sections above.
     page after every render and before paint: where the buttons actually sit in the actions cell (so a
     text button such as "Approve" is counted at its label's width, once the page's fonts have loaded,
     and a cell that was handed spare room does not read wider), `--spacing`, the root font size and the
-    rendered checkbox. The measurement only ever raises the actions width above the model, and
-    `--ivy-data-table-actions-width`, when set, counts too. In jsdom nothing is laid out and the model
-    alone applies.
+    rendered checkbox. The measurement only ever raises the actions width above the model, and it looks
+    at the first 25 rows: a text-labelled action that first appears in row 40 of a page is not seen, so
+    give such a table `collapseRowActionsBelow` or `--ivy-data-table-actions-width`. A root font size
+    changed while the page is open is picked up at the table's next render, not at once. In jsdom
+    nothing is laid out and the model alone applies.
   - **Undeclared widths are still estimates.** A column counts as its `width` when that is a plain px
     or rem length, else 128px (8rem, following the root font size). A column whose cells truncate (one
     that is not right-aligned, `nowrap` or `wrapText`) is as wide as its text up to
@@ -682,8 +684,10 @@ each. Additive props and new components are in the sections above.
     buttons for the data columns: 100px for two icon actions at Medium, 57px for the menu button. The
     button is named `Actions for <getRowLabel(row)>` (the row id without `getRowLabel`); the menu holds
     the same actions in the same order, an action with `children` becomes a labelled group of items
-    (not a sub-menu, which on a phone is a second tap), and a `tooltip` that says more than the label
-    is shown under it, since a phone has no hover. Pressing an item calls `onRowAction` as the button
+    (not a sub-menu, which on a phone is a second tap; a disabled group disables its items, as it
+    disables the button that opens them unfolded, and its `destructive` variant colours its label), and
+    a `tooltip` that says more than the label is shown under it, since a phone has no hover. Pressing
+    an item calls `onRowAction` as the button
     would, closes the menu and returns focus to the "..." button (unless the action moved it, as
     opening a dialog does).
     - **Per table, then per row.** It applies only when some row on the current page has more than one
@@ -710,10 +714,14 @@ each. Additive props and new components are in the sections above.
     `UseResponsiveFitResult`. `getColumnsHiddenByWidth` and `estimateColumnWidth` take a `remPx`
     (default 16). `DataTableRowActions` has two new props, `collapsed` and `menuLabel` (default "More
     actions").
-  - **Windowed tables** (`table-layout: fixed`) size their pinned columns from the same model, as
-    inline widths: the actions column is `var(--ivy-data-table-actions-width, <needed>px)`, so the
-    property still overrides it. It was a fixed 5rem (80px) before, which two icon buttons did not fit
-    in, so the buttons spilled into the neighbouring column.
+  - **Windowed tables** (`table-layout: fixed`) size their pinned columns from the same model and the
+    same measurement, as inline widths, whether or not a column is ranked or the actions fold: the
+    actions column is `var(--ivy-data-table-actions-width, <needed>px)`, so the property still
+    overrides it, and it counts in the fit only here, since no other layout reads it. It was a fixed
+    5rem (80px) before, which two icon buttons did not fit in, so the buttons spilled into the
+    neighbouring column. Only the rows in view are in the DOM, so the widest actions cell seen is kept
+    for as long as the rows are the same: scrolling a wide row out of view does not narrow the column
+    or bring a hidden column back.
 - **`DataTable` in a `CardContent`** defaults to `variant="embedded"` (no border of its own), padded or
   flush; one in a dialog, alert dialog, sheet or popover opened from a card stays `"bordered"`. Pass `variant="bordered"` to keep the old look. `Card` gained `min-w-0`; use `min-w-fit` on a
   `Card` that should grow with a wide child.
