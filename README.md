@@ -228,17 +228,26 @@ function LoginForm() {
   every string. All styling is Tailwind utilities; the root exposes `--sc-hour`, `--sc-cell-min`,
   `--sc-gutter` and `--sc-max-body`. In the week view, entries sit side by side only where they truly
   overlap: entries that touch (one ends in the minute the next starts), or have any gap between
-  them, share one full-width column at every density. A block is never drawn shorter than 1.35rem (27
-  minutes at Medium, 32 at Small, 23 at Large), so a shorter entry is lifted to that only into free
-  space, then trimmed to where the next block starts. When that leaves too little height the label
-  degrades instead of the width splitting: from the least height it is the full block, from a
-  quarter of an hour (one line of text at every density) it is one tight line with the title only,
-  and below that a bar, the colour wash and left edge with no text, which keeps its `aria-label` and
-  `title`, so the name is still read out and shown as a tooltip. Blocks carry `data-fit="full"`,
-  `"tight"` or `"bar"`. An entry with no known end has no interval to overlap, so it keeps the least
-  height and whatever starts inside it is put beside it. There is no API change: the layout helpers
-  are not part of the package entries, and `PositionedSegment.drawnEndMin` (where a block is drawn to)
-  is optional, a position without it drawing as before.
+  them, share one full-width column at every density. A short entry is lifted to a least height of
+  1.35rem (27 minutes at Medium, 32 at Small, 23 at Large) only into free space, never past the
+  start of the next block that shares its width, so an entry with another right after it is drawn
+  only as tall as it is long (or as the gap leaves it). When that leaves too little height the label
+  degrades instead of the width splitting: from the least height it is the full block; from 19.5
+  minutes (one line of text, with room above it for the ring of an Å, Ä or Ö and below it for
+  descenders, at every density) it is one tight line with the title only; and below that a bar, the
+  colour wash and left edge with no text, which keeps its `aria-label` and `title`, so the name is
+  still read out and shown as a tooltip. Blocks carry `data-fit="full"`, `"tight"` or `"bar"`. In
+  forced-colors mode (Windows High Contrast) a block is told apart by its border, and a tight block
+  keeps only its left and right edge, because a top and bottom border would take the room its label
+  needs. An entry with no known end has no interval to overlap, so it keeps the least height and
+  whatever starts inside it is put beside it. There is no API change: the layout helpers are not part
+  of the package entries, and `PositionedSegment.drawnEndMin` (where a block is drawn to) is
+  optional, a position without it drawing as before. Two things follow from drawing every entry at
+  its true length. A 10-minute bar is 6.7 to 9.3px tall, and an entry of a minute or two that another
+  follows is a sliver of a pixel or two (0.8px per minute at Medium), too small to hit with a
+  pointer; it is still reached by Tab and still has its name. And the least height now comes from the
+  layout, no longer from a CSS `min-height`, so if you override `--sc-hour` keep it at the density's
+  hour height (2.5, 3 and 3.5rem); a smaller one draws the lifted blocks below 1.35rem.
 - **DataTable in a Card**: `variant` is `"bordered"` or `"embedded"`. Inside a `CardContent` it
   defaults to `"embedded"`, so a table in a card never draws a second border inside the card's; a
   table inside a `DialogContent`, `AlertDialogContent`, `SheetContent` or `PopoverContent` opened from
