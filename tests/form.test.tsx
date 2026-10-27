@@ -255,3 +255,19 @@ describe("Form controls that name themselves", () => {
     expect(screen.getByRole("radiogroup")).not.toHaveAttribute("aria-labelledby");
   });
 });
+
+describe("Form item spacing", () => {
+  it("lays its label, control and message out as a grid with a gap, as a Field does", () => {
+    render(<Harness />);
+    const item = screen.getByText("Email", { selector: "label" }).parentElement as HTMLElement;
+    // `gap-*` on a block `div` is a dead class: it left the label flush on the control.
+    expect(item).toHaveClass("grid", "gap-1.5");
+  });
+
+  it("never carries a gap class without a grid or flex to apply it", () => {
+    const { container } = render(<Harness />);
+    for (const element of container.querySelectorAll<HTMLElement>("[class*='gap-']")) {
+      expect(element.className, element.outerHTML).toMatch(/\b(grid|flex|inline-flex)\b/);
+    }
+  });
+});
