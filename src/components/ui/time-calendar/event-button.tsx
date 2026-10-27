@@ -9,6 +9,7 @@ import {
   eventRowVariant,
   runningDotVariant,
   weekBlockBackingVariant,
+  weekBlockTitleVariant,
   weekBlockVariant,
 } from "./time-calendar-variant";
 import type { TimeCalendarEvent } from "./types";
@@ -144,9 +145,15 @@ export function EventRow(props: EventButtonProps) {
 export const HOUR_REM = { Small: 2.5, Medium: 3, Large: 3.5 } as const;
 
 /**
- * The least height a block is drawn at, in rem: five of this theme's 0.27rem spacing units, which
- * keeps a short entry big enough to read and to click. It is set inline (`blockStyle`) and not by a
- * class so that the layout, which has to know how tall a block really is, reads the same number.
+ * The height a block is lifted to when it is shorter than that and has free space below it, in rem:
+ * five of this theme's 0.27rem spacing units, which keeps a short entry big enough to read and to
+ * click. It is a wish and not a floor. The layout (`layoutDayEvents`) is told it as minutes
+ * (`minBlockMinutes`) and works out where each block really ends: a short block is lifted only into
+ * free space, so one with a neighbour right below it is drawn shorter (to the neighbour, down to its
+ * true length) and shows less of its label (`blockFit`). A position that carries `drawnEndMin` needs
+ * no CSS minimum, so it has none, and the height holds only while `--sc-hour` is what `HOUR_REM` says
+ * for the density. Without `drawnEndMin`, `blockStyle` sets this inline as a `min-height`, as it
+ * always did.
  */
 export const MIN_BLOCK_REM = 1.35;
 
@@ -161,24 +168,105 @@ const LINE_REM = { Small: 0.9375, Medium: 1, Large: 1.25 } as const;
 /** Room a block spends on its own padding and left border, in rem. */
 const BLOCK_PADDING_REM = 0.3;
 
+/**
+ * The text size of a block at each density, in rem (`text-[10px]`, `text-xs`, `text-sm`). At
+ * `leading-none` a line is exactly this tall.
+ */
+const TEXT_REM = { Small: 0.625, Medium: 0.75, Large: 0.875 } as const;
+
+/**
+ * Room a tight block's title keeps inside its own clip box, in em of its text: above the line for the
+ * ring of an Å and the dots of an Ä or Ö, below it for descenders. The title is `truncate`, which
+ * clips at its padding box, and at `leading-none` that box is one em tall, so without this room the
+ * top of a capital with a diacritic is cut off. The ink reaches about 0.125em above the line and
+ * 0.1em below it in Geist, and up to a pixel more or less where the line falls on the device's pixel
+ * grid, so this is measured, not computed: swept over device pixel ratios 1, 2 and 4, eight fractional
+ * positions and six titles at the threshold height, 0.15em above and 0.05em below still lost ink,
+ * these lost none. The values are the literal classes `pt-[0.2em]` and `pb-[0.1em]` of
+ * `weekBlockTitleVariant` (Tailwind needs literal strings; a test keeps the two in step).
+ */
+export const TIGHT_HEADROOM_EM = { top: 0.2, bottom: 0.1 } as const;
+
+/**
+ * The least height of a tight block, in rem: its title's box, which is the line (`TEXT_REM`) plus the
+ * headroom above and below it. A tenth less than that and the ink of a title is cut at the edge of
+ * the block. A quarter of an hour (the line alone) was not enough. It is 13, 15.6 and 18.2px, which
+ * is 19.5 minutes at every density, because the line is a quarter of an hour (the text is a quarter
+ * of the hour height at each) and the headroom is 30 percent of that.
+ */
+function tightBlockRem(density: keyof typeof HOUR_REM): number {
+  const { top, bottom } = TIGHT_HEADROOM_EM;
+  return TEXT_REM[density] * (1 + top + bottom);
+}
+
+/** That least height as minutes: how long a block is drawn at least to keep a one-line label. */
+export function tightBlockMinutes(density: keyof typeof HOUR_REM): number {
+  return (tightBlockRem(density) / HOUR_REM[density]) * 60;
+}
+
 /** How many whole lines of text fit in a block that spans `minutes`. */
 export function blockLines(minutes: number, density: keyof typeof HOUR_REM): number {
   const room = (Math.max(minutes, 0) / 60) * HOUR_REM[density] - BLOCK_PADDING_REM;
   return Math.max(1, Math.floor(room / LINE_REM[density]));
 }
 
+/**
+ * How much of its label a block shows, which depends on how tall it is drawn:
+ * - `full`: today's block. Padding, the title, and the time and description when there is room.
+ * - `tight`: one line, no vertical padding, `leading-none`, the title with room above and below it.
+ * - `bar`: no text at all, only the colour wash and the left bar. The button keeps its `aria-label`
+ *   and `title`, so the name is still read out and still shows as a tooltip.
+ */
+export type BlockFit = "full" | "tight" | "bar";
+
+/** Rem of slack when a drawn height is compared with a threshold, so a lifted block is not "short" by a rounding error. */
+const FIT_EPSILON_REM = 1e-6;
+
+/**
+ * The fit of a block drawn `minutes` tall. The thresholds are in rem of the real height, per density:
+ * - `full` from `MIN_BLOCK_REM` (1.35rem), the height every block has always been drawn at or above,
+ *   which is 32.4, 27 and 23.1 minutes at Small, Medium and Large. So a block that gets its whole
+ *   lift, or is longer, is exactly as it was.
+ * - `tight` from `tightBlockMinutes`: one line of text plus the room its title keeps above and below
+ *   it (`TIGHT_HEADROOM_EM`), which is 19.5 minutes (0.8125, 0.975 and 1.1375rem) at every density.
+ * - `bar` below that, where the title would be cut at the edge of the block: the ring of an Å needs
+ *   room above the line and a descender room below it.
+ */
+export function blockFit(minutes: number, density: keyof typeof HOUR_REM): BlockFit {
+  const rem = (Math.max(minutes, 0) / 60) * HOUR_REM[density];
+  if (rem >= MIN_BLOCK_REM - FIT_EPSILON_REM) return "full";
+  return rem >= tightBlockRem(density) - FIT_EPSILON_REM ? "tight" : "bar";
+}
+
 const round = (value: number) => Number(value.toFixed(4));
 
 /**
+ * How many minutes a block is drawn down from its start: to `drawnEndMin` when the position has one
+ * (kept at or past the true end and one minute from the start, whatever it says), else the true
+ * length with a minute at the very least, which is what the CSS minimum then lifts.
+ */
+function drawnLengthMin(segment: PositionedSegment): number {
+  const { drawnEndMin } = segment;
+  const trueEnd = Math.max(segment.endMin, segment.startMin + 1);
+  const end =
+    drawnEndMin !== undefined && Number.isFinite(drawnEndMin)
+      ? Math.max(drawnEndMin, trueEnd)
+      : trueEnd;
+  return end - segment.startMin;
+}
+
+/**
  * The inline position of a block: vertical in hours of the grid, horizontal in the share of its
- * column, and never shorter than `MIN_BLOCK_REM`.
+ * column. The height is that of `drawnEndMin`, which already counts the least height of a block and
+ * leaves the room of its neighbours alone, so no `min-height` goes with it. A position without
+ * `drawnEndMin` keeps the old behaviour: its true length, never shorter than `MIN_BLOCK_REM`.
  */
 export function blockStyle(segment: PositionedSegment, firstHour: number): React.CSSProperties {
-  const lengthMin = Math.max(segment.endMin, segment.startMin + 1) - segment.startMin;
+  const drawn = segment.drawnEndMin !== undefined && Number.isFinite(segment.drawnEndMin);
   return {
     top: `calc(var(--sc-hour) * ${round((segment.startMin - firstHour * 60) / 60)})`,
-    height: `calc(var(--sc-hour) * ${round(lengthMin / 60)})`,
-    minHeight: `${MIN_BLOCK_REM}rem`,
+    height: `calc(var(--sc-hour) * ${round(drawnLengthMin(segment) / 60)})`,
+    ...(drawn ? {} : { minHeight: `${MIN_BLOCK_REM}rem` }),
     left: `calc(${round((segment.col / segment.cols) * 100)}% + 1px)`,
     width: `calc(${round((segment.span / segment.cols) * 100)}% - 2px)`,
   };
@@ -200,10 +288,11 @@ interface EventBlockProps {
 export function EventBlock({ event, segment, firstHour, ctx, tabStop = false }: EventBlockProps) {
   const label = eventAriaLabel(event, ctx, segment);
   const style = blockStyle(segment, firstHour);
-  const lines = blockLines(
-    Math.max(segment.endMin, segment.startMin + 1) - segment.startMin,
-    ctx.density as keyof typeof HOUR_REM,
-  );
+  const density = ctx.density as keyof typeof HOUR_REM;
+  const length = drawnLengthMin(segment);
+  // A position without `drawnEndMin` is lifted to its minimum by the CSS, so it is always a full block.
+  const fit: BlockFit = segment.drawnEndMin === undefined ? "full" : blockFit(length, density);
+  const lines = blockLines(length, density);
   const range = eventTimeRange(event, ctx.labels);
   const corners = cn(
     segment.continues && "rounded-b-none!",
@@ -215,6 +304,7 @@ export function EventBlock({ event, segment, firstHour, ctx, tabStop = false }: 
       <button
         type="button"
         data-event-id={event.id}
+        data-fit={fit}
         tabIndex={tabStop ? 0 : -1}
         aria-label={label}
         title={label}
@@ -223,6 +313,7 @@ export function EventBlock({ event, segment, firstHour, ctx, tabStop = false }: 
             density: ctx.density,
             color: event.color,
             running: event.running === true,
+            fit,
           }),
           corners,
         )}
@@ -232,11 +323,13 @@ export function EventBlock({ event, segment, firstHour, ctx, tabStop = false }: 
           ctx.onEventClick?.(event);
         }}
       >
-        <span className="block w-full truncate font-medium">{event.title}</span>
-        {lines >= 2 && range ? (
+        {fit === "bar" ? null : (
+          <span className={weekBlockTitleVariant({ fit })}>{event.title}</span>
+        )}
+        {fit === "full" && lines >= 2 && range ? (
           <span className="block w-full truncate tabular-nums">{range}</span>
         ) : null}
-        {lines >= 3 && event.description ? (
+        {fit === "full" && lines >= 3 && event.description ? (
           <span className={cn("block w-full", lines >= 4 ? "line-clamp-2" : "truncate")}>
             {event.description}
           </span>

@@ -769,3 +769,89 @@ describe("a week that was mounted without any size", () => {
     expect(grid().scrollTop).toBeCloseTo((9 - 0.2) * 48, 5);
   });
 });
+
+describe("a block too short for any text", () => {
+  // Three ten-minute entries back to back: the first two are drawn at their true length, which is
+  // too short for a line of text, so they are bars. A bar is still a button with a name.
+  const CHAIN: TimeCalendarEvent[] = [
+    ["10:00", "10:10"],
+    ["10:10", "10:20"],
+    ["10:20", "10:30"],
+  ].map(([start, end], index) => ({
+    id: `chain-${index}`,
+    date: "2026-10-23",
+    start,
+    end,
+    title: `Entry ${index + 1}`,
+  }));
+
+  function renderChain() {
+    return render(
+      <TimeCalendar
+        events={CHAIN}
+        now={NOW}
+        defaultDate="2026-10-23"
+        defaultView="week"
+        compact={false}
+      />,
+    );
+  }
+
+  it("is reached by Tab from its day, in order, like any other block", async () => {
+    const user = userEvent.setup();
+    const { container } = renderChain();
+    const bars = [0, 1].map((index) =>
+      container.querySelector<HTMLElement>(`button[data-event-id="chain-${index}"]`),
+    );
+    expect(bars.map((bar) => bar?.dataset.fit)).toEqual(["bar", "bar"]);
+    await tabToGrid(user);
+    expect(dateOf(active())).toBe("2026-10-23");
+    await user.tab();
+    expect(active()).toBe(bars[0]);
+    await user.tab();
+    expect(active()).toBe(bars[1]);
+    await user.tab();
+    expect(active()).toBe(container.querySelector('button[data-event-id="chain-2"]'));
+  });
+
+  it("is named by its label, though it has no text, and activates like a block", async () => {
+    const user = userEvent.setup();
+    const onEventClick = vi.fn();
+    render(
+      <TimeCalendar
+        events={CHAIN}
+        now={NOW}
+        defaultDate="2026-10-23"
+        defaultView="week"
+        compact={false}
+        onEventClick={onEventClick}
+      />,
+    );
+    const bar = screen.getByRole("button", { name: "Entry 1, 10:00 to 10:10, 10m" });
+    expect(bar).toHaveTextContent("");
+    expect(bar).toHaveAttribute("title", "Entry 1, 10:00 to 10:10, 10m");
+    bar.focus();
+    await user.keyboard("{Enter}");
+    expect(onEventClick).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ id: "chain-0" }),
+    );
+  });
+
+  it("keeps the inset focus ring and the forced-colors border of every other block", () => {
+    const { container } = renderChain();
+    const bar = container.querySelector<HTMLElement>('button[data-event-id="chain-0"]');
+    const classes = bar?.className.split(/\s+/) ?? [];
+    expect(classes).toEqual(
+      expect.arrayContaining([
+        "focus-visible:outline-hidden",
+        "focus-visible:ring-2",
+        "focus-visible:ring-inset",
+        "forced-colors:border-y",
+        "forced-colors:border-r",
+        "border-l-[3px]",
+      ]),
+    );
+    // A bare `outline-hidden` would be a permanent outline in forced-colors mode.
+    expect(classes).not.toContain("outline-hidden");
+  });
+});
