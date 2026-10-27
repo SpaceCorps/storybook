@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ChevronRight, ChevronDown } from "lucide-react";
+import { fieldErrorTextClass } from "@/components/ui/field/field-variant";
 
 interface XmlRendererProps {
   data: string;
@@ -231,7 +232,7 @@ export const XmlRenderer = ({ data, initialExpanded }: XmlRendererProps) => {
   };
 
   if (!parsedXml) {
-    return <div className="text-destructive">Invalid XML string</div>;
+    return <div className={fieldErrorTextClass}>Invalid XML string</div>;
   }
 
   return (

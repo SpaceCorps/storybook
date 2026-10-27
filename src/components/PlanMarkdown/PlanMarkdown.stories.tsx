@@ -1,3 +1,4 @@
+import { expect } from "@storybook/test";
 import { useState } from "react";
 import { PlanMarkdown } from "./PlanMarkdown";
 
@@ -145,6 +146,24 @@ $$\\int_0^\\infty e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}$$
       />
     </div>
   ),
+};
+
+/**
+ * The alerts on the dark page. CI visits stories in light unless the story names its theme, and the
+ * Warning and Caution titles were 3.8:1 and 1.9:1 in dark. The theme is a story-level `globals` entry
+ * (Storybook ignores `parameters.globals`), and the play function says so out loud so a story that
+ * silently stayed light cannot pass for it.
+ */
+export const AlertsAndMathDark = {
+  globals: { theme: "dark" },
+  parameters: {
+    // New story: no baseline image yet.
+    visual: { disable: true },
+  },
+  play: async () => {
+    await expect(document.documentElement.classList.contains("dark")).toBe(true);
+  },
+  render: AlertsAndMath.render,
 };
 
 export const InteractiveQuestions = {

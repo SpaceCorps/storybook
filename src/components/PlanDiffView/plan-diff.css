@@ -71,6 +71,10 @@
   border-bottom: 1px solid var(--border);
 }
 
+/* The line numbers are text on a tint of their own colour, and the solid --success and --destructive
+   are fills: #22c55e is 1.8:1 and #ef4444 2.7:1 on their light tints, the dark #15803d and #7f1d1d
+   3.2:1 and 1.8:1. Light takes the -800 step; dark the named green and red, the same hues one step up. */
+
 /* Insertions */
 .diff-code-insert {
   background-color: color-mix(in srgb, var(--success), transparent 85%) !important;
@@ -78,7 +82,11 @@
 
 .diff-gutter-insert {
   background-color: color-mix(in srgb, var(--success), transparent 75%) !important;
-  color: var(--success) !important;
+  color: var(--success-800) !important;
+}
+
+.dark .diff-gutter-insert {
+  color: var(--green) !important;
 }
 
 /* Deletions */
@@ -88,7 +96,11 @@
 
 .diff-gutter-delete {
   background-color: color-mix(in srgb, var(--destructive), transparent 75%) !important;
-  color: var(--destructive) !important;
+  color: var(--destructive-800) !important;
+}
+
+.dark .diff-gutter-delete {
+  color: var(--red) !important;
 }
 
 /* Highlights within lines */

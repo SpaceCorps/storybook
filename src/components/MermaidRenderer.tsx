@@ -1,6 +1,7 @@
 import { memo } from "react";
 import CopyToClipboardButton from "./CopyToClipboardButton";
 import { renderMermaid } from "@/lib/diagram";
+import { fieldErrorTextClass } from "@/components/ui/field/field-variant";
 import { useDiagramRender } from "@/hooks/use-diagram-render";
 
 interface MermaidRendererProps {
@@ -13,7 +14,7 @@ const MermaidRenderer = memo(({ content }: MermaidRendererProps) => {
   if (error) {
     return (
       <div className="rounded-md border border-destructive bg-destructive/10 p-3">
-        <div className="flex items-center gap-2 text-destructive text-sm font-medium">
+        <div className={`flex items-center gap-2 text-sm font-medium ${fieldErrorTextClass}`}>
           <svg
             className="size-4 flex-shrink-0"
             fill="none"

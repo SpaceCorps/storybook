@@ -1,3 +1,5 @@
+import type { StoryObj } from "@storybook/react";
+import { expect } from "@storybook/test";
 import { useState } from "react";
 import { SortableVerificationList, type VerificationItem } from "./SortableVerificationList";
 
@@ -18,7 +20,7 @@ export const ReorderableVerificationList = () => {
 
   return (
     <div style={{ maxWidth: 450, padding: 24 }}>
-      <p style={{ marginBottom: 12, fontSize: "0.875rem", color: "#666" }}>
+      <p style={{ marginBottom: 12, fontSize: "0.875rem", color: "var(--muted-foreground)" }}>
         Drag the grip handle to reorder verification steps. Toggle checkboxes to enable/disable or
         mark required.
       </p>
@@ -51,10 +53,12 @@ export const WithStatusBadges = () => {
 
   const [items, setItems] = useState(itemsWithStatuses);
 
+  // The named palette colors, not hex: each is picked per theme, so the status reads on the dark page
+  // as well as the light one (#15803d is 4.0:1 on the dark page, #dc2626 4.1:1, #a16207 4.0:1).
   const statusColor: Record<string, string> = {
-    Pass: "#15803d",
-    Fail: "#dc2626",
-    Pending: "#a16207",
+    Pass: "var(--green)",
+    Fail: "var(--red)",
+    Pending: "var(--yellow)",
   };
 
   return (
@@ -79,7 +83,7 @@ export const WithStatusBadges = () => {
                 {it.name}:{" "}
                 <span
                   style={{
-                    color: statusColor[it.status] || "#666",
+                    color: statusColor[it.status] || "var(--muted-foreground)",
                     fontWeight: 600,
                   }}
                 >
@@ -92,6 +96,24 @@ export const WithStatusBadges = () => {
       </div>
     </div>
   );
+};
+
+/**
+ * The same list on the dark page. CI visits stories in light unless the story names its theme, and the
+ * status colours were hex written for the light page: 4.0:1 on the dark one. The theme is a
+ * story-level `globals` entry, and the play function says so out loud so a story that silently stayed
+ * light cannot pass for it.
+ */
+export const WithStatusBadgesDark: StoryObj = {
+  globals: { theme: "dark" },
+  parameters: {
+    // New story: no baseline image yet.
+    visual: { disable: true },
+  },
+  play: async () => {
+    await expect(document.documentElement.classList.contains("dark")).toBe(true);
+  },
+  render: () => <WithStatusBadges />,
 };
 
 export const OptionalAndDisabledVerifications = () => {

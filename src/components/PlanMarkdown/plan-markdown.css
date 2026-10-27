@@ -650,7 +650,9 @@
 
 .pmv-popover-btn--danger {
   background: transparent;
-  color: var(--destructive);
+  /* --destructive is a fill: #ef4444 is 3.8:1 on white and the dark #7f1d1d 1.9:1. --red is the
+     text step of the same hue, readable in both themes. */
+  color: var(--red);
 }
 
 .pmv-popover-btn--danger:hover {
@@ -659,7 +661,8 @@
 
 .pmv-popover-btn--success {
   background: hsl(142 71% 45% / 0.15);
-  color: hsl(142 76% 36%);
+  /* hsl(142 76% 36%), #16a249, is 2.9:1 on its own tint; the dark value below clears it. */
+  color: var(--success-800);
   border: 1px solid hsl(142 71% 45% / 0.3);
 }
 
@@ -692,7 +695,7 @@
   font-weight: 600;
   border-radius: 0.25rem;
   background: hsl(142 71% 45% / 0.15);
-  color: hsl(142 76% 36%);
+  color: var(--success-800);
   border: 1px solid hsl(142 71% 45% / 0.25);
 }
 
@@ -784,13 +787,21 @@
   border: 1px solid var(--destructive);
   background: hsl(0 84% 60% / 0.1);
   padding: 0.75rem;
-  color: var(--destructive);
+  /* The border keeps the fill; the message is text, so it takes the readable step (see the danger
+     button above). */
+  color: var(--red);
   font-size: 0.875rem;
   font-weight: 500;
 }
 
 /* ─── GitHub-style alerts/callouts ────────────────────────────────────── */
 .pmv-alert {
+  /* The grey every kind tints its rule from. It is built from the text and page colours rather than
+     taken from --border: that token is a translucent mix of --foreground, and a mix into it stays
+     translucent, so the rule would pick up whatever sits behind the alert instead of reading as the
+     same tinted line on every surface. The 12% lands on the old opaque --border in both themes. */
+  --pmv-alert-rule: color-mix(in srgb, var(--foreground) 12%, var(--background));
+
   border-radius: 0.375rem;
   border: 1px solid;
   padding: 0.75rem 1rem;
@@ -828,7 +839,7 @@
 }
 
 .pmv-alert--note {
-  border-color: color-mix(in srgb, var(--primary) 30%, var(--border));
+  border-color: color-mix(in srgb, var(--primary) 30%, var(--pmv-alert-rule));
   background: color-mix(in srgb, var(--primary) 8%, transparent);
 }
 .pmv-alert--note .pmv-alert-header {
@@ -836,7 +847,7 @@
 }
 
 .pmv-alert--tip {
-  border-color: color-mix(in srgb, var(--green, #22c55e) 30%, var(--border));
+  border-color: color-mix(in srgb, var(--green, #22c55e) 30%, var(--pmv-alert-rule));
   background: color-mix(in srgb, var(--green, #22c55e) 8%, transparent);
 }
 .pmv-alert--tip .pmv-alert-header {
@@ -847,7 +858,7 @@
 }
 
 .pmv-alert--important {
-  border-color: color-mix(in srgb, var(--amber, #f59e0b) 30%, var(--border));
+  border-color: color-mix(in srgb, var(--amber, #f59e0b) 30%, var(--pmv-alert-rule));
   background: color-mix(in srgb, var(--amber, #f59e0b) 8%, transparent);
 }
 .pmv-alert--important .pmv-alert-header {
@@ -858,25 +869,28 @@
 }
 
 .pmv-alert--warning {
-  border-color: color-mix(in srgb, var(--warning, #f59e0b) 30%, var(--border));
+  border-color: color-mix(in srgb, var(--warning, #f59e0b) 30%, var(--pmv-alert-rule));
   background: color-mix(in srgb, var(--warning, #f59e0b) 8%, transparent);
 }
 .pmv-alert--warning .pmv-alert-header {
   color: #a16207;
 }
+/* --warning is a fill (#b45309 in dark, 3.8:1 on the tint); --yellow is the same hue in both themes and
+   is already the light value above. */
 :where(.dark, .dark *) .pmv-alert--warning .pmv-alert-header {
-  color: var(--warning, #fbbf24);
+  color: var(--yellow, #facc15);
 }
 
 .pmv-alert--caution {
-  border-color: color-mix(in srgb, var(--destructive, #ef4444) 30%, var(--border));
+  border-color: color-mix(in srgb, var(--destructive, #ef4444) 30%, var(--pmv-alert-rule));
   background: color-mix(in srgb, var(--destructive, #ef4444) 8%, transparent);
 }
 .pmv-alert--caution .pmv-alert-header {
   color: #b91c1c;
 }
+/* --destructive is a fill too: #7f1d1d in dark is 1.9:1. --red is #b91c1c in light, the value above. */
 :where(.dark, .dark *) .pmv-alert--caution .pmv-alert-header {
-  color: var(--destructive, #f87171);
+  color: var(--red, #f87171);
 }
 
 /* ─── Questions callout ─────────────────────────────────────────────────
@@ -1033,11 +1047,16 @@
   padding: 0.05rem 0.4rem;
   border-radius: 999px;
   background: hsl(199 89% 48% / 0.18);
-  color: hsl(199 89% 38%);
+  /* Sky text on its own tint: 38% lightness is 3.4:1, 28% is 5.5:1; dark takes the light step. */
+  color: hsl(199 89% 28%);
   font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.02em;
+}
+
+:root.dark .pmv-question-option-recommended {
+  color: hsl(199 89% 66%);
 }
 
 /* Descriptions are full block markdown, so they need real block spacing — and the option's own
@@ -1119,7 +1138,11 @@
 
 .pmv-question-clear:hover {
   background: hsl(199 89% 48% / 0.1);
-  color: hsl(199 89% 48%);
+  color: hsl(199 89% 28%);
+}
+
+:root.dark .pmv-question-clear:hover {
+  color: hsl(199 89% 66%);
 }
 
 /* Image viewer */
@@ -1169,7 +1192,8 @@
   align-items: center;
   justify-content: center;
   padding: 2rem;
-  background: hsl(0 0% 96%);
+  /* Was a fixed light grey, which left the dark theme's light text unreadable on it. */
+  background: var(--muted);
   border: 1px dashed var(--border);
   border-radius: 0.375rem;
   margin: 1rem auto;
@@ -1177,7 +1201,7 @@
   max-width: 100%;
 }
 .pmv-img-error svg {
-  color: hsl(0 0% 60%);
+  color: var(--muted-foreground);
   margin-bottom: 0.75rem;
 }
 .pmv-img-error-text {
@@ -1393,12 +1417,14 @@
 
 .pmv-search-highlight--active {
   background: hsl(25 95% 53% / 0.95);
-  color: white;
+  /* The orange is the same in both themes, like a highlighter, so the ink is too: white on it is
+     2.7:1, black is 7.6:1. */
+  color: var(--black);
   border-radius: 0.125rem;
   padding: 0 0.1rem;
 }
 
 :root.dark .pmv-search-highlight--active {
   background: hsl(25 95% 53% / 0.95);
-  color: white;
+  color: var(--black);
 }
