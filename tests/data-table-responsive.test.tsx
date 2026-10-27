@@ -1044,4 +1044,28 @@ describe("DataTable row detail parts", () => {
     expect(row.textContent).toContain("Details for Nine");
     expect(detailPairs(row)[1][1]).toBe("—No value");
   });
+
+  it("pins the details panel with a logical inset, so a right-to-left table keeps it in view", () => {
+    render(
+      <table>
+        <tbody>
+          <DataTableRowDetail
+            rowId="r9"
+            rowLabel="Nine"
+            cellId="cell-9"
+            colSpan={4}
+            items={[{ name: "a", label: "Alpha", content: "one" }]}
+          />
+        </tbody>
+      </table>,
+    );
+
+    const panel = document.querySelector<HTMLElement>("[data-slot='data-table-detail-panel']")!;
+    expect(panel.className).toContain("sticky");
+    expect(panel.className).toContain("start-0");
+    // A physical inset would pin it to the left edge of a table whose start is the right.
+    expect(panel.className.split(/\s+/)).not.toEqual(
+      expect.arrayContaining([expect.stringMatching(/^(left|right)-0$/)]),
+    );
+  });
 });

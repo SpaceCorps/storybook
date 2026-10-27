@@ -79,9 +79,11 @@ function DataTableDetailList({
 /**
  * What fills a details cell. The cell spans every column, so it is as wide as the table, and a table
  * that still scrolls sideways (a very narrow host, or more left than the estimate allowed for) would
- * carry the labels out of sight with the scrolled content. The panel is therefore pinned to the left
- * edge of what the scroller shows and is no wider than it (`--ivy-data-table-viewport`, published by
- * the table). The cell's own padding is handed to the panel, which is what stays in view.
+ * carry the labels out of sight with the scrolled content. The panel is therefore pinned to the start
+ * edge of what the scroller shows (the left in a left-to-right table, the right in a right-to-left
+ * one: a logical inset, not `left-0`, which would let it scroll away from the right) and is no wider
+ * than it (`--ivy-data-table-viewport`, published by the table). The cell's own padding is handed to
+ * the panel, which is what stays in view.
  */
 function DetailPanel({ inset, children }: { inset?: boolean; children: React.ReactNode }) {
   const density = useTableScale();
@@ -89,7 +91,7 @@ function DetailPanel({ inset, children }: { inset?: boolean; children: React.Rea
     <div
       data-slot="data-table-detail-panel"
       className={cn(
-        "sticky left-0 box-border w-[var(--ivy-data-table-viewport,100%)] max-w-full",
+        "sticky start-0 box-border w-[var(--ivy-data-table-viewport,100%)] max-w-full",
         tableCellSizeVariant({ density }),
         // Flush in a card: the table lines its first and last column up with the card's padding.
         inset && "px-6",
