@@ -18,6 +18,14 @@ import mainConfig from "../.storybook/main.ts";
 import previewConfig from "../.storybook/preview.tsx";
 import testRunnerConfig from "../.storybook/test-runner.ts";
 
+/**
+ * A page for a story that runs axe: postVisit first lets the page's animations finish, which is one
+ * page.evaluate. A story with axe turned off never reaches it, so that test keeps a bare `{}`.
+ */
+function pageThatSettles() {
+  return { evaluate: vi.fn().mockResolvedValue({ timedOut: false, stuck: [] }) } as any;
+}
+
 describe("Storybook Configuration", () => {
   it("registers essential, a11y, and interactions addons in main.ts", () => {
     expect(mainConfig).toBeDefined();
@@ -53,7 +61,7 @@ describe("Storybook Configuration", () => {
     expect(testRunnerConfig.preVisit).toHaveLength(2);
     expect(testRunnerConfig.postVisit).toHaveLength(2);
 
-    const mockPage = {} as any;
+    const mockPage = pageThatSettles();
     const mockContext = {
       id: "foundation-themeprovider--default",
       title: "Foundation/ThemeProvider",
@@ -110,7 +118,7 @@ describe("Storybook Configuration", () => {
   it("throws axe audit violations by default", async () => {
     vi.clearAllMocks();
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const mockPage = {} as any;
+    const mockPage = pageThatSettles();
     const mockContext = {
       id: "test--violation",
       title: "Test",
@@ -136,7 +144,7 @@ describe("Storybook Configuration", () => {
   it("catches axe audit violations and logs a warning via console.warn without throwing when failOnViolation is false", async () => {
     vi.clearAllMocks();
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const mockPage = {} as any;
+    const mockPage = pageThatSettles();
     const mockContext = {
       id: "test--opted-out-violation",
       title: "Test",

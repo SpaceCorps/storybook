@@ -267,7 +267,9 @@ function LoginForm() {
   `SidebarInsetContent`) so the arrow and Page keys can scroll it. A `role`, `aria-label` or
   `aria-labelledby` you pass wins. `ScrollArea` does the same for its viewport: it is a tab stop and a
   `region` (named by `aria-label`, `aria-labelledby` or "Scrollable content") only while the content
-  overflows.
+  overflows. `VirtualList` does the same for its scroll container (default name "Scrollable list"), and
+  stays a tab stop when its rows hold buttons. Name each list once a page has more than one: two unnamed
+  lists are two regions with the same name, which axe reports as `landmark-unique`.
 - **Ratings and popover links**: `StarRating` and `EmojiRating` with `allowHalf` are one
   `role="slider"` (Left/Right and Up/Down step 0.5, Page Up / Page Down step 1, Home clears, End gives
   the highest) with `aria-label`; without it they are the usual row of buttons. `PopoverLink` opens
@@ -546,6 +548,11 @@ each. Additive props and new components are in the sections above.
   a `role="region"` (named by `aria-label`, `aria-labelledby` or "Scrollable content"). `aria-label`
   and `aria-labelledby` now land on the viewport, not the root. When the content fits there is no
   role, label or tab stop.
+- **`VirtualList`**: while its items overflow, the scroll container is a tab stop and a
+  `role="region"` named by `aria-label`, the new `aria-labelledby` prop, or "Scrollable list"; a list
+  that is empty or fits has no role, label or tab stop. The container also clips to its parent's radius
+  (`rounded-[inherit]`) and is its own stacking context (`isolate`), with the rows beneath its focus
+  outline. `useVirtualList` is unchanged; a container you bring should follow the same rules.
 - **`Toolbar`**: arrow keys navigate only from the toolbar's own items (not from inputs in a slot or
   from menu content) and ignore Alt, Ctrl and Meta chords. `ToolbarButton` no longer renders
   `data-disabled="true"`; select `:disabled`. A pressed `ToolbarToggleButton` has a bar under the
@@ -750,6 +757,7 @@ pnpm run test-storybook:ci
 
 Accessibility audits run automatically via `@storybook/addon-a11y` and `axe-playwright` during Storybook test runs.
 By default, any axe accessibility violations fail the test suite.
+Axe runs once the page's finite animations and transitions have finished (waiting at most two seconds), so an enter animation or a theme switch still in flight is not measured as a half-faded blend; infinite ones such as spinners are not waited for.
 
 To opt out a story when a violation is inherent to what is being demonstrated (such as a typography scale demo showing multiple heading levels):
 use a scoped per-rule disable with an explanatory comment directly above the parameter:
@@ -871,7 +879,8 @@ from this list:
 - **No baseline yet** (the flag comes off once the visual-baseline-refresh workflow has produced one):
   `UI/Card` → `WithFlushTable`, `FlushTableWithoutHeader`; `UI/DataTable` → the `InsideCard*` stories,
   `Bordered`, `Embedded`, `RowClick`, `RemovableRows`; `Components/PlanDiffView` → `ChangedFilesTree`;
-  `UI/ScrollArea` → `FitsWithoutScrolling`; `UI/Slider` → `Range`, `CurrencyWithSpokenValues`;
+  `UI/ScrollArea` → `FitsWithoutScrolling`; `UI/VirtualList` (every story);
+  `UI/Slider` → `Range`, `CurrencyWithSpokenValues`;
   `UI/Stepper` → `AsChildLinks`, `AsChildDisabledStep`; `UI/Toolbar` → `WithSearchField`;
   `Components/BadgeSelect` → `InsideDialog`, `NonRemovableSelected`;
   `Domain/EmojiRating` → `Unrated`, `WholeFaces`, `HalfFaces`; `Domain/StarRating` → `Unrated`,

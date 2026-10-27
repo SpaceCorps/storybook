@@ -246,7 +246,7 @@ describe("Terminal", () => {
     expect(instance.disposed).toBe(false);
     expect(instance.options.fontSize).toBe(18);
     expect((instance.options.theme as { background: string }).background).toBe("#123456");
-    expect((instance.options.theme as { foreground: string }).foreground).toBe("#e4e4e7");
+    expect((instance.options.theme as { foreground: string }).foreground).toBe("#fafafa");
   });
 
   it("does not fit a container that has not been laid out yet", async () => {

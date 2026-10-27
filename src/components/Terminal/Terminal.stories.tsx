@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import { expect, waitFor } from "@storybook/test";
 import { useEffect, useRef, useState } from "react";
 import { Terminal, type TerminalHandle } from "./Terminal.tsx";
 
@@ -16,6 +17,25 @@ export default meta;
 type Story = StoryObj<typeof Terminal>;
 
 const encoder = new TextEncoder();
+
+/** The emulator is fetched on mount, so a slow machine is slow here, not wrong. */
+const PAINT_TIMEOUT_MS = 10_000;
+
+/**
+ * Waits until the emulator has painted `text` inside `within` (a selector in the story). The test
+ * runner measures the page the moment a story and its play function have finished, and xterm.js is
+ * imported after mount and paints a frame after that: without this wait axe runs against an empty
+ * terminal, finds nothing to measure, and passes whatever the colours are.
+ */
+async function expectPainted(canvasElement: HTMLElement, within: string, text: string) {
+  await waitFor(
+    () =>
+      expect(canvasElement.querySelector(within), `${within} in the terminal`).toHaveTextContent(
+        text,
+      ),
+    { timeout: PAINT_TIMEOUT_MS },
+  );
+}
 
 /** A frame of coloured output, as a dev server would actually write it. */
 const BOOT_LOG = [
@@ -41,6 +61,7 @@ export const BootLog: Story = {
       </div>
     );
   },
+  play: ({ canvasElement }) => expectPainted(canvasElement, ".xterm-rows", "to expose"),
 };
 
 /**
@@ -68,6 +89,7 @@ export const ProgressRedraw: Story = {
       </div>
     );
   },
+  play: ({ canvasElement }) => expectPainted(canvasElement, ".xterm-rows", "building"),
 };
 
 /**
@@ -103,6 +125,8 @@ export const Interactive: Story = {
       </div>
     );
   },
+  // The only dim text in any story is the hint here, and dim text is what the contrast fix is about.
+  play: ({ canvasElement }) => expectPainted(canvasElement, ".xterm-dim", "type an answer"),
 };
 
 export const ReadOnly: Story = {
@@ -125,4 +149,5 @@ export const ReadOnly: Story = {
       </div>
     );
   },
+  play: ({ canvasElement }) => expectPainted(canvasElement, ".xterm-rows", "drops keystrokes"),
 };

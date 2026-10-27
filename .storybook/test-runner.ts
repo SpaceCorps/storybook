@@ -43,12 +43,96 @@ type StoryPage = Parameters<NonNullable<TestRunnerConfig["postVisit"]>>[0];
 type StoryContext = Awaited<ReturnType<typeof getStoryContext>>;
 
 /**
- * The accessibility pass: axe over `#storybook-root`. A story can opt out with `a11y.disable`, or
- * downgrade a violation to a warning with `a11y.failOnViolation: false`.
+ * How long the accessibility pass waits for the page's animations and transitions to finish. The
+ * library's own run 150 to 500 ms, so this is generous; it only bounds one that never ends.
+ */
+export const AXE_SETTLE_TIMEOUT_MS = 2_000;
+
+/** What `waitForAnimationsToSettle` found when it stopped waiting. */
+export interface AnimationSettle {
+  /** Finite animations were still running when the time ran out. */
+  timedOut: boolean;
+  /** Those animations, named for a log line: `bladeSlideIn on <section>`. */
+  stuck: string[];
+}
+
+// The page half is a string rather than a function, for the reason given at SWEEP_SCRIPT. It is a
+// function expression that the caller applies to the time limit. It uses no template expressions,
+// backticks or backslashes, so nothing in it needs escaping.
+const SETTLE_SCRIPT = `(async (limit) => {
+  const deadline = Date.now() + limit;
+  // getAnimations() first applies any style change that is still waiting, which is what creates the
+  // transitions of a class that was only just toggled. A paused or finished animation no longer
+  // moves, and an infinite one (a spinner) never ends: only the rest are waited for.
+  const running = () => document.getAnimations().filter((animation) => {
+    if (animation.playState !== 'running' && animation.playState !== 'pending') { return false; }
+    const timing = animation.effect && animation.effect.getComputedTiming();
+    return !!timing && Number.isFinite(timing.endTime);
+  });
+  const describe = (animation) => {
+    const target = animation.effect && animation.effect.target;
+    const name = animation.animationName || animation.transitionProperty || 'animation';
+    return target && target.tagName ? name + ' on <' + target.tagName.toLowerCase() + '>' : name;
+  };
+  let pending = running();
+  while (pending.length > 0 && Date.now() < deadline) {
+    let timer;
+    await Promise.race([
+      Promise.allSettled(pending.map((animation) => animation.finished)),
+      new Promise((resolve) => { timer = window.setTimeout(resolve, Math.max(0, deadline - Date.now())); }),
+    ]);
+    window.clearTimeout(timer);
+    // One finishing can start the next, and a cancelled one is replaced, so look again.
+    pending = running();
+  }
+  // The frame after the last one ends is the first to be painted from the settled styles.
+  await new Promise((resolve) => {
+    window.requestAnimationFrame(() => resolve());
+    window.setTimeout(() => resolve(), 100);
+  });
+  return { timedOut: pending.length > 0, stuck: pending.map(describe) };
+})`;
+
+/**
+ * Waits for every finite animation and transition on the page to finish, for at most `timeoutMs`,
+ * and then for one more frame. Axe reads the colours as they are painted, so an element that is half
+ * faded in, or halfway through a theme transition, is measured as a blend of two states that neither
+ * the design nor a person ever sees for longer than a fraction of a second. Infinite animations are
+ * not waited for (they never end) and a stuck one cannot hang the story: when the time runs out the
+ * ones still running are reported and the page is measured as it is. Exported for the tests.
+ */
+export async function waitForAnimationsToSettle(
+  page: StoryPage,
+  timeoutMs: number = AXE_SETTLE_TIMEOUT_MS,
+): Promise<AnimationSettle> {
+  const limit = Number.isFinite(timeoutMs) && timeoutMs >= 0 ? Math.floor(timeoutMs) : 0;
+  const result = (await page.evaluate(`${SETTLE_SCRIPT}(${limit})`)) as
+    | Partial<AnimationSettle>
+    | undefined;
+  return {
+    timedOut: result?.timedOut === true,
+    stuck: Array.isArray(result?.stuck) ? result.stuck : [],
+  };
+}
+
+/**
+ * The accessibility pass: axe over `#storybook-root`, once the page has stopped moving. A story can
+ * opt out with `a11y.disable`, or downgrade a violation to a warning with `a11y.failOnViolation: false`.
  */
 async function runAxe(page: StoryPage, storyContext: StoryContext): Promise<void> {
   if (storyContext.parameters?.a11y?.disable) {
     return;
+  }
+
+  // The story has rendered, but an enter animation or a theme transition may still be running, and a
+  // violation measured halfway through one comes and goes with the machine's speed. This only waits:
+  // what axe then reports is the settled page, and a real low-contrast element still fails.
+  const settled = await waitForAnimationsToSettle(page);
+  if (settled.timedOut) {
+    console.warn(
+      `[a11y warning] Story "${storyContext.id}" still had running animations after ` +
+        `${AXE_SETTLE_TIMEOUT_MS} ms, so axe measured them mid-flight: ${settled.stuck.join(", ")}`,
+    );
   }
 
   await configureAxe(page, {

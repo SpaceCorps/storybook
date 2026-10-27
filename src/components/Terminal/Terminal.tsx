@@ -50,11 +50,17 @@ const DEFAULT_FONT_SIZE = 13;
  * A dark terminal regardless of the app theme, because the content is a process's own coloured
  * output: ANSI palettes assume a dark background, and re-mapping them for a light one turns
  * bright-white-on-black into invisible.
+ *
+ * The foreground matches the dark theme's `--foreground` and is not free to be any softer: xterm
+ * paints dim text (SGR 2) as the foreground at half opacity, so it is that blend which has to clear
+ * 4.5:1 against the background, and the #e4e4e7 this used to be only reached 4.43:1.
+ * `minimumContrastRatio` does not help: it checks the opaque foreground against half the ratio, finds
+ * it fine, and leaves the translucent dim colour alone.
  */
 const DEFAULT_THEME: ITheme = {
   background: "#0a0a0a",
-  foreground: "#e4e4e7",
-  cursor: "#e4e4e7",
+  foreground: "#fafafa",
+  cursor: "#fafafa",
   cursorAccent: "#0a0a0a",
   selectionBackground: "#3f3f46",
 };

@@ -45,6 +45,11 @@ export const DEFAULT_VIRTUAL_LIST_OVERSCAN = 6;
  * `pinnedIndex` — the part every hand-rolled windower gets wrong — is written once. `VirtualList`
  * is the batteries-included component built on it; use this hook directly when the scroll container
  * is not yours to create.
+ *
+ * A container you bring has to be keyboard-scrollable on its own account, as `VirtualList`'s is while
+ * it overflows: `tabIndex={0}`, `role="region"`, an accessible name and a visible focus indicator.
+ * Rows that happen to hold controls do not cover it, since only the mounted slice exists to be
+ * tabbed to. When nothing overflows, leave all of it off: a stop with nothing to scroll is a dead one.
  */
 export function useVirtualList({
   count,

@@ -189,12 +189,17 @@ describe("Storybook keyboard sweep", () => {
     vi.unstubAllEnvs();
   });
 
-  it("does nothing for a story that has not opted in, without touching the page", async () => {
-    // Any property access on this throws, so a stray page call would fail the test.
+  it("does nothing for a story that has not opted in, beyond letting the page settle for axe", async () => {
+    // The accessibility pass lets the page's animations finish before axe measures it, which is one
+    // page.evaluate. Any other property access throws, so a stray page call from the sweep fails.
+    const evaluate = vi.fn().mockResolvedValue({ timedOut: false, stuck: [] });
     const page = new Proxy(
-      {},
+      { evaluate },
       {
-        get() {
+        get(target, property) {
+          if (property === "evaluate") {
+            return target.evaluate;
+          }
           throw new Error("the page must not be touched");
         },
       },
@@ -206,6 +211,9 @@ describe("Storybook keyboard sweep", () => {
           { id: "ui-button--default", title: "UI/Button", name: "Default", parameters } as never,
         ),
       ).resolves.toBeUndefined();
+    }
+    for (const [script] of evaluate.mock.calls) {
+      expect(script).toContain("getAnimations");
     }
   });
 
