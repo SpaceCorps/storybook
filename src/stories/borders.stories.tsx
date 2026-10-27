@@ -585,7 +585,7 @@ export const DarkEmbeddedTableInPopover: StoryObj = tableHostStory(
       <PopoverTrigger asChild>
         <Button variant="outline">Lines</Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[30rem] max-w-[90vw]">
+      <PopoverContent aria-label="Voucher lines" className="w-[30rem] max-w-[90vw]">
         <LinesTable variant="embedded" testId="embedded" />
       </PopoverContent>
     </Popover>
