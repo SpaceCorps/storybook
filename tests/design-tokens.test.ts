@@ -163,3 +163,153 @@ describe("remaining framework tokens", () => {
     );
   });
 });
+
+/**
+ * `--border` and `--input` are not colours but `color-mix()` recipes over `--foreground`, so the
+ * contrast figures below composite them the way a browser paints them: the foreground at the stated
+ * alpha over the surface, in sRGB.
+ */
+const MIX = /^color-mix\(in oklab, var\(--foreground\) (\d+)%, transparent\)$/;
+
+function mixPercent(block: string, name: string): number {
+  const value = declaration(block, name);
+  const match = value === undefined ? null : MIX.exec(value);
+  if (match === null) {
+    throw new Error(
+      `--${name} is ${value}, not color-mix(in oklab, var(--foreground) N%, transparent)`,
+    );
+  }
+  return Number(match[1]) / 100;
+}
+
+/** `foreground` at `alpha` painted over `surface`, as a hex colour. */
+function composite(foreground: string, alpha: number, surface: string): string {
+  const channels = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  const [f, s] = [channels(foreground), channels(surface)];
+  const mixed = f.map((value, i) => Math.round(value * alpha + s[i] * (1 - alpha)));
+  return `#${mixed.map((value) => value.toString(16).padStart(2, "0")).join("")}`;
+}
+
+describe("derived border tokens", () => {
+  const modes = [
+    ["light", rootBlock],
+    ["dark", darkBlock],
+  ] as const;
+
+  it.each(modes)(
+    "%s declares --border, --input and --sidebar-border as recipes over --foreground",
+    (_mode, block) => {
+      // Declared in BOTH blocks, not inherited: a custom property holding color-mix(var(--foreground))
+      // is resolved on the element that declares it, so a nested .dark subtree that did not redeclare
+      // it would keep the root's already-resolved border.
+      expect(declaration(block, "border")).toMatch(MIX);
+      expect(declaration(block, "input")).toMatch(MIX);
+      expect(declaration(block, "sidebar-border")).toBe("var(--border)");
+    },
+  );
+
+  it("keeps the soft tier at 14% and the control tier at 46% in light, 38% in dark", () => {
+    expect(mixPercent(rootBlock, "border")).toBe(0.14);
+    expect(mixPercent(darkBlock, "border")).toBe(0.14);
+    expect(mixPercent(rootBlock, "input")).toBe(0.46);
+    expect(mixPercent(darkBlock, "input")).toBe(0.38);
+  });
+
+  it.each(modes)(
+    "%s --input clears the 3:1 non-text contrast of WCAG 1.4.11 on every surface a field sits on",
+    (_mode, block) => {
+      const foreground = declaration(block, "foreground")!;
+      for (const surface of ["background", "card", "popover", "muted"]) {
+        // A light-mode token is only declared in :root, so the dark block inherits what it omits.
+        const fill = declaration(block, surface) ?? declaration(rootBlock, surface)!;
+        const edge = composite(foreground, mixPercent(block, "input"), fill);
+        expect(
+          getContrastRatio(edge, fill),
+          `--input on --${surface} ${fill}`,
+        ).toBeGreaterThanOrEqual(3);
+      }
+    },
+  );
+
+  it.each(modes)(
+    "%s --border stays a soft line: visible on the page and card, under 2:1",
+    (_mode, block) => {
+      const foreground = declaration(block, "foreground")!;
+      for (const surface of ["background", "card"]) {
+        const fill = declaration(block, surface) ?? declaration(rootBlock, surface)!;
+        const edge = composite(foreground, mixPercent(block, "border"), fill);
+        const ratio = getContrastRatio(edge, fill);
+        expect(ratio, `--border on --${surface}`).toBeGreaterThanOrEqual(1.3);
+        expect(ratio, `--border on --${surface}`).toBeLessThan(2);
+      }
+    },
+  );
+
+  it("separates the dark muted fill from its own border (the old #27272a pair was 1.00:1)", () => {
+    const muted = declaration(darkBlock, "muted")!;
+    const edge = composite(
+      declaration(darkBlock, "foreground")!,
+      mixPercent(darkBlock, "border"),
+      muted,
+    );
+    expect(getContrastRatio(edge, muted)).toBeGreaterThanOrEqual(1.3);
+  });
+});
+
+describe("raised dark surfaces", () => {
+  it("lifts dark --card and --popover one step above the page", () => {
+    const page = declaration(darkBlock, "background")!;
+    for (const name of ["card", "popover"]) {
+      const surface = declaration(darkBlock, name)!;
+      expect(surface, `--${name}`).not.toBe(page);
+      expect(getContrastRatio(surface, page), `--${name} against the page`).toBeGreaterThan(1.02);
+      // A step, not a different surface: past RioRec's 1.09:1 ceiling the page stops being the page.
+      expect(getContrastRatio(surface, page), `--${name} against the page`).toBeLessThan(1.1);
+    }
+  });
+
+  it("keeps light surfaces flat, where a shadow and the border already do the lifting", () => {
+    expect(declaration(rootBlock, "card")).toBe(declaration(rootBlock, "background"));
+    expect(declaration(rootBlock, "popover")).toBe(declaration(rootBlock, "background"));
+  });
+
+  it("keeps text on the lifted dark surfaces at AA", () => {
+    for (const surface of ["card", "popover"]) {
+      const fill = declaration(darkBlock, surface)!;
+      for (const text of ["foreground", "muted-foreground", `${surface}-foreground`]) {
+        expect(
+          getContrastRatio(declaration(darkBlock, text)!, fill),
+          `--${text} on --${surface}`,
+        ).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  });
+});
+
+describe("invalid control borders", () => {
+  it("dark --red, the invalid border colour, outdoes the valid --input edge on every surface", () => {
+    // `--destructive` is tuned as a button fill under light text (1.99:1 on the page), so a border
+    // using it would be weaker than a valid field's 3.4:1. The named red is what controls use.
+    const red = declaration(darkBlock, "red")!;
+    const foreground = declaration(darkBlock, "foreground")!;
+    for (const surface of ["background", "card", "popover"]) {
+      const fill = declaration(darkBlock, surface)!;
+      const valid = getContrastRatio(
+        composite(foreground, mixPercent(darkBlock, "input"), fill),
+        fill,
+      );
+      const invalid = getContrastRatio(red, fill);
+      expect(invalid, `--red on --${surface}`).toBeGreaterThanOrEqual(3);
+      expect(invalid, `--red on --${surface}`).toBeGreaterThan(valid);
+    }
+  });
+
+  it("light --destructive, the invalid border colour, clears 3:1 on the page", () => {
+    expect(
+      getContrastRatio(
+        declaration(rootBlock, "destructive")!,
+        declaration(rootBlock, "background")!,
+      ),
+    ).toBeGreaterThanOrEqual(3);
+  });
+});

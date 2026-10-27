@@ -132,6 +132,10 @@ export const renderMermaid = async (content: string): Promise<string> => {
       lineColor: getCSSVariable("--foreground"),
       sectionBkgColor: getCSSVariable("--muted"),
       altSectionBkgColor: getCSSVariable("--background"),
+      // `--border` is a `color-mix()` string now, not a hex. gridColor is written into the diagram's
+      // stylesheet as it stands, which accepts that; the variables above and below are different:
+      // mermaid derives colours from them with khroma, which throws on color-mix, so they must stay
+      // on hex tokens.
       gridColor: getCSSVariable("--border"),
       secondaryColor: getCSSVariable("--secondary"),
       tertiaryColor: getCSSVariable("--muted"),

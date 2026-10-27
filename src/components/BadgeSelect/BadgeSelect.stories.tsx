@@ -114,6 +114,7 @@ export const CustomBadgeColorsAndStyling = () => {
           "--secondary": "#fee2e2",
           "--secondary-foreground": "#991b1b",
           "--border": "#fca5a5",
+          "--input": "#fca5a5",
         } as CSSProperties
       }
     >

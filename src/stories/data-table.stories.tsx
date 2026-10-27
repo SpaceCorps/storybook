@@ -21,6 +21,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { Densities } from "@/types/density";
 
 const meta: Meta = {
   title: "UI/DataTable",
@@ -837,5 +839,572 @@ export const RemovableRows: StoryObj = {
     await expect(canvasElement.contains(document.activeElement)).toBe(true);
 
     (document.activeElement as HTMLElement | null)?.blur();
+  },
+};
+
+// ---------------------------------------------------------------------------------------------
+// Columns that give way to the container: `hideBelow`, `priority`, and the row details.
+// ---------------------------------------------------------------------------------------------
+
+/** The headers of the data columns, in order: the pinned selection/details and action cells left out. */
+function dataHeaders(root: ParentNode): string[] {
+  return Array.from(root.querySelectorAll<HTMLElement>("thead th:not([data-pin])")).map(
+    (th) => th.textContent?.trim() ?? "",
+  );
+}
+
+function detailButtons(root: ParentNode): HTMLButtonElement[] {
+  return Array.from(
+    root.querySelectorAll<HTMLButtonElement>("button[aria-label^='Show details for']"),
+  );
+}
+
+/**
+ * Wide, medium and narrow, as `hideBelow` and `priority` see them: the width of the table's own box.
+ * `FrameScroller` holds a frame at its width whatever the canvas, so the play functions can name the
+ * columns each one shows.
+ */
+const FRAME_WIDTHS = { wide: 1040, medium: 680, narrow: 380 } as const;
+const FRAME_NAMES = { wide: "Wide", medium: "Medium", narrow: "Narrow" } as const;
+
+/**
+ * Where each time column gives way. Date and Hours never do. The widths are of the table's container,
+ * not the window: the same table in a narrow card behaves as it does at the foot of a phone.
+ */
+const hideBelowByColumn: Record<string, number> = {
+  start: 600,
+  end: 600,
+  amount: 460,
+  project: 780,
+  activity: 900,
+  message: 1000,
+};
+
+const responsiveTimeColumns: DataTableColumn<TimeEntry>[] = timeColumns.map((column) => ({
+  ...column,
+  hideBelow: hideBelowByColumn[column.name],
+}));
+
+/**
+ * The same ranking without naming a width. 1 is the first to keep; the table drops the highest number
+ * until what is left fits, judging each column by its `width` (so these say what they need).
+ */
+const priorityTimeColumns: DataTableColumn<TimeEntry>[] = timeColumns.map((column) => {
+  const ranked: Record<string, { priority: number; width?: string }> = {
+    date: { priority: 1, width: "100px" },
+    hours: { priority: 2, width: "84px" },
+    amount: { priority: 3, width: "104px" },
+    start: { priority: 4, width: "64px" },
+    end: { priority: 4, width: "64px" },
+    project: { priority: 5, width: "130px" },
+    activity: { priority: 6, width: "92px" },
+    message: { priority: 7, width: "200px" },
+  };
+  return { ...column, ...ranked[column.name] };
+});
+
+/**
+ * A raised cap on the truncating columns' width, so the full set of columns is about as wide as the
+ * widest frame instead of 20rem of message text pushing it past.
+ */
+const compactTruncation = "[--ivy-data-table-truncate-width:14rem]";
+
+interface FrameProps {
+  label: string;
+  width: number;
+  columns: DataTableColumn<TimeEntry>[];
+  selectable?: boolean;
+  showColumnOptions?: boolean;
+  defaultColumnVisibility?: Record<string, boolean>;
+}
+
+/**
+ * Holds a frame at exactly the width it is named for. A frame squeezed to fit the canvas (`max-w-full`)
+ * would be measured at the squeezed width and show the columns of a narrower table than its label
+ * says, and what a story asserts would then depend on how wide the iframe happens to be. A canvas
+ * narrower than the frame scrolls it sideways here, inside the story: the page does not overflow, and
+ * the scroll area is a named tab stop for as long as it does.
+ */
+function FrameScroller({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <ScrollArea aria-label={`${label} frame`}>
+      <div className="pb-3">{children}</div>
+      <ScrollBar orientation="horizontal" />
+    </ScrollArea>
+  );
+}
+
+function TimeFrame({
+  label,
+  width,
+  columns,
+  selectable = false,
+  showColumnOptions = false,
+  defaultColumnVisibility,
+}: FrameProps) {
+  return (
+    <section data-testid={label} style={{ width }}>
+      <h3 className="mb-2 text-sm font-medium">
+        {label}, {width}px
+      </h3>
+      <DataTable
+        className={compactTruncation}
+        columns={columns}
+        rows={timeEntries.slice(0, 4)}
+        getRowId={(entry) => entry.id}
+        getRowLabel={(entry) => `${entry.date} ${entry.project}`}
+        caption={`Time entries, ${label.toLowerCase()}`}
+        paginated={false}
+        selectable={selectable}
+        showColumnOptions={showColumnOptions}
+        defaultColumnVisibility={defaultColumnVisibility}
+        rowActions={timeRowActions}
+      />
+    </section>
+  );
+}
+
+function WidthShowcase({ columns }: { columns: DataTableColumn<TimeEntry>[] }) {
+  return (
+    <div className="flex flex-col gap-8">
+      {(["wide", "medium", "narrow"] as const).map((size) => (
+        <FrameScroller key={size} label={FRAME_NAMES[size]}>
+          <TimeFrame label={FRAME_NAMES[size]} width={FRAME_WIDTHS[size]} columns={columns} />
+        </FrameScroller>
+      ))}
+    </div>
+  );
+}
+
+const ALL_TIME_HEADERS = [
+  "Date",
+  "Start",
+  "End",
+  "Hours",
+  "Amount",
+  "Project",
+  "Activity",
+  "Message",
+];
+
+/** `hideBelow` measured against what the table's own box allows, with nothing left to scroll. */
+async function expectFramesRespond(canvasElement: HTMLElement) {
+  await document.fonts.ready;
+  const frame = (name: string) => pick<HTMLElement>(canvasElement, `[data-testid='${name}']`);
+
+  await expect(dataHeaders(frame("Wide"))).toEqual(ALL_TIME_HEADERS);
+  await expect(dataHeaders(frame("Medium"))).toEqual(["Date", "Start", "End", "Hours", "Amount"]);
+  await expect(dataHeaders(frame("Narrow"))).toEqual(["Date", "Hours"]);
+
+  // A details button in every row, but only where something is hidden.
+  await expect(detailButtons(frame("Wide"))).toHaveLength(0);
+  await expect(detailButtons(frame("Medium"))).toHaveLength(4);
+  await expect(detailButtons(frame("Narrow"))).toHaveLength(4);
+
+  // The point of it: nothing scrolls sideways at any of the three widths.
+  for (const name of ["Wide", "Medium", "Narrow"]) {
+    const scroller = pick<HTMLElement>(frame(name), "[data-slot='table-container']");
+    await expect(scroller.scrollWidth).toBeLessThanOrEqual(scroller.clientWidth + 1);
+  }
+}
+
+/**
+ * One table, three container widths. Under `hideBelow` a column gives way when its container is
+ * narrower than the number, so the narrow frame keeps Date and Hours and the rest move into the row
+ * details (the chevron in each row), where the wide one shows everything and has no button at all.
+ * The frames keep their stated widths on any canvas: where the canvas is narrower, the frame scrolls
+ * sideways inside the story instead of being squeezed into showing different columns.
+ */
+export const ResponsiveColumns: StoryObj = {
+  parameters: noVisualBaseline,
+  render: () => <WidthShowcase columns={responsiveTimeColumns} />,
+  play: async ({ canvasElement }) => expectFramesRespond(canvasElement),
+};
+
+const assertDarkTheme = async () => {
+  await expect(document.documentElement.classList.contains("dark")).toBe(true);
+};
+
+/** The same in the dark theme, a story-level global because Storybook ignores `parameters.globals`. */
+export const ResponsiveColumnsDark: StoryObj = {
+  globals: { theme: "dark" },
+  parameters: noVisualBaseline,
+  render: () => <WidthShowcase columns={responsiveTimeColumns} />,
+  play: async ({ canvasElement }) => {
+    await assertDarkTheme();
+    await expectFramesRespond(canvasElement);
+  },
+};
+
+/**
+ * `priority` ranks the columns and leaves the widths to the table: it drops the least important ones
+ * until what is left fits, so the same ranking gives a different set at each width.
+ */
+export const PriorityColumns: StoryObj = {
+  parameters: noVisualBaseline,
+  render: () => <WidthShowcase columns={priorityTimeColumns} />,
+  play: async ({ canvasElement }) => {
+    await document.fonts.ready;
+    const frame = (name: string) => pick<HTMLElement>(canvasElement, `[data-testid='${name}']`);
+    await expect(dataHeaders(frame("Wide"))).toEqual(ALL_TIME_HEADERS);
+    // Message, then Activity, are the least important and the first to go.
+    await expect(dataHeaders(frame("Medium"))).toEqual([
+      "Date",
+      "Start",
+      "End",
+      "Hours",
+      "Amount",
+      "Project",
+    ]);
+    // Down to the two most important.
+    await expect(dataHeaders(frame("Narrow"))).toEqual(["Date", "Hours"]);
+    await expect(detailButtons(frame("Wide"))).toHaveLength(0);
+    await expect(detailButtons(frame("Narrow"))).toHaveLength(4);
+  },
+};
+
+function DetailTable({ selectable = true }: { selectable?: boolean }) {
+  return (
+    <div className="w-[22rem] max-w-full">
+      <DataTable
+        className={compactTruncation}
+        columns={responsiveTimeColumns}
+        rows={timeEntries.slice(0, 5)}
+        getRowId={(entry) => entry.id}
+        getRowLabel={(entry) => `${entry.date} ${entry.project}`}
+        caption="Time entries, in a narrow panel"
+        paginated={false}
+        selectable={selectable}
+        rowActions={timeRowActions}
+      />
+    </div>
+  );
+}
+
+/** The detail panel of a row, or null while it is closed. */
+function detailOf(root: ParentNode, rowId: string): HTMLElement | null {
+  return root.querySelector<HTMLElement>(`tr[data-detail-for='${rowId}']`);
+}
+
+async function expectDetailOperable(canvasElement: HTMLElement) {
+  await document.fonts.ready;
+  const [first, second] = detailButtons(canvasElement);
+  await expect(first.getAttribute("aria-expanded")).toBe("false");
+  await expect(detailOf(canvasElement, "t1")).toBeNull();
+  // Not in the document, so nothing for the button to point at.
+  await expect(first.hasAttribute("aria-controls")).toBe(false);
+
+  // Tab reaches it straight after the row's checkbox: the button is one stop per row, in reading order.
+  const checkbox = pick<HTMLElement>(first.closest("td")!, "[role='checkbox']");
+  checkbox.focus();
+  await userEvent.tab();
+  await expect(document.activeElement).toBe(first);
+
+  // By keyboard: Enter opens, Space closes, and focus stays on the button throughout.
+  await userEvent.keyboard("{Enter}");
+  await expect(first.getAttribute("aria-expanded")).toBe("true");
+  await expect(document.activeElement).toBe(first);
+  const open = detailOf(canvasElement, "t1");
+  await expect(open).not.toBeNull();
+  await expect(first.getAttribute("aria-controls")).toBe(open!.querySelector("td")!.id);
+
+  await userEvent.keyboard(" ");
+  await expect(first.getAttribute("aria-expanded")).toBe("false");
+  await expect(detailOf(canvasElement, "t1")).toBeNull();
+  await expect(document.activeElement).toBe(first);
+
+  // The panel lists exactly what the row lacks, formatted by each column's own renderer.
+  await userEvent.click(first);
+  const panel = pick<HTMLElement>(canvasElement, "tr[data-detail-for='t1']");
+  const pairs = Array.from(panel.querySelectorAll("dt")).map((dt) => [
+    dt.textContent,
+    dt.nextElementSibling?.textContent,
+  ]);
+  // The formatted amount holds no-break spaces, whichever of them the browser's ICU data prefers.
+  const plain = pairs.map(([label, value]) => [label, value?.replace(/\s/g, " ")]);
+  await expect(plain).toEqual([
+    ["Start", "09:00"],
+    ["End", "10:15"],
+    ["Amount", "1 250,00 kr"],
+    ["Project", "Kvarnby Elektriska AB"],
+    ["Activity", "meeting"],
+    ["Message", "Sprint planning and backlog refinement with the product team"],
+  ]);
+
+  // More than one row can be open, and the roving focus of the table does not stop on the panel.
+  await userEvent.click(second);
+  await expect(detailOf(canvasElement, "t2")).not.toBeNull();
+  await expect(canvasElement.querySelectorAll("tr[data-detail-for]")).toHaveLength(2);
+}
+
+/**
+ * A narrow panel. Each row has a chevron that opens its details: the values of the columns the panel
+ * had no room for, as "header: value", formatted like the row. Tab to a chevron and press Enter or
+ * Space; the button keeps its name ("Show details for ...") and reports the state with
+ * `aria-expanded`. Two rows are left open here.
+ */
+export const HideBelowDetail: StoryObj = {
+  parameters: { ...noVisualBaseline, keyboard: { sweep: true, maxStops: 40 } },
+  render: () => <DetailTable />,
+  play: async ({ canvasElement }) => expectDetailOperable(canvasElement),
+};
+
+export const HideBelowDetailDark: StoryObj = {
+  globals: { theme: "dark" },
+  parameters: { ...noVisualBaseline, keyboard: { sweep: true, maxStops: 40 } },
+  render: () => <DetailTable />,
+  play: async ({ canvasElement }) => {
+    await assertDarkTheme();
+    await expectDetailOperable(canvasElement);
+  },
+};
+
+function LiveResizeDemo() {
+  const [width, setWidth] = React.useState<number>(FRAME_WIDTHS.wide);
+  return (
+    <div className="flex flex-col gap-3">
+      <div role="group" aria-label="Table width" className="flex flex-wrap gap-2">
+        {(Object.keys(FRAME_WIDTHS) as (keyof typeof FRAME_WIDTHS)[]).map((size) => (
+          <Button
+            key={size}
+            type="button"
+            size="sm"
+            variant={FRAME_WIDTHS[size] === width ? "default" : "outline"}
+            aria-pressed={FRAME_WIDTHS[size] === width}
+            onClick={() => setWidth(FRAME_WIDTHS[size])}
+          >
+            {FRAME_NAMES[size]} ({FRAME_WIDTHS[size]}px)
+          </Button>
+        ))}
+      </div>
+      <FrameScroller label="Resizable">
+        <div data-testid="frame" style={{ width }}>
+          <DataTable
+            className={compactTruncation}
+            columns={responsiveTimeColumns}
+            rows={timeEntries.slice(0, 4)}
+            getRowId={(entry) => entry.id}
+            getRowLabel={(entry) => `${entry.date} ${entry.project}`}
+            caption="Time entries, resizable"
+            paginated={false}
+            rowActions={timeRowActions}
+          />
+        </div>
+      </FrameScroller>
+    </div>
+  );
+}
+
+/**
+ * The container, not the window, is what is measured, and it is measured as it changes. The buttons
+ * resize the box the table sits in; the play function changes the box behind React's back, the way a
+ * collapsing sidebar does, to check that the table follows and that keyboard focus stays put while
+ * columns come and go.
+ */
+export const ResizesLive: StoryObj = {
+  parameters: noVisualBaseline,
+  render: () => <LiveResizeDemo />,
+  play: async ({ canvasElement }) => {
+    await document.fonts.ready;
+    const frame = pick<HTMLElement>(canvasElement, "[data-testid='frame']");
+    const table = pick<HTMLElement>(canvasElement, "[data-slot='data-table']");
+    const resizeTo = (px: number) => {
+      frame.style.width = `${px}px`;
+    };
+
+    await expect(dataHeaders(table)).toEqual(ALL_TIME_HEADERS);
+
+    // A header's sort button keeps focus while columns beside it disappear and return.
+    const sortHours = pick<HTMLButtonElement>(table, "button[aria-label^='Sort by Hours']");
+    sortHours.focus();
+    resizeTo(FRAME_WIDTHS.narrow);
+    await waitFor(() => expect(dataHeaders(table)).toEqual(["Date", "Hours"]));
+    await expect(document.activeElement).toBe(sortHours);
+    resizeTo(FRAME_WIDTHS.wide);
+    await waitFor(() => expect(dataHeaders(table)).toEqual(ALL_TIME_HEADERS));
+    await expect(document.activeElement).toBe(sortHours);
+
+    // A focused row stays focused too.
+    const row = pick<HTMLElement>(table, "tr[data-row-id='t3']");
+    row.focus();
+    resizeTo(FRAME_WIDTHS.medium);
+    await waitFor(() =>
+      expect(dataHeaders(table)).toEqual(["Date", "Start", "End", "Hours", "Amount"]),
+    );
+    await expect(document.activeElement).toBe(row);
+
+    // The details button goes when the last hidden column returns; focus goes to its row.
+    resizeTo(FRAME_WIDTHS.narrow);
+    await waitFor(() => expect(detailButtons(table)).toHaveLength(4));
+    detailButtons(table)[2].focus();
+    resizeTo(FRAME_WIDTHS.wide);
+    await waitFor(() => expect(detailButtons(table)).toHaveLength(0));
+    await waitFor(() => expect((document.activeElement as HTMLElement).dataset.rowId).toBe("t3"));
+
+    // The buttons resize through React state; the table follows that the same way.
+    const widthButton = (name: string) =>
+      Array.from(canvasElement.querySelectorAll<HTMLElement>("button[aria-pressed]")).find(
+        (button) => button.textContent?.startsWith(name),
+      )!;
+    await userEvent.click(widthButton("Medium"));
+    await waitFor(() =>
+      expect(dataHeaders(table)).toEqual(["Date", "Start", "End", "Hours", "Amount"]),
+    );
+
+    // Left narrow, with the third row open.
+    await userEvent.click(widthButton("Narrow"));
+    await waitFor(() => expect(dataHeaders(table)).toEqual(["Date", "Hours"]));
+    await userEvent.click(detailButtons(table)[2]);
+    await expect(detailOf(table, "t3")).not.toBeNull();
+    (document.activeElement as HTMLElement | null)?.blur();
+  },
+};
+
+/**
+ * The column options still list every column. One the width has taken away stays ticked (the person
+ * did not switch it off) and says where it went; Project, which was switched off, is unticked and
+ * does not appear in any row's details.
+ */
+export const ColumnOptionsAtNarrowWidth: StoryObj = {
+  parameters: noVisualBaseline,
+  render: () => (
+    <div className="w-[22rem] max-w-full">
+      <DataTable
+        className={compactTruncation}
+        columns={responsiveTimeColumns}
+        rows={timeEntries.slice(0, 3)}
+        getRowId={(entry) => entry.id}
+        getRowLabel={(entry) => `${entry.date} ${entry.project}`}
+        caption="Time entries, with column options"
+        paginated={false}
+        showColumnOptions
+        defaultColumnVisibility={{ project: false }}
+        rowActions={timeRowActions}
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await document.fonts.ready;
+    await userEvent.click(pick<HTMLElement>(canvasElement, "button[aria-label='Column options']"));
+    const menu = await waitFor(() => pick<HTMLElement>(document.body, "[role='dialog']"));
+
+    await expect(menu.querySelectorAll("[role='checkbox']")).toHaveLength(8);
+    // Each box sits on the middle of its label's line, with or without a note under the label. The
+    // box's height follows the density and the label's line does not, so this is measured, not styled.
+    for (const checkbox of Array.from(menu.querySelectorAll<HTMLElement>("[role='checkbox']"))) {
+      const text = pick<HTMLElement>(menu, `label[for='${checkbox.id}']`).getBoundingClientRect();
+      const box = checkbox.getBoundingClientRect();
+      await expect(
+        Math.abs(box.top + box.height / 2 - (text.top + text.height / 2)),
+      ).toBeLessThanOrEqual(1);
+    }
+    const box = (name: string) => pick<HTMLElement>(menu, `[role='checkbox'][id$='-${name}']`);
+    await expect(box("project").getAttribute("aria-checked")).toBe("false");
+    await expect(box("project").hasAttribute("aria-describedby")).toBe(false);
+    await expect(box("message").getAttribute("aria-checked")).toBe("true");
+    const note = document.getElementById(box("message").getAttribute("aria-describedby") ?? "");
+    await expect(note?.textContent).toContain("Hidden at this width");
+    // A column the width does not touch carries no note.
+    await expect(box("hours").hasAttribute("aria-describedby")).toBe(false);
+
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(document.querySelector("[role='dialog']")).toBeNull());
+
+    // And the user-hidden column is not offered in the details.
+    await userEvent.click(detailButtons(canvasElement)[0]);
+    const labels = Array.from(
+      pick<HTMLElement>(canvasElement, "tr[data-detail-for]").querySelectorAll("dt"),
+    ).map((dt) => dt.textContent);
+    await expect(labels).toEqual(["Start", "End", "Amount", "Activity", "Message"]);
+  },
+};
+
+const virtualizedBelow: Record<string, number> = { environment: 520, status: 560, owner: 640 };
+const virtualizedResponsiveColumns: DataTableColumn<Deployment>[] = virtualizedColumns.map(
+  (column) => ({
+    ...column,
+    // Windowed tables lay out with fixed widths, so the one that stays shares the rest equally.
+    width: undefined,
+    hideBelow: virtualizedBelow[column.name],
+  }),
+);
+
+/**
+ * Windowed rows with details. The row and its details are one item as far as the window is
+ * concerned, so opening one moves the rows below it by exactly its height and the scrollbar grows
+ * with it; the last of the 1,000 rows is still reachable.
+ */
+export const HideBelowDetailVirtualized: StoryObj = {
+  parameters: noVisualBaseline,
+  render: () => (
+    <div className="w-[22rem] max-w-full">
+      <DataTable
+        columns={virtualizedResponsiveColumns}
+        rows={manyDeployments}
+        getRowId={(row) => row.id}
+        getRowLabel={(row) => row.service}
+        caption="1,000 deployments, windowed, narrow"
+        paginated={false}
+        selectable
+        rowActions={rowActions.slice(0, 1)}
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await document.fonts.ready;
+    const scroller = pick<HTMLElement>(canvasElement, "[data-slot='table-container']");
+    await waitFor(() => expect(detailButtons(canvasElement).length).toBeGreaterThan(0));
+    const before = scroller.scrollHeight;
+
+    await userEvent.click(detailButtons(canvasElement)[0]);
+    const panel = pick<HTMLElement>(canvasElement, "tr[data-detail-for]");
+    // The window learns the new height from the panel, one observer tick later.
+    await waitFor(() => expect(scroller.scrollHeight).toBeGreaterThanOrEqual(before));
+    await expect(Array.from(panel.querySelectorAll("dt")).map((dt) => dt.textContent)).toEqual([
+      "Environment",
+      "Status",
+      "Owner",
+    ]);
+
+    scroller.scrollTop = scroller.scrollHeight;
+    await waitFor(() =>
+      expect(canvasElement.querySelector("tr[aria-rowindex='1000']")).not.toBeNull(),
+    );
+    scroller.scrollTop = 0;
+  },
+};
+
+/** The details button at each density: never smaller than the 24px WCAG 2.5.8 asks of a target. */
+export const HideBelowDetailDensities: StoryObj = {
+  parameters: noVisualBaseline,
+  render: () => (
+    <div className="flex flex-wrap items-start gap-6">
+      {[Densities.Small, Densities.Medium, Densities.Large].map((density) => (
+        <div key={density} className="w-[20rem] max-w-full">
+          <DataTable
+            density={density}
+            className={compactTruncation}
+            columns={responsiveTimeColumns}
+            rows={timeEntries.slice(0, 3)}
+            getRowId={(entry) => entry.id}
+            getRowLabel={(entry) => `${entry.date} ${entry.project}`}
+            caption={`Time entries, ${density.toLowerCase()} density`}
+            paginated={false}
+            selectable
+          />
+        </div>
+      ))}
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await document.fonts.ready;
+    const buttons = detailButtons(canvasElement);
+    await expect(buttons).toHaveLength(9);
+    for (const button of buttons) {
+      const box = button.getBoundingClientRect();
+      await expect(Math.min(box.width, box.height)).toBeGreaterThanOrEqual(24);
+    }
+    for (const first of [0, 3, 6]) await userEvent.click(buttons[first]);
+    await expect(canvasElement.querySelectorAll("tr[data-detail-for]")).toHaveLength(3);
   },
 };

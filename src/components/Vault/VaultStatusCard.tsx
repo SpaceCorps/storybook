@@ -2,6 +2,7 @@ import React from "react";
 import { ExternalLink, RefreshCw, Unlink } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Switch } from "../ui/switch";
+import { fieldErrorTextClass } from "../ui/field/field-variant";
 import { GatedActionButton } from "./GatedActionButton";
 import { computeVaultGate, type VaultGate } from "./gate";
 import type { VaultStatus } from "./types";
@@ -124,7 +125,7 @@ export const VaultStatusCard: React.FC<VaultStatusCardProps> = ({
         <div>
           <dt className="text-muted-foreground">Status</dt>
           <dd
-            className={status.commitsBehind > 0 ? "text-destructive" : "text-muted-foreground"}
+            className={status.commitsBehind > 0 ? fieldErrorTextClass : "text-muted-foreground"}
             data-testid="vault-git-status"
           >
             {syncText}
@@ -154,7 +155,7 @@ export const VaultStatusCard: React.FC<VaultStatusCardProps> = ({
             gate={effectiveGate}
             variant="ghost"
             size="sm"
-            className="text-destructive"
+            className={fieldErrorTextClass}
             onClick={onDisconnect}
           >
             <Unlink className="mr-1.5 size-3.5" aria-hidden="true" />

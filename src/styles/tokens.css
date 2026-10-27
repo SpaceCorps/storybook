@@ -128,8 +128,22 @@
   --font-serif: "Geist Variable", "Geist", serif;
   --spacing: 0.27rem;
   --toolbox: #38363a;
-  --border: #e4e4e7;
-  --input: #e4e4e7;
+  /* Borders are derived from the foreground rather than fixed greys, so they follow whatever the
+   * surface is: a fixed #27272a was the same hex as the dark secondary, muted and accent fills and
+   * disappeared (1.00:1) against all of them, while 14% of the foreground still reads there (1.55:1).
+   * Two tiers. --border is the soft structural line (cards, tables, separators). --input is the edge
+   * of a form control, which WCAG 1.4.11 wants at 3:1 against its surroundings; 46% here and 38% in
+   * dark are the smallest round values that clear it on the page, card, muted and hover fills. A text
+   * box drawn by a component's own stylesheet, not through Tailwind's border-input, has to name
+   * var(--input) itself: `border: 1px solid var(--border)` is the soft tier.
+   *
+   * Both are declared again in .dark, and that is not redundancy: a custom property holding
+   * color-mix(var(--foreground)) is resolved on the element that declares it and inherited as that
+   * finished colour, so a .dark subtree inside a light page would keep the page's border. (A light
+   * subtree inside a dark page has to redeclare them the same way.) The value read back from JS is
+   * the color-mix text, not a colour a canvas library can parse; see ThemeColors. */
+  --border: color-mix(in oklab, var(--foreground) 14%, transparent);
+  --input: color-mix(in oklab, var(--foreground) 46%, transparent);
   --ring: #18181b;
   --radius: 0.5rem;
   --radius-boxes: 0.5rem;
@@ -148,16 +162,18 @@
   --sidebar-primary-foreground: #fafafa;
   --sidebar-accent: #f4f4f5;
   --sidebar-accent-foreground: #18181b;
-  --sidebar-border: #e4e4e7;
+  --sidebar-border: var(--border);
   --sidebar-ring: #18181b;
 }
 
 .dark {
   --background: #09090b;
   --foreground: #fafafa;
-  --card: #09090b;
+  /* One step above the page (1.05:1), so a card or popover reads as raised even though dark mode
+   * flattens its shadows. Muted text on it is 7.4:1, so the lift costs no text contrast. */
+  --card: #111113;
   --card-foreground: #fafafa;
-  --popover: #09090b;
+  --popover: #111113;
   --popover-foreground: #fafafa;
   --primary: #fafafa;
   --primary-foreground: #18181b;
@@ -247,8 +263,9 @@
 
   /* Misc framework tokens */
   --toolbox: #edeaf1;
-  --border: #27272a;
-  --input: #27272a;
+  /* Declared again for the reason given on the :root pair; 38% is the dark counterpart of 46%. */
+  --border: color-mix(in oklab, var(--foreground) 14%, transparent);
+  --input: color-mix(in oklab, var(--foreground) 38%, transparent);
   --ring: #d4d4d8;
   --sidebar-background: #18181b;
   --sidebar-foreground: #f4f4f5;
@@ -256,7 +273,7 @@
   --sidebar-primary-foreground: #18181b;
   --sidebar-accent: #27272a;
   --sidebar-accent-foreground: #f4f4f5;
-  --sidebar-border: #27272a;
+  --sidebar-border: var(--border);
   --sidebar-ring: #d4d4d8;
 }
 

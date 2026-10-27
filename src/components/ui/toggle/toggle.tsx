@@ -27,9 +27,9 @@ const Toggle = React.forwardRef<
       .replace("focus-visible:ring-ring", "focus-visible:ring-destructive");
 
     if (toggleClass.includes("border-input")) {
-      toggleClass = toggleClass.replace("border-input", "border-destructive");
+      toggleClass = toggleClass.replace("border-input", "border-destructive dark:border-red");
     } else {
-      toggleClass = cn(toggleClass, "border border-destructive");
+      toggleClass = cn(toggleClass, "border border-destructive dark:border-red");
     }
   }
   return (

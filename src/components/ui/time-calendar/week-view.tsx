@@ -94,8 +94,10 @@ export function WeekView({
 
   const { columns, range } = React.useMemo(() => {
     const perDay = days.map((date) => segmentsForDay(events, date, clock));
-    // A block is never drawn shorter than its minimum height, so entries are packed by the extent
-    // they are drawn at: ten-minute entries back to back would otherwise sit on top of each other.
+    // A short block is lifted to its minimum height only into free space (never past the start of
+    // the block below it, so it can end up drawn as short as its entry), and entries are put in
+    // separate columns only where they truly overlap, so two entries that touch or merely sit close
+    // are never drawn as if they overlapped.
     const least = minBlockMinutes(density as keyof typeof HOUR_REM);
     return {
       columns: perDay.map((segments) => layoutDayEvents(segments, least)),

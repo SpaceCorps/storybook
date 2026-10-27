@@ -15,6 +15,16 @@ export {
   type DataTablePaginationProps,
 } from "./data-table-pagination";
 export {
+  DataTableFooterDetail,
+  DataTableRowDetail,
+  DataTableRowExpander,
+  getDetailItems,
+  type DataTableDetailItem,
+  type DataTableFooterDetailProps,
+  type DataTableRowDetailProps,
+  type DataTableRowExpanderProps,
+} from "./data-table-row-detail";
+export {
   DataTableRowActions,
   type DataTableRowActionsComponent,
   type DataTableRowActionsProps,
@@ -35,6 +45,19 @@ export type {
   DataTableVirtualized,
 } from "./types";
 
+export {
+  DATA_TABLE_COLUMN_WIDTH_ESTIMATE,
+  DATA_TABLE_RESERVED_WIDTH,
+  DATA_TABLE_REVEAL_MARGIN,
+  estimateColumnWidth,
+  getColumnsHiddenByWidth,
+  reservedColumnsWidth,
+  type ColumnsHiddenByWidthOptions,
+} from "./responsive-columns";
+export {
+  useColumnsHiddenByWidth,
+  type UseColumnsHiddenByWidthOptions,
+} from "./use-columns-hidden-by-width";
 export {
   useColumnVisibility,
   type UseColumnVisibilityOptions,

@@ -504,7 +504,10 @@ const MultipleSelector = React.forwardRef<
         ref={ref}
         onKeyDown={handleKeyDown}
         className={cn(
-          "overflow-visible bg-transparent h-auto flex-row rounded-none border-0 shadow-none p-0",
+          // `min-w-0`: a grid or flex parent (a Field, a form row) cannot otherwise make this narrower
+          // than its content, the chips plus the 120px input, so in a narrow column the field's edge ran
+          // out past it. Harmless while the box had no edge; visible now that it has one.
+          "overflow-visible bg-transparent h-auto min-w-0 flex-row rounded-none border-0 shadow-none p-0",
           className,
         )}
         {...commandProps}
@@ -577,10 +580,13 @@ const MultipleSelector = React.forwardRef<
                   (!value || value.length === 0) && "text-muted-foreground",
                   // The input inside is outline-less, so the ring goes on the box that holds it.
                   "focus-within:ring-1 focus-within:ring-ring",
-                  !ghost && "border-0 bg-transparent shadow-none dark:bg-transparent",
+                  // A field keeps the control edge it inherits from `selectTriggerBase` (`border-input`,
+                  // the 3:1 tier), like the single Select and the Input beside it; only `ghost` drops it.
                   ghost &&
                     "border-transparent shadow-none bg-transparent hover:bg-accent hover:text-accent-foreground dark:border-transparent dark:bg-transparent dark:hover:bg-accent dark:hover:text-accent-foreground",
-                  // Last, so it beats the borderless and transparent borders above and is actually seen.
+                  // Last, so it beats the ghost's transparent border and the control edge above, and is
+                  // actually seen. The box carries no `aria-invalid` of its own (the input inside does),
+                  // so the invalid border the trigger base declares never reaches it.
                   invalid &&
                     "border border-destructive focus-within:border-destructive focus-within:ring-destructive dark:border-red dark:focus-within:border-red dark:focus-within:ring-red",
                 )}

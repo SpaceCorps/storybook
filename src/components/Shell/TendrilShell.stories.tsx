@@ -175,7 +175,7 @@ function InteractiveShellDemo({
               <p>
                 Selected Plan ID: <strong>{selectedPlanId}</strong>
               </p>
-              <p style={{ color: "#666" }}>
+              <p style={{ color: "var(--muted-foreground)" }}>
                 Use <code>Ctrl+B</code> / <code>Cmd+B</code> or click the sidebar toggle button to
                 expand/collapse.
               </p>

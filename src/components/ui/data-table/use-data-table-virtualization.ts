@@ -26,6 +26,30 @@ export const DATA_TABLE_ROW_HEIGHT_ESTIMATES: Record<Densities, number> = {
   [Densities.Large]: 52,
 };
 
+/**
+ * The details row that follows a data row when its details are open, or `null`. Paired by the row's
+ * id, not just by adjacency, so a spacer or some other row in between can never be taken for it.
+ */
+export function detailRowOf(row: Element): HTMLElement | null {
+  const next = row.nextElementSibling;
+  if (!(next instanceof HTMLElement) || !(row instanceof HTMLElement)) return null;
+  return next.dataset.detailFor !== undefined && next.dataset.detailFor === row.dataset.rowId
+    ? next
+    : null;
+}
+
+/**
+ * What one windowed item weighs: its data row and, while they are open, the details under it. The
+ * details are a row of their own in the DOM, but the virtualizer sizes by `data-index`, one element
+ * to an index, so the item has to be measured as the pair or every row below an open one would sit
+ * where it is not.
+ */
+export function measureRowWithDetail(row: Element, entry: ResizeObserverEntry | undefined): number {
+  const own = entry?.borderBoxSize?.[0]?.blockSize;
+  const rowSize = own !== undefined ? Math.round(own) : (row as HTMLElement).offsetHeight;
+  return rowSize + (detailRowOf(row)?.offsetHeight ?? 0);
+}
+
 export interface UseDataTableVirtualizationOptions {
   /**
    * Ref to `Table`'s `overflow-auto` wrapper — the element that scrolls. Owned by the caller
@@ -74,6 +98,12 @@ export interface UseDataTableVirtualizationResult {
   firstVisibleIndex: number | undefined;
   /** Pass as each data row's `ref`. Requires `data-index` on the same element. */
   measureRowElement: (node: HTMLTableRowElement | null) => void;
+  /**
+   * Pass as the `ref` of the details row under a data row. Its height is part of that row's item, and
+   * the row's own observer cannot see it change (when the container resizes and the text wraps, when
+   * the details open or close), so the details row is watched and the pair measured again.
+   */
+  measureDetailElement: (node: HTMLTableRowElement | null) => void;
   scrollToIndex: (index: number) => void;
   /** Sum of every row height, measured where known and estimated elsewhere. */
   totalSize: number;
@@ -132,7 +162,53 @@ export function useDataTableVirtualization({
     overscan,
     getItemKey,
     rangeExtractor,
+    measureElement: measureRowWithDetail,
   });
+  const virtualizerRef = React.useRef(virtualizer);
+  virtualizerRef.current = virtualizer;
+
+  // details row -> its data row, remembered because a removed details row has no siblings left to ask
+  const detailPairs = React.useRef(new Map<Element, HTMLElement>());
+  const detailObserver = React.useRef<ResizeObserver | null>(null);
+
+  const remeasureRow = React.useCallback((row: HTMLElement) => {
+    const index = Number(row.dataset.index);
+    if (Number.isInteger(index))
+      virtualizerRef.current.resizeItem(index, measureRowWithDetail(row, undefined));
+  }, []);
+
+  const measureDetailElement = React.useCallback(
+    (node: HTMLTableRowElement | null) => {
+      if (!node || typeof ResizeObserver === "undefined") return;
+      const row = node.previousElementSibling;
+      if (!(row instanceof HTMLElement) || detailPairs.current.has(node)) return;
+      detailPairs.current.set(node, row);
+      detailObserver.current ??= new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const detail = entry.target;
+          const owner = detailPairs.current.get(detail);
+          if (!owner) continue;
+          // Removed (the details closed, or the row went out of the window): the pair is over, and
+          // the row, if it is still there, is back to its own height.
+          if (!detail.isConnected) {
+            detailPairs.current.delete(detail);
+            detailObserver.current?.unobserve(detail);
+          }
+          if (owner.isConnected) remeasureRow(owner);
+        }
+      });
+      detailObserver.current.observe(node);
+    },
+    [remeasureRow],
+  );
+  React.useEffect(
+    () => () => {
+      detailObserver.current?.disconnect();
+      detailObserver.current = null;
+      detailPairs.current.clear();
+    },
+    [],
+  );
 
   // Row identity, not array identity: a call site passing an inline `getRowId` produces a fresh
   // `rowIds` array on every render, and resetting the viewport on each of those would make the
@@ -186,6 +262,7 @@ export function useDataTableVirtualization({
       ? (virtualizer.range?.startIndex ?? virtualItems[0].index)
       : undefined,
     measureRowElement: measureElement,
+    measureDetailElement,
     scrollToIndex: scrollToIndexStable,
     totalSize,
   };

@@ -229,10 +229,11 @@ export function textInputFieldShellClasses(options: {
 }): string {
   return cn(
     "relative flex w-full min-w-0 items-stretch overflow-hidden rounded-field border bg-transparent shadow-sm transition-colors dark:bg-white/5",
-    options.focused
-      ? "border-ring outline-hidden dark:border-ring"
-      : "border-input dark:border-white/10",
-    options.invalid && "border-destructive",
+    options.focused ? "border-ring outline-hidden dark:border-ring" : "border-input",
+    // The dark red is the named colour, not `--destructive`: that token is tuned as a button fill
+    // under light text (1.99:1 on the page), which would leave an invalid field's border weaker than
+    // a valid one's now that valid borders sit at 3.4:1.
+    options.invalid && "border-destructive dark:border-red",
     options.disabled && "cursor-not-allowed opacity-50",
     options.ghost &&
       "border-transparent shadow-none bg-transparent dark:border-transparent dark:bg-transparent",

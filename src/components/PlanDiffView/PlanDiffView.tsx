@@ -674,7 +674,7 @@ const CommentWidgetContainer: React.FC<CommentWidgetContainerProps> = ({
           </div>
 
           <textarea
-            className="w-full min-h-[80px] p-2 text-sm font-sans bg-[var(--background)] border border-[var(--border)] rounded focus:outline-hidden focus:ring-1 focus:ring-[var(--primary)] resize-y"
+            className="w-full min-h-[80px] p-2 text-sm font-sans bg-[var(--background)] border border-[var(--input)] rounded focus:outline-hidden focus:ring-1 focus:ring-[var(--primary)] resize-y"
             placeholder="Enter instruction for the agent at this line..."
             value={isEditing ? (editingText ?? "") : inputText}
             onChange={(e) => {
@@ -1003,7 +1003,7 @@ export const PlanDiffView: React.FC<PlanDiffViewProps> = ({
           </span>
           <select
             aria-label="Jump to file"
-            className="flex-1 min-w-0 text-xs px-2 py-1 rounded bg-[var(--background)] text-[var(--foreground)] border border-[var(--border)] font-sans"
+            className="flex-1 min-w-0 text-xs px-2 py-1 rounded bg-[var(--background)] text-[var(--foreground)] border border-[var(--input)] font-sans"
             defaultValue=""
             onChange={(e) => {
               if (e.target.value) scrollToFile(e.target.value);

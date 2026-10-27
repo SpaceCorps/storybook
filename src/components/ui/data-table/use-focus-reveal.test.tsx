@@ -3,7 +3,12 @@ import { act, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { DataTable, type DataTableColumn, type DataTableRowAction } from "./index";
-import { HEAD_HEIGHT_VAR, PIN_END_VAR, PIN_START_VAR } from "./use-focus-reveal";
+import {
+  HEAD_HEIGHT_VAR,
+  PIN_END_VAR,
+  PIN_START_VAR,
+  VIEWPORT_WIDTH_VAR,
+} from "./use-focus-reveal";
 
 interface Entry {
   id: string;
@@ -145,6 +150,15 @@ describe("DataTable focus reveal", () => {
     expect(scroller.style.getPropertyValue(HEAD_HEIGHT_VAR)).toBe("40px");
   });
 
+  it("publishes the width the scroller shows, for a row's details to stay inside", () => {
+    const { scroller } = setup();
+    Object.defineProperty(scroller, "clientWidth", { configurable: true, value: 300 });
+
+    act(() => resize?.());
+
+    expect(scroller.style.getPropertyValue(VIEWPORT_WIDTH_VAR)).toBe("300px");
+  });
+
   it("publishes zero when there is nothing pinned", () => {
     const view = render(
       <DataTable columns={columns} rows={entries} getRowId={(row) => row.id} paginated={false} />,
@@ -273,6 +287,47 @@ describe("DataTable focus reveal", () => {
     await focusAndSettle(sort);
 
     expect(state.top).toBe(120);
+  });
+
+  it("leaves a control in a row's details where it is: the panel stays in view by itself", async () => {
+    // Narrow-first, so the second column is in the details; the select column covers 0-40.
+    const hidden: DataTableColumn<Entry>[] = [
+      { name: "name", header: "Name" },
+      { name: "hours", header: "Hours", hideBelow: 500, editable: true },
+    ];
+    const view = render(
+      <DataTable
+        columns={hidden}
+        rows={entries}
+        getRowId={(row) => row.id}
+        getRowLabel={(row) => row.name}
+        selectable
+        editable
+        paginated={false}
+      />,
+    );
+    const scroller = view.container.querySelector<HTMLElement>('[data-slot="table-container"]')!;
+    const state = { left: 50 };
+    Object.defineProperty(scroller, "scrollLeft", {
+      configurable: true,
+      get: () => state.left,
+      set: (value: number) => {
+        state.left = value;
+      },
+    });
+    boxes.set(scroller, rect(0, 0, 300, 200));
+    boxes.set(
+      scroller.querySelector<HTMLElement>('thead th[data-pin="start"]')!,
+      rect(0, 0, 40, 40),
+    );
+    act(() => screen.getByRole("button", { name: "Show details for Alpha" }).click());
+    // Under the select column's span, where a control in an ordinary cell would be scrolled clear.
+    const cell = screen.getByRole("button", { name: "Edit Hours: 1" });
+    boxes.set(cell, rect(5, 100, 80, 120));
+
+    await focusAndSettle(cell);
+
+    expect(state.left).toBe(50);
   });
 
   it("does nothing where there is no layout to measure", async () => {

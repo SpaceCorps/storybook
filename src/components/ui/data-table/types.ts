@@ -38,6 +38,38 @@ export interface DataTableColumn<TRow> {
   width?: string;
   /** Defaults to false. Hidden columns are absent from the DOM. */
   hidden?: boolean;
+  /**
+   * Hide this column while the table's own container is narrower than this many px. It is the
+   * container that is measured (the table's outer wrapper, with a `ResizeObserver`), not the
+   * viewport, so a table in a narrow card, sheet or side panel reacts to the room it has.
+   *
+   * A column hidden this way is not lost: its value moves into the row's details (a disclosure
+   * button in the row, present only while at least one column is hidden). `hidden` and the column
+   * options menu are a separate thing and win: a column the user hid stays hidden at every width and
+   * is not offered in the details. Takes precedence over `priority` on the same column.
+   *
+   * Before the container has been measured (server render, first paint) every column with `hideBelow`
+   * is treated as hidden, so a phone never sees a wide table that then collapses. Where there is no
+   * layout to measure (jsdom, a tab or sheet that is not shown) it stays that way until there is.
+   *
+   * The wrapper is measured, so give it a width the columns do not decide: a block, a flex or grid
+   * item, a card. In a shrink-to-fit parent (an inline-block, an auto-sized table cell) hiding a column
+   * narrows the table, which hides more, and the table collapses to the columns that always show.
+   */
+  hideBelow?: number;
+  /**
+   * Rank for dropping columns without naming a width: **lower is more important**, 1 is the first to
+   * keep and the last to go. While the content does not fit its container the table hides the column
+   * with the highest number, one at a time (the later column first among equals), until it does.
+   * "Fits" is judged from an estimate, not from layout: each column is taken to need its `width` when
+   * that is in `px` or `rem`, and 8rem otherwise, plus room for the selection, details and action
+   * columns. Name `width` honestly, or use `hideBelow`, where the estimate is too far off.
+   *
+   * A column with neither `priority` nor `hideBelow` is never hidden by width, and the most important
+   * column of a table is kept even when nothing fits. Hidden columns go to the row details, see
+   * `hideBelow`.
+   */
+  priority?: number;
   /** Ascending sort position among visible columns; ties keep declaration order. */
   order?: number;
   /** Tooltip on the header. */

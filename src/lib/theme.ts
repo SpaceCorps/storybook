@@ -3,7 +3,9 @@
  */
 
 /**
- * Get computed CSS variable value and optionally convert to hex
+ * Reads a custom property from the document root, trimmed. The value is whatever the stylesheet
+ * specified: a hex colour for most tokens, but a `color-mix()` expression for `--border` and
+ * `--input`, which are derived from the foreground (see {@link ThemeColors}).
  */
 export function getCSSVariable(variable: string): string {
   if (typeof document === "undefined") return "";
@@ -52,7 +54,17 @@ export interface ThemeColors {
   accentForeground: string;
   destructive: string;
   destructiveForeground: string;
+  /**
+   * The soft structural edge (cards, tables, separators). Unlike the other colours this is not a
+   * hex: it is derived from the foreground, so it comes back as a CSS `color-mix(in oklab, ... N%,
+   * transparent)` string with the foreground already substituted in. That is fine anywhere CSS parses
+   * it (a `style` prop, an SVG `stroke`, a stylesheet) and wrong for a canvas library: echarts
+   * (zrender) and khroma (mermaid's colour maths) return `undefined` or throw on it. Resolve it with
+   * a CSS-aware path, such as an element's computed `border-color`, before handing it to one; do not
+   * read a canvas pixel back, which is lossy for a translucent colour.
+   */
   border: string;
+  /** The edge of a form control, at the 3:1 tier. A `color-mix()` string for the same reason as {@link ThemeColors.border}. */
   input: string;
   ring: string;
   radius: string;

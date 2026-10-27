@@ -1,5 +1,6 @@
 import React, { useCallback } from "react";
 import { Copy } from "lucide-react";
+import { fieldErrorTextClass } from "@/components/ui/field/field-variant";
 
 /**
  * Whether a ref still holds a commit the plan recorded, in the repo it was made in.
@@ -114,14 +115,16 @@ const CommitTable: React.FC<{
               <span title={row.hash}>{row.shortHash}</span>
             </td>
             <td className="py-1 pr-3 align-top text-foreground">
-              {row.title || <span className="text-muted-foreground/70">(unresolved commit)</span>}
+              {row.title || <span className="text-muted-foreground">(unresolved commit)</span>}
               {badge && (
-                <span className="ml-2 rounded-full border border-destructive/40 bg-destructive/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-destructive">
+                <span
+                  className={`ml-2 rounded-full border border-destructive/40 bg-destructive/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${fieldErrorTextClass}`}
+                >
                   {badge}
                 </span>
               )}
             </td>
-            <td className="w-16 py-1 text-right align-top text-xs text-muted-foreground/70">
+            <td className="w-16 py-1 text-right align-top text-xs text-muted-foreground">
               {row.fileCount === null || row.fileCount === undefined ? "–" : row.fileCount}
             </td>
           </tr>
@@ -133,7 +136,7 @@ const CommitTable: React.FC<{
 
 const DetailRow: React.FC<{ label: string; value: string }> = ({ label, value }) => (
   <div className="flex gap-2">
-    <dt className="w-24 shrink-0 text-muted-foreground/70">{label}</dt>
+    <dt className="w-24 shrink-0 text-muted-foreground">{label}</dt>
     <dd className="break-all font-mono text-muted-foreground">{value}</dd>
   </div>
 );
@@ -177,7 +180,7 @@ export const PlanGitView: React.FC<PlanGitViewProps> = ({
         <div
           role="alert"
           data-testid="commits-at-risk"
-          className="space-y-2 rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-xs text-destructive"
+          className={`space-y-2 rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-xs ${fieldErrorTextClass}`}
         >
           <p className="text-sm font-semibold uppercase tracking-wide">Commits at risk</p>
 
@@ -208,7 +211,7 @@ export const PlanGitView: React.FC<PlanGitViewProps> = ({
 
         {data.worktrees.length === 0 ? (
           <div className="mt-2 rounded-xl border border-border bg-card/40 p-4">
-            <p className="text-sm text-muted-foreground/70">{noWorktreesReason(planState)}</p>
+            <p className="text-sm text-muted-foreground">{noWorktreesReason(planState)}</p>
           </div>
         ) : (
           <div className="mt-2 space-y-3">
@@ -248,7 +251,9 @@ export const PlanGitView: React.FC<PlanGitViewProps> = ({
                 </dl>
 
                 {worktree.hasUncommittedChanges && (
-                  <p className="mt-2 rounded-md border border-destructive/40 bg-destructive/10 px-2 py-1 text-xs text-destructive">
+                  <p
+                    className={`mt-2 rounded-md border border-destructive/40 bg-destructive/10 px-2 py-1 text-xs ${fieldErrorTextClass}`}
+                  >
                     This worktree has uncommitted changes. They belong to no commit, so nothing at
                     all is keeping them.
                   </p>
@@ -257,7 +262,7 @@ export const PlanGitView: React.FC<PlanGitViewProps> = ({
                 {worktree.commits.length > 0 ? (
                   <CommitTable rows={worktree.commits} />
                 ) : (
-                  <p className="mt-3 text-sm text-muted-foreground/70">(no commits)</p>
+                  <p className="mt-3 text-sm text-muted-foreground">(no commits)</p>
                 )}
               </div>
             ))}
@@ -270,7 +275,7 @@ export const PlanGitView: React.FC<PlanGitViewProps> = ({
           <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Commits
           </h4>
-          <p className="mt-1 text-xs text-muted-foreground/70">
+          <p className="mt-1 text-xs text-muted-foreground">
             Recorded on the plan but reached from no worktree the plan still has — usually because
             the worktree was removed once the PR merged.
           </p>
@@ -302,7 +307,7 @@ export const PlanGitView: React.FC<PlanGitViewProps> = ({
       )}
 
       {isEmpty && (
-        <p className="text-sm text-muted-foreground/70">
+        <p className="text-sm text-muted-foreground">
           This plan has no worktrees, commits, or pull requests yet.
         </p>
       )}

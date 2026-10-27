@@ -31,6 +31,15 @@ const REPRESENTATIVE_TOKENS = [
 
 const HEX = /^#[0-9a-f]{3,8}$/i;
 
+/**
+ * What `border` and `input` come back as: the `color-mix()` recipe over the foreground. A browser
+ * hands back the foreground already substituted as a hex; jsdom does no `var()` substitution and hands
+ * back the `var(--foreground)` text, so the pattern takes either, and spacing around the commas
+ * varies between the two.
+ */
+const COLOR_MIX_OVER_FOREGROUND =
+  /^color-mix\(in oklab,\s*(?:var\(--foreground\)|#[0-9a-f]{3,8})\s+(\d+)%,\s*transparent\)$/i;
+
 function injectTokenStylesheet(): HTMLStyleElement {
   const style = document.createElement("style");
   style.textContent = readCssInlined(GLOBALS_CSS);
@@ -70,6 +79,46 @@ describe("theme colors", () => {
       expect(dark[token], token).toMatch(HEX);
       expect(dark[token], token).not.toBe(light[token]);
     }
+  });
+
+  describe("border and input", () => {
+    // These two are derived from the foreground, so unlike every other colour they are not a hex. The
+    // fields document it; this pins it, because a consumer that hands them to echarts (zrender parses
+    // no color-mix) or to khroma (it throws) needs to be able to rely on knowing which they are.
+    it("come back as a color-mix recipe over the foreground, not a hex", () => {
+      const { border, input } = getThemeColors();
+
+      expect(border).toMatch(COLOR_MIX_OVER_FOREGROUND);
+      expect(input).toMatch(COLOR_MIX_OVER_FOREGROUND);
+      expect(border).not.toMatch(HEX);
+      expect(input).not.toMatch(HEX);
+    });
+
+    it("keep the soft and the control tier apart, and weaken the control tier in dark", () => {
+      const percent = (value: string) => Number(COLOR_MIX_OVER_FOREGROUND.exec(value)?.[1]);
+
+      const light = getThemeColors();
+      document.documentElement.classList.add("dark");
+      const dark = getThemeColors();
+
+      expect(percent(light.border)).toBe(14);
+      expect(percent(dark.border)).toBe(14);
+      expect(percent(light.input)).toBe(46);
+      expect(percent(dark.input)).toBe(38);
+    });
+
+    it("lifts card and popover in dark but not in light, as plain hex colours", () => {
+      const light = getThemeColors();
+      expect(light.card).toBe(light.background);
+      expect(light.popover).toBe(light.background);
+
+      document.documentElement.classList.add("dark");
+      const dark = getThemeColors();
+      for (const surface of [dark.card, dark.popover]) {
+        expect(surface).toMatch(HEX);
+        expect(surface).not.toBe(dark.background);
+      }
+    });
   });
 
   it("resolves non-colour tokens such as the radius", () => {

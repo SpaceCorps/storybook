@@ -33,7 +33,7 @@ const RadioGroupItem = React.forwardRef<
     <RadioGroupPrimitive.Item
       ref={ref}
       className={cn(
-        "relative aspect-square size-4 rounded-full border border-primary text-primary shadow focus:outline-hidden focus-visible:ring-1 focus-visible:ring-ring aria-invalid:border-destructive group-aria-invalid/radiogroup:border-destructive group-aria-invalid/radiogroup:focus-visible:ring-destructive dark:aria-invalid:border-red dark:group-aria-invalid/radiogroup:border-red dark:group-aria-invalid/radiogroup:focus-visible:ring-red disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer dark:border-white/10 dark:data-[state=checked]:border-primary",
+        "relative aspect-square size-4 rounded-full border border-input text-primary shadow data-[state=checked]:border-primary focus:outline-hidden focus-visible:ring-1 focus-visible:ring-ring aria-invalid:border-destructive group-aria-invalid/radiogroup:border-destructive group-aria-invalid/radiogroup:focus-visible:ring-destructive dark:aria-invalid:border-red dark:group-aria-invalid/radiogroup:border-red dark:group-aria-invalid/radiogroup:focus-visible:ring-red aria-invalid:data-[state=checked]:border-destructive group-aria-invalid/radiogroup:data-[state=checked]:border-destructive dark:aria-invalid:data-[state=checked]:border-red dark:group-aria-invalid/radiogroup:data-[state=checked]:border-red disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer",
         className,
       )}
       {...props}

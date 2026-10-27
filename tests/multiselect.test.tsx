@@ -338,11 +338,14 @@ describe("MultipleSelector keyboard and accessibility", () => {
 
   it("shows a border when invalid, whichever variant it is", () => {
     // `selectTriggerBase` carries `aria-invalid:border-destructive`, so a substring check is always
-    // true; the exact token is only there for an invalid box, and the borderless ones are replaced.
+    // true; the exact token is only there for an invalid box, and the ghost one's transparent border
+    // is replaced.
     const tokens = (element: Element) => Array.from(element.classList);
     const valid = render(<Controlled />);
     expect(tokens(boxOf(valid.container))).not.toContain("border-destructive");
-    expect(tokens(boxOf(valid.container))).toContain("border-0");
+    // A valid field keeps the control edge it inherits from the trigger base; it was `border-0`.
+    expect(tokens(boxOf(valid.container))).toContain("border-input");
+    expect(tokens(boxOf(valid.container))).not.toContain("border-0");
     valid.unmount();
 
     const { container, rerender } = render(<Controlled invalid />);

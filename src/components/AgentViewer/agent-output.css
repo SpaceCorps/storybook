@@ -4,7 +4,9 @@
   --aov-bg-elev: var(--card);
   --aov-bg-deep: var(--popover);
   --aov-border: var(--border);
-  --aov-border-strong: var(--input);
+  /* Used as a fill (the scrollbar thumb) as well as for the 3px and 2px left rules, so it keeps its
+   * own strength instead of following --input, which is the 3:1 form-control edge now. */
+  --aov-border-strong: color-mix(in oklab, var(--foreground) 24%, transparent);
   --aov-fg: var(--foreground);
   --aov-fg-muted: #52525b;
   --aov-fg-faint: #595962;

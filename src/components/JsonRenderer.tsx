@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef } from "react";
 import { ChevronRight, ChevronDown } from "lucide-react";
+import { fieldErrorTextClass } from "@/components/ui/field/field-variant";
 
 interface JsonRendererProps {
   data: unknown;
@@ -141,7 +142,7 @@ export const JsonRenderer = ({ data, initialExpanded }: JsonRendererProps) => {
   }
 
   if (parseError) {
-    return <div className="text-destructive">{parseError}</div>;
+    return <div className={fieldErrorTextClass}>{parseError}</div>;
   }
 
   const toggleNode = (path: string) => {
