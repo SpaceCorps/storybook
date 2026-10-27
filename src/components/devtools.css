@@ -23,7 +23,9 @@
   position: absolute;
   top: 0;
   right: 0;
-  background-color: var(--input);
+  /* Not --input: that token is a translucent edge colour now, and a fill made of it lets the page
+   * show through the label and drops the text below AA. */
+  background-color: var(--muted);
   color: var(--foreground);
   padding: 4px 8px;
   font-size: 11px;
@@ -42,7 +44,7 @@
 .ivy-devtools-dialog {
   position: fixed;
   z-index: 100001;
-  background: var(--input);
+  background: var(--popover);
   border: 2px solid var(--primary);
   border-radius: var(--radius-boxes);
   box-shadow:

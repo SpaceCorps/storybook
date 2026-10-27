@@ -93,7 +93,15 @@ const SheetContent = React.forwardRef<
             <SheetPrimitive.Content
               ref={focus.ref}
               asChild={asChild}
-              className={cn(sheetVariant({ side }), className)}
+              className={cn(
+                sheetVariant({ side }),
+                // Hands the card fill to an embedded table (variant="embedded", no box of its own) in the
+                // sheet, as CardContent does: in dark the sheet is a step above the page, so such a table
+                // falling back to the page colour would be a dark patch on it. A bordered table, the
+                // default, sets the page colour itself and stays a recessed inset.
+                "[--ivy-data-table-surface:var(--card)]",
+                className,
+              )}
               {...props}
               onOpenAutoFocus={focus.onOpenAutoFocus}
               onCloseAutoFocus={focus.onCloseAutoFocus}

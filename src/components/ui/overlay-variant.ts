@@ -7,6 +7,15 @@ import { cva } from "class-variance-authority";
  * 30% black wash changes almost nothing, and the dialog panel (same `--background`) merged into
  * the page. The heavier wash dims lit content, and the blur pushes the page back so the panel
  * reads as a separate surface in both themes.
+ *
+ * The scrim and blur are still what separate the panel, but they were doing it alone: measured on the
+ * rendered dark page, a `--background` panel was 1.02:1 (Dialog) and 1.04:1 (AlertDialog) against the
+ * dimmed page behind it. Dialog and AlertDialog sit on `--popover` now, like Sheet (`--card`), which
+ * dark mode lifts a step above the page: 1.08:1 and 1.09:1, and the panel reads as a surface instead
+ * of a hole. A Card inside a dialog is on the same colour as its panel then, and keeps its edge from
+ * `--border` alone. Dialog, AlertDialog, Popover and Sheet name their fill as
+ * `--ivy-data-table-surface`, so an `embedded` DataTable placed directly in one joins it; a bordered
+ * table, the default, paints the page colour inside its own edge and is a slightly recessed inset.
  */
 export const overlayVariant = cva(
   "fixed inset-0 z-50 bg-black/50 backdrop-blur-[2px] dark:bg-black/70 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",

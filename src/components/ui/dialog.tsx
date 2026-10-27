@@ -64,7 +64,7 @@ const DialogContent = React.forwardRef<
               ref={focus.ref}
               asChild={asChild}
               className={cn(
-                "fixed left-[50%] top-[10%] z-50 flex flex-col w-[calc(100%-2rem)] max-sm:!w-[calc(100%-2rem)] max-sm:!max-w-[calc(100%-2rem)] sm:w-full max-w-xl max-h-[85vh] translate-x-[-50%] translate-y-0 rounded-box border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[5%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[5%] overflow-hidden focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
+                "[--ivy-data-table-surface:var(--popover)] fixed left-[50%] top-[10%] z-50 flex flex-col w-[calc(100%-2rem)] max-sm:!w-[calc(100%-2rem)] max-sm:!max-w-[calc(100%-2rem)] sm:w-full max-w-xl max-h-[85vh] translate-x-[-50%] translate-y-0 rounded-box border bg-popover shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[5%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[5%] overflow-hidden focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
                 className,
               )}
               {...props}
@@ -90,7 +90,7 @@ type DialogHeaderProps = React.HTMLAttributes<HTMLDivElement> & {
 const DialogHeader = ({ className, children, hideCloseButton, ...props }: DialogHeaderProps) => (
   <div
     className={cn(
-      "sticky top-0 z-10 bg-background p-4 flex-shrink-0 flex items-start justify-between gap-2",
+      "sticky top-0 z-10 bg-popover p-4 flex-shrink-0 flex items-start justify-between gap-2",
       className,
     )}
     {...props}
