@@ -1,6 +1,7 @@
 import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
 import { sv } from "date-fns/locale";
+import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vite-plus/test";
 import { Calendar } from "../src/components/ui/calendar";
 
@@ -62,5 +63,12 @@ describe("Calendar caption box names", () => {
       <Calendar defaultMonth={october} monthLabel="Månad" yearLabel="År" />,
     );
     expect(container.querySelector("[monthlabel], [yearlabel]")).toBeNull();
+  });
+
+  it("has the month in the boxes on the first render, before any effect has run", () => {
+    // A server render runs no effects: a box filled in by one is blank here, and on the first paint.
+    const html = renderToString(<Calendar defaultMonth={october} />);
+    expect(html).toMatch(/aria-label="Month"[^>]*value="10"|value="10"[^>]*aria-label="Month"/);
+    expect(html).toMatch(/aria-label="Year"[^>]*value="2026"|value="2026"[^>]*aria-label="Year"/);
   });
 });

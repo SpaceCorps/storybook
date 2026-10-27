@@ -12,13 +12,19 @@ export interface StorybookGlobals {
 }
 
 /**
- * `getStoryContext()` is declared as `StoryContextForEnhancers`, which omits `globals` even though the
- * runner returns the full story context, and a `preview.tsx` decorator receives them as
- * `Record<string, any>`. Narrow both to `StorybookGlobals` here, in one place.
+ * A `preview.tsx` decorator receives a story context whose `globals` already include the story's own,
+ * as `Record<string, any>`. The test runner's `getStoryContext()` is not that: it is the prepared story
+ * (`storyStore.loadStory`), which has no `globals` and carries the story-level ones as `storyGlobals`.
+ * Read both, the story's own winning as it does in the browser, and narrow them to `StorybookGlobals`
+ * here, in one place.
  */
 export function readStoryGlobals(context: unknown): StorybookGlobals {
   if (!context || typeof context !== "object") {
     return {};
   }
-  return (context as { globals?: StorybookGlobals }).globals ?? {};
+  const { globals, storyGlobals } = context as {
+    globals?: StorybookGlobals;
+    storyGlobals?: StorybookGlobals;
+  };
+  return { ...globals, ...storyGlobals };
 }

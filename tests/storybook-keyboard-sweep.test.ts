@@ -664,6 +664,19 @@ describe("Storybook keyboard sweep: the theme it sweeps", () => {
     expect((error as Error).message).toContain('stop 1 <button> "Save"');
   });
 
+  it("reads the theme from `storyGlobals`, which is where the runner's prepared story keeps it", async () => {
+    // `getStoryContext()` returns `storyStore.loadStory(...)`: a story-level `globals: { theme }` is
+    // `storyGlobals` there and there is no `globals`, so reading only `globals` called every dark story light.
+    const { page } = createSweepPage([element(1, "Save", false)], { theme: "dark" });
+    const error = await runKeyboardSweep(
+      page as never,
+      sweepStory({ sweep: true }, { storyGlobals: { theme: "dark" } }),
+    ).catch((caught: Error) => caught);
+
+    expect((error as Error).message).not.toContain("rendered in the");
+    expect((error as Error).message).toContain("dark theme:");
+  });
+
   it("takes the story's word for the theme from a page that does not say", async () => {
     const { page } = createSweepPage([element(1, "Save", false)]);
     const error = await runKeyboardSweep(

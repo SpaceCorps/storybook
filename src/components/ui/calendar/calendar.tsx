@@ -213,33 +213,43 @@ export function Calendar({
   );
 }
 
+/** The month and year the caption boxes show, or null when neither the month nor its title says. */
+function captionNumbers(displayMonth: Date | undefined, title: React.ReactNode, locale?: Locale) {
+  if (displayMonth) {
+    return {
+      monthStr: String(displayMonth.getMonth() + 1),
+      yearStr: String(displayMonth.getFullYear()),
+    };
+  }
+  if (typeof title === "string") {
+    // Only when a custom `MonthCaption` hides the month from us: the title is in the calendar's
+    // language, so it has to be read in it.
+    const parsed = parse(title, "LLLL yyyy", new Date(), { locale });
+    if (!isNaN(parsed.getTime())) {
+      return {
+        monthStr: String(parsed.getMonth() + 1),
+        yearStr: String(parsed.getFullYear()),
+      };
+    }
+  }
+  return null;
+}
+
 function MonthYearInput({ displayMonth, title }: { displayMonth?: Date; title?: React.ReactNode }) {
-  const [state, setState] = React.useState({ monthStr: "", yearStr: "" });
+  const { goToMonth, dayPickerProps } = useDayPicker();
+  const locale = dayPickerProps.locale as Locale | undefined;
+  // Filled on the first render, not in an effect: the boxes are never painted blank, and a test that
+  // reads them right after render sees the month.
+  const [state, setState] = React.useState(
+    () => captionNumbers(displayMonth, title, locale) ?? { monthStr: "", yearStr: "" },
+  );
   // Set when Enter was pressed on numbers the calendar cannot show; cleared by the next keystroke.
   const [rejected, setRejected] = React.useState(false);
-  const { goToMonth, dayPickerProps } = useDayPicker();
-  const locale = dayPickerProps.locale;
   const names = React.useContext(CaptionLabelsContext);
 
   const syncState = React.useCallback(() => {
-    if (displayMonth) {
-      setState({
-        monthStr: String(displayMonth.getMonth() + 1),
-        yearStr: String(displayMonth.getFullYear()),
-      });
-    } else if (typeof title === "string") {
-      // Only when a custom `MonthCaption` hides the month from us: the title is in the calendar's
-      // language, so it has to be read in it.
-      const parsed = parse(title, "LLLL yyyy", new Date(), {
-        locale: locale as Locale | undefined,
-      });
-      if (!isNaN(parsed.getTime())) {
-        setState({
-          monthStr: String(parsed.getMonth() + 1),
-          yearStr: String(parsed.getFullYear()),
-        });
-      }
-    }
+    const numbers = captionNumbers(displayMonth, title, locale);
+    if (numbers) setState(numbers);
   }, [displayMonth, title, locale]);
 
   React.useEffect(() => {
