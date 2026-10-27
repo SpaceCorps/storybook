@@ -404,6 +404,8 @@ function randomTable(seed: number): RandomTable {
   return { seed, columns, reservedWidth: int(301) };
 }
 
+const listOf = (hidden: ReadonlySet<string>): string => [...hidden].join(",");
+
 const hasOption = (column: DataTableColumn<Row>, option: "hideBelow" | "priority") =>
   column[option] !== undefined;
 
@@ -488,7 +490,7 @@ describe("getColumnsHiddenByWidth: no oscillation under a scrollbar-sized jitter
         const s1 = table.next[s0][width - jitter - MIN_WIDTH];
         if (s1 !== s0 && table.next[s1][width - MIN_WIDTH] === s0) {
           found.push(
-            `seed ${table.seed}: {${[...table.sets[s0]]}} at ${width - jitter}px -> {${[...table.sets[s1]]}} at ${width}px -> back`,
+            `seed ${table.seed}: {${listOf(table.sets[s0])}} at ${width - jitter}px -> {${listOf(table.sets[s1])}} at ${width}px -> back`,
           );
           break;
         }
@@ -564,7 +566,7 @@ describe("getColumnsHiddenByWidth: what the hysteresis keeps", () => {
         for (let at = 0; at < WIDTH_COUNT; at += 1) {
           const width = MIN_WIDTH + at;
           const hidden = sets[next[state][at]];
-          const where = `seed ${seed}, from {${[...sets[state]]}} at ${width}px`;
+          const where = `seed ${seed}, from {${listOf(sets[state])}} at ${width}px`;
           if (columns.every((column) => hidden.has(column.name)))
             failures.push(`${where}: all hidden`);
           for (const column of columns) {
@@ -609,7 +611,7 @@ describe("getColumnsHiddenByWidth: what the hysteresis keeps", () => {
             const budgeted = hasOption(column, "priority") && !hasOption(column, "hideBelow");
             if (budgeted && column !== kept && !hidden.has(column.name)) {
               failures.push(
-                `seed ${seed}, from {${[...sets[state]]}} at ${width}px: ${column.name} shows though ${showing}px > ${width}px`,
+                `seed ${seed}, from {${listOf(sets[state])}} at ${width}px: ${column.name} shows though ${showing}px > ${width}px`,
               );
             }
           }
