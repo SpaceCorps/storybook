@@ -1,8 +1,10 @@
+import { Densities } from "@/types/density";
 import type { DataTableColumn } from "./types";
 
 /**
  * What a column is assumed to need, in px, when it names no `width` the estimate can read. 8rem holds
- * a date, an amount or a short name; a long text column should say so with `width`.
+ * a date, an amount or a short name; a long text column should say so with `width`. At a root font
+ * size other than 16px the estimate follows it, see {@link estimateColumnWidth}.
  */
 export const DATA_TABLE_COLUMN_WIDTH_ESTIMATE = 128;
 
@@ -15,18 +17,25 @@ export const DATA_TABLE_COLUMN_WIDTH_ESTIMATE = 128;
  */
 export const DATA_TABLE_REVEAL_MARGIN = 24;
 
-/** px held by the pinned columns around the data columns, which hiding a data column never frees. */
+/**
+ * px held by the pinned columns around the data columns, which hiding a data column never frees, at
+ * Medium density and a 16px root font: what {@link reservedColumnsWidth} returns when it is told
+ * nothing else. A table that knows more (its density, how many actions a row has, what the browser
+ * laid out) is reserved for by {@link estimateStartColumnWidth} and {@link estimateActionsColumnWidth}.
+ */
 export const DATA_TABLE_RESERVED_WIDTH = {
-  /** Selection checkbox. */
-  select: 40,
-  /** The details disclosure button, reserved whenever a column could be hidden. */
-  detail: 36,
-  /** Row actions. Matches the `--ivy-data-table-actions-width` default. */
-  actions: 80,
+  /** What a selection checkbox and the gap after it add to the cell that holds the details button. */
+  select: 22,
+  /** The cell with the details button, reserved whenever a column could be hidden. */
+  detail: 48,
+  /** The actions cell with two icon buttons, the usual pair. */
+  actions: 100,
 } as const;
 
 const CSS_LENGTH = /^\s*(\d+(?:\.\d+)?)\s*(px|rem)\s*$/i;
 const REM_PX = 16;
+/** 8rem: the column an estimate cannot read a width for. */
+const DEFAULT_COLUMN_REM = DATA_TABLE_COLUMN_WIDTH_ESTIMATE / REM_PX;
 
 const isRank = (value: number | undefined): value is number =>
   typeof value === "number" && Number.isFinite(value);
@@ -41,27 +50,135 @@ export function isResponsiveColumn<TRow>(
 /**
  * The px a column is taken to need when judging whether a table fits: its `width` when that is a
  * plain `px` or `rem` length, {@link DATA_TABLE_COLUMN_WIDTH_ESTIMATE} otherwise (`auto`, `%`, `calc()`
- * and the like say nothing about a size in px).
+ * and the like say nothing about a size in px). A `rem` length, and the default, follow `remPx`, the
+ * root font size (16 unless told otherwise).
  */
-export function estimateColumnWidth<TRow>(column: Pick<DataTableColumn<TRow>, "width">): number {
+export function estimateColumnWidth<TRow>(
+  column: Pick<DataTableColumn<TRow>, "width">,
+  remPx: number = REM_PX,
+): number {
   const match = column.width ? CSS_LENGTH.exec(column.width) : null;
-  if (!match) return DATA_TABLE_COLUMN_WIDTH_ESTIMATE;
+  if (!match) return DEFAULT_COLUMN_REM * remPx;
   const value = Number(match[1]);
-  return match[2].toLowerCase() === "rem" ? value * REM_PX : value;
+  return match[2].toLowerCase() === "rem" ? value * remPx : value;
 }
 
-/** The px the pinned columns around the data columns take, for {@link getColumnsHiddenByWidth}. */
+/**
+ * One step of the spacing scale, in rem (`--spacing`). The pinned cells are whole numbers of steps:
+ * the padding of a cell is `p-1`, `p-2` or `p-3` by density, a checkbox `size-3`, `size-4` or
+ * `size-5`, the details button `size-7`, an icon action button `size-9`, the gap between them `gap-1`.
+ * That is why their widths can be known without rendering them.
+ */
+export const DATA_TABLE_SPACING_REM = 0.27;
+
+/** px of one spacing step at a 16px root font. */
+const DEFAULT_UNIT_PX = DATA_TABLE_SPACING_REM * REM_PX;
+
+const CELL_PADDING_STEPS: Record<Densities, number> = {
+  [Densities.Small]: 1,
+  [Densities.Medium]: 2,
+  [Densities.Large]: 3,
+};
+const CHECKBOX_STEPS: Record<Densities, number> = {
+  [Densities.Small]: 3,
+  [Densities.Medium]: 4,
+  [Densities.Large]: 5,
+};
+/** `pr-2` on a cell that holds a checkbox. */
+const CHECKBOX_CELL_END_PADDING_STEPS = 2;
+/** `ps-6` / `pe-6` on the first and last cell of a table that carries a flush card's inset. */
+const INSET_STEPS = 6;
+const GAP_STEPS = 1;
+const DETAILS_BUTTON_STEPS = 7;
+const ACTION_BUTTON_STEPS = 9;
+
+/** What the estimates need to know about the table that the columns do not say. */
+export interface PinnedColumnMetrics {
+  /** Defaults to Medium. */
+  density?: Densities;
+  /** The table carries the inset of a flush card on its first and last cell. */
+  inset?: boolean;
+  /** px of one spacing step: `--spacing` as resolved in the page. Defaults to 0.27rem at 16px. */
+  unitPx?: number;
+}
+
+const unitOf = ({ unitPx }: PinnedColumnMetrics) =>
+  typeof unitPx === "number" && unitPx > 0 ? unitPx : DEFAULT_UNIT_PX;
+
+/**
+ * px the pinned cell at the start needs: the selection checkbox, the details button, or both side by
+ * side, with the cell's padding. The details button is counted by default, because it appears the
+ * moment a column is hidden and the width it needs must already be set aside then; `withDetails:
+ * false` is the cell as it is laid out while nothing is hidden. `checkboxPx` replaces the model's
+ * checkbox when the browser has said what it is.
+ */
+export function estimateStartColumnWidth({
+  selectable,
+  withDetails = true,
+  checkboxPx,
+  ...metrics
+}: PinnedColumnMetrics & {
+  selectable: boolean;
+  withDetails?: boolean;
+  checkboxPx?: number | null;
+}): number {
+  if (!selectable && !withDetails) return 0;
+  const unit = unitOf(metrics);
+  const density = metrics.density ?? Densities.Medium;
+  const padding = CELL_PADDING_STEPS[density];
+
+  const parts: number[] = [];
+  if (selectable) {
+    parts.push(
+      typeof checkboxPx === "number" && checkboxPx > 0
+        ? checkboxPx
+        : CHECKBOX_STEPS[density] * unit,
+    );
+  }
+  if (withDetails) parts.push(DETAILS_BUTTON_STEPS * unit);
+
+  const start = (metrics.inset ? INSET_STEPS : padding) * unit;
+  const end = (selectable ? CHECKBOX_CELL_END_PADDING_STEPS : padding) * unit;
+  const gaps = (parts.length - 1) * GAP_STEPS * unit;
+  return Math.ceil(start + parts.reduce((sum, part) => sum + part, 0) + gaps + end);
+}
+
+/**
+ * px the pinned actions cell needs for `actionCount` icon buttons side by side, with the cell's
+ * padding: 100 for the usual pair at Medium and 16px, 57 for one (or for the single "..." button the
+ * actions fold into). A button with a text label is wider than the icon this assumes; the table
+ * measures those, see `usePinnedMetrics`.
+ */
+export function estimateActionsColumnWidth({
+  actionCount,
+  ...metrics
+}: PinnedColumnMetrics & { actionCount: number }): number {
+  if (!(actionCount > 0)) return 0;
+  const unit = unitOf(metrics);
+  const padding = CELL_PADDING_STEPS[metrics.density ?? Densities.Medium];
+  const end = metrics.inset ? INSET_STEPS : padding;
+  const buttons = actionCount * ACTION_BUTTON_STEPS + (actionCount - 1) * GAP_STEPS;
+  return Math.ceil((padding + buttons + end) * unit);
+}
+
+/**
+ * The px the pinned columns around the data columns take, for {@link getColumnsHiddenByWidth}: the
+ * start cell with its details button, and the actions cell for `actionCount` icon buttons (two unless
+ * told). Medium density and a 16px root font unless `density` and `unitPx` say otherwise.
+ */
 export function reservedColumnsWidth({
   selectable,
   actions,
-}: {
+  actionCount = 2,
+  ...metrics
+}: PinnedColumnMetrics & {
   selectable: boolean;
   actions: boolean;
+  actionCount?: number;
 }): number {
   return (
-    (selectable ? DATA_TABLE_RESERVED_WIDTH.select : 0) +
-    DATA_TABLE_RESERVED_WIDTH.detail +
-    (actions ? DATA_TABLE_RESERVED_WIDTH.actions : 0)
+    estimateStartColumnWidth({ selectable, ...metrics }) +
+    (actions ? estimateActionsColumnWidth({ actionCount, ...metrics }) : 0)
   );
 }
 
@@ -84,6 +201,8 @@ export interface ColumnsHiddenByWidthOptions {
   width: number | null;
   /** px held by the pinned columns, see {@link reservedColumnsWidth}. */
   reservedWidth?: number;
+  /** The root font size in px, which a `rem` width and the default estimate follow. Defaults to 16. */
+  remPx?: number;
   /**
    * What the previous call returned, for hysteresis: a column that was hidden stays hidden until the
    * container is {@link DATA_TABLE_REVEAL_MARGIN} px wider than it takes to hide it. The history only
@@ -129,7 +248,8 @@ export interface ColumnsHiddenByWidthOptions {
  *   below its threshold (again bar the kept one).
  * - **Growing never hides a column for nothing.** As the container grows, a column that is showing
  *   stays showing, except to pay for a `hideBelow` column that has just come back (and the kept one
- *   may hand over to a column that now fits). Shrinking is the mirror of that.
+ *   may hand over to a column that now fits). Shrinking is the mirror of that. This is for one
+ *   `reservedWidth`; {@link getResponsiveFit} is where the room the pinned columns leave can change.
  * - **A table with only `hideBelow` columns, or only `priority` ones, answers as it did before.** The
  *   mix was the one shape that was wrong: it counted a `hideBelow` column that the margin held back
  *   as showing, so a `priority` column was hidden to pay for it.
@@ -140,7 +260,7 @@ export interface ColumnsHiddenByWidthOptions {
  */
 export function getColumnsHiddenByWidth<TRow>(
   columns: readonly DataTableColumn<TRow>[],
-  { width, reservedWidth = 0, previouslyHidden }: ColumnsHiddenByWidthOptions,
+  { width, reservedWidth = 0, remPx = REM_PX, previouslyHidden }: ColumnsHiddenByWidthOptions,
 ): Set<string> {
   if (columns.length === 0 || !columns.some(isResponsiveColumn)) return new Set();
 
@@ -175,7 +295,7 @@ export function getColumnsHiddenByWidth<TRow>(
     const total =
       reservedWidth +
       columns.reduce(
-        (sum, column) => (hidden.has(column.name) ? sum : sum + estimateColumnWidth(column)),
+        (sum, column) => (hidden.has(column.name) ? sum : sum + estimateColumnWidth(column, remPx)),
         0,
       );
     /** How many of `ranked`, from the least important, a container of `room` px has to drop. */
@@ -183,7 +303,7 @@ export function getColumnsHiddenByWidth<TRow>(
       let needed = total;
       let dropped = 0;
       while (dropped < ranked.length && needed > room) {
-        needed -= estimateColumnWidth(ranked[dropped]);
+        needed -= estimateColumnWidth(ranked[dropped], remPx);
         dropped += 1;
       }
       return dropped;
@@ -205,6 +325,102 @@ export function getColumnsHiddenByWidth<TRow>(
     hidden.delete(mostImportant(columns).name);
   }
   return hidden;
+}
+
+/**
+ * Whether row actions are folded into one menu button at this container width.
+ *
+ * - Not at all when `below` is not a finite number.
+ * - Folded before a measurement (`width: null`), as a column with `hideBelow` is hidden: a phone's
+ *   first paint is never a row of buttons that folds afterwards.
+ * - Folded while the container is narrower than `below`; unfolded again only once it is
+ *   {@link DATA_TABLE_REVEAL_MARGIN} px wider than that, so a scrollbar that comes and goes cannot
+ *   make it flip on every frame. Between the two it keeps `wasCollapsed`, which a first measurement
+ *   leaves out (at or above `below` is then unfolded).
+ *
+ * A function of the width and its own previous answer and of nothing else: not of the columns, not of
+ * which of them are hidden, so folding cannot feed back into the width that decided it.
+ */
+export function getRowActionsCollapsed({
+  width,
+  below,
+  wasCollapsed,
+}: {
+  width: number | null;
+  below: number | undefined;
+  wasCollapsed?: boolean;
+}): boolean {
+  if (!isRank(below)) return false;
+  if (width === null || width < below) return true;
+  if (width >= below + DATA_TABLE_REVEAL_MARGIN) return false;
+  return wasCollapsed ?? false;
+}
+
+export interface ResponsiveFitOptions extends Omit<
+  ColumnsHiddenByWidthOptions,
+  "previouslyHidden"
+> {
+  /** The pinned columns' px while row actions are folded into one menu button. Defaults to `reservedWidth`. */
+  reservedFoldedWidth?: number;
+  /** Fold row actions below this container width, see {@link getRowActionsCollapsed}. */
+  collapseBelow?: number;
+  /**
+   * Whether folding does anything in this table: false when no row has more than one action, where
+   * the single button is already as small as the menu button would be. Defaults to true.
+   */
+  collapseApplies?: boolean;
+  /** What the previous call returned, for hysteresis. Leave it out for a first measurement. */
+  previous?: { hidden: ReadonlySet<string>; trigger: boolean };
+}
+
+export interface ResponsiveFit {
+  /** Names of the columns the container is too narrow for. */
+  hidden: Set<string>;
+  /** Whether the container is narrow enough to fold, whether or not folding applies. The history. */
+  trigger: boolean;
+  /** Whether row actions are folded: `trigger`, and the table has something to fold. */
+  collapsed: boolean;
+}
+
+/**
+ * {@link getColumnsHiddenByWidth} and {@link getRowActionsCollapsed} together, because the first needs
+ * to know which of two widths the pinned columns take: the actions folded into one button are
+ * narrower. The fold is decided first and from the width alone; the columns are then fitted into what
+ * the folded or the unfolded actions leave.
+ *
+ * The state is the pair (hidden columns, fold). Its guarantees are those of the two parts, for a
+ * reserved width that does not change between calls: a jitter smaller than
+ * {@link DATA_TABLE_REVEAL_MARGIN} can move the pair one way and never straight back. They are not the
+ * "growing never hides a column" of the columns alone: crossing the fold threshold changes the room
+ * by the difference of the two widths, so unfolding on the way up can hide a column that the folded
+ * actions left room for, and folding on the way down can bring one back. Both are the point of
+ * folding, and neither can recur inside a window narrower than the margin.
+ */
+export function getResponsiveFit<TRow>(
+  columns: readonly DataTableColumn<TRow>[],
+  {
+    width,
+    reservedWidth = 0,
+    reservedFoldedWidth,
+    remPx,
+    collapseBelow,
+    collapseApplies = true,
+    previous,
+  }: ResponsiveFitOptions,
+): ResponsiveFit {
+  const trigger = getRowActionsCollapsed({
+    width,
+    below: collapseBelow,
+    wasCollapsed: previous?.trigger,
+  });
+  const collapsed = trigger && collapseApplies;
+  const hidden = getColumnsHiddenByWidth(columns, {
+    width,
+    reservedWidth: collapsed ? (reservedFoldedWidth ?? reservedWidth) : reservedWidth,
+    remPx,
+    previouslyHidden: previous?.hidden,
+  });
+  return { hidden, trigger, collapsed };
 }
 
 /** Whether two sets name the same columns. */
