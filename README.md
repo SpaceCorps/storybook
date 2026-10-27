@@ -226,7 +226,19 @@ function LoginForm() {
   night shift that began the evening before the first column still reaches the week view. `timeZone`
   decides what "today" is and how far a running entry has got, `now` pins the clock, `labels` replaces
   every string. All styling is Tailwind utilities; the root exposes `--sc-hour`, `--sc-cell-min`,
-  `--sc-gutter` and `--sc-max-body`.
+  `--sc-gutter` and `--sc-max-body`. In the week view, entries sit side by side only where they truly
+  overlap: entries that touch (one ends in the minute the next starts), or have any gap between
+  them, share one full-width column at every density. A block is never drawn shorter than 1.35rem (27
+  minutes at Medium, 32 at Small, 23 at Large), so a shorter entry is lifted to that only into free
+  space, then trimmed to where the next block starts. When that leaves too little height the label
+  degrades instead of the width splitting: from the least height it is the full block, from a
+  quarter of an hour (one line of text at every density) it is one tight line with the title only,
+  and below that a bar, the colour wash and left edge with no text, which keeps its `aria-label` and
+  `title`, so the name is still read out and shown as a tooltip. Blocks carry `data-fit="full"`,
+  `"tight"` or `"bar"`. An entry with no known end has no interval to overlap, so it keeps the least
+  height and whatever starts inside it is put beside it. There is no API change: the layout helpers
+  are not part of the package entries, and `PositionedSegment.drawnEndMin` (where a block is drawn to)
+  is optional, a position without it drawing as before.
 - **DataTable in a Card**: `variant` is `"bordered"` or `"embedded"`. Inside a `CardContent` it
   defaults to `"embedded"`, so a table in a card never draws a second border inside the card's; a
   table inside a `DialogContent`, `AlertDialogContent`, `SheetContent` or `PopoverContent` opened from
