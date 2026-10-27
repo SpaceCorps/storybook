@@ -52,7 +52,9 @@ export interface AppShellProps {
   nav: AppShellNavSection[];
   /**
    * Sidebar footer. Receives whether the sidebar is collapsed to the icon rail so it can shrink to an
-   * avatar. It is never collapsed in the mobile drawer, which always has the full width.
+   * avatar. It is never collapsed in the mobile drawer, which always has the full width. The rail's
+   * navigation buttons are square (about 39px) and centred in it: a `SidebarMenuButton`, or a square
+   * control of that size, lines up with the navigation above it.
    */
   footer?: React.ReactNode | ((state: { collapsed: boolean }) => React.ReactNode);
   /** Text or node shown at the start of the island's header. */

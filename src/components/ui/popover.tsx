@@ -24,7 +24,11 @@ const PopoverContent = React.forwardRef<
           align={align}
           sideOffset={sideOffset}
           className={cn(
-            "z-50 w-72 rounded-box border bg-popover p-4 text-popover-foreground shadow-md outline-hidden data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+            // Hands the fill to an embedded table (variant="embedded", no box of its own) in the popover,
+            // as CardContent does: in dark the popover is a step above the page, so such a table falling
+            // back to the page colour would be a dark patch. A bordered table, the default, sets the page
+            // colour itself and stays a recessed inset.
+            "[--ivy-data-table-surface:var(--popover)] z-50 w-72 rounded-box border bg-popover p-4 text-popover-foreground shadow-md outline-hidden data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
             className,
           )}
           data-slot="popover-content"

@@ -710,6 +710,9 @@ describe("TimeCalendar week", () => {
   });
 
   describe("entries shorter than a block", () => {
+    // THE PREMISE CHANGED here. These used to say that short entries are packed side by side "because
+    // a block is drawn taller than they are long". Columns now mean a true overlap only: a short block
+    // is lifted to its least height into free space, and trimmed to the next block when there is none.
     const short = (id: string, start: string, end: string): TimeCalendarEvent<Meta> => ({
       id,
       date: "2026-10-21",
@@ -721,8 +724,9 @@ describe("TimeCalendar week", () => {
       const style = block(container, "2026-10-21", id).style;
       return [style.left, style.width];
     };
+    const FULL = ["calc(0% + 1px)", "calc(100% - 2px)"];
 
-    it("are packed side by side, because a block is drawn taller than they are long", () => {
+    it("share one full-width column when they are back to back, each at its true length", () => {
       const { container } = renderWeek({
         events: [
           short("a", "10:00", "10:10"),
@@ -730,28 +734,165 @@ describe("TimeCalendar week", () => {
           short("c", "10:20", "10:30"),
         ],
       });
-      expect(placement(container, "a")).toEqual(["calc(0% + 1px)", "calc(33.3333% - 2px)"]);
-      expect(placement(container, "b")).toEqual(["calc(33.3333% + 1px)", "calc(33.3333% - 2px)"]);
-      expect(placement(container, "c")).toEqual(["calc(66.6667% + 1px)", "calc(33.3333% - 2px)"]);
+      for (const id of ["a", "b", "c"]) expect(placement(container, id)).toEqual(FULL);
+      // Ten minutes is a sixth of an hour; the last one has nothing below it and is lifted to the
+      // Medium least height of 27 minutes. None carries a CSS minimum: the layout counted it.
+      expect(hoursOf(block(container, "2026-10-21", "a").style.height)).toBeCloseTo(10 / 60, 3);
+      expect(hoursOf(block(container, "2026-10-21", "b").style.height)).toBeCloseTo(10 / 60, 3);
+      expect(hoursOf(block(container, "2026-10-21", "c").style.height)).toBeCloseTo(27 / 60, 3);
+      for (const id of ["a", "b", "c"]) {
+        expect(block(container, "2026-10-21", id).style.minHeight).toBe("");
+      }
     });
 
-    it("share a column again once the block above has ended, at the density's own height", () => {
-      // 25 minutes apart is enough for a Medium block (27 minutes tall) only as the next one starts
-      // below it; at Small (32 minutes) the same two overlap.
+    it("are lifted only into the free space below them, at the density's own height", () => {
+      // 28 minutes apart: a Medium block (27 minutes tall) fits above the next one; a Small block
+      // (32 minutes) would not, so it is trimmed to end where the next begins. Never a second column.
       const events = [short("a", "10:00", "10:10"), short("b", "10:28", "10:38")];
       const medium = renderWeek({ events, density: "Medium" as never });
-      expect(placement(medium.container, "b")).toEqual(["calc(0% + 1px)", "calc(100% - 2px)"]);
+      expect(placement(medium.container, "a")).toEqual(FULL);
+      expect(placement(medium.container, "b")).toEqual(FULL);
+      expect(hoursOf(block(medium.container, "2026-10-21", "a").style.height)).toBeCloseTo(
+        27 / 60,
+        3,
+      );
       medium.unmount();
       const small = renderWeek({ events, density: "Small" as never });
-      expect(placement(small.container, "a")).toEqual(["calc(0% + 1px)", "calc(50% - 2px)"]);
-      expect(placement(small.container, "b")).toEqual(["calc(50% + 1px)", "calc(50% - 2px)"]);
+      expect(placement(small.container, "a")).toEqual(FULL);
+      expect(placement(small.container, "b")).toEqual(FULL);
+      expect(hoursOf(block(small.container, "2026-10-21", "a").style.height)).toBeCloseTo(
+        28 / 60,
+        3,
+      );
     });
 
-    it("keep their real length in the height, which the minimum then lifts in CSS", () => {
+    it("is lifted to the least height, with no CSS minimum, when nothing is below it", () => {
       const { container } = renderWeek({ events: [short("a", "10:00", "10:10")] });
       const style = block(container, "2026-10-21", "a").style;
-      expect(hoursOf(style.height)).toBeCloseTo(10 / 60, 3);
-      expect(style.minHeight).toBe("1.35rem");
+      expect(hoursOf(style.height)).toBeCloseTo(27 / 60, 3);
+      expect(style.minHeight).toBe("");
+    });
+
+    it("still puts entries that truly overlap side by side", () => {
+      const { container } = renderWeek({
+        events: [short("a", "10:00", "10:30"), short("b", "10:20", "10:30")],
+      });
+      expect(placement(container, "a")).toEqual(["calc(0% + 1px)", "calc(50% - 2px)"]);
+      expect(placement(container, "b")).toEqual(["calc(50% + 1px)", "calc(50% - 2px)"]);
+    });
+  });
+
+  describe("a day of entries that touch or sit close", () => {
+    // The day an accounting app reported. The server refuses real overlaps, so none of these overlap.
+    const OWNER_DAY: TimeCalendarEvent<Meta>[] = [
+      ["07:24", "07:44"],
+      ["07:45", "08:15"],
+      ["08:45", "09:55"],
+      ["11:30", "13:00"],
+    ].map(([start, end], index) => ({
+      id: `o${index}`,
+      date: "2026-10-21",
+      start,
+      end,
+      title: "Acme Logistik",
+    }));
+
+    it.each(["Small", "Medium", "Large"] as const)(
+      "draws every block at full width in one column at %s density",
+      (density) => {
+        const { container } = renderWeek({ events: OWNER_DAY, density: density as never });
+        const blocks = within(cell(container, "2026-10-21")).getAllByRole("button");
+        expect(blocks).toHaveLength(4);
+        for (const button of blocks) {
+          expect(button.style.left).toBe("calc(0% + 1px)");
+          expect(button.style.width).toBe("calc(100% - 2px)");
+        }
+      },
+    );
+
+    it("trims the 20-minute entry to where the next one starts, so it is not drawn over it", () => {
+      const { container } = renderWeek({ events: OWNER_DAY });
+      const first = block(container, "2026-10-21", "o0");
+      const second = block(container, "2026-10-21", "o1");
+      // 07:24 to 07:45 is 21 minutes, and the next block starts at 07:45.
+      expect(hoursOf(first.style.height)).toBeCloseTo(21 / 60, 3);
+      expect(hoursOf(second.style.top) - hoursOf(first.style.top)).toBeCloseTo(21 / 60, 3);
+      // Less than the least height, so the label is one tight line.
+      expect(first.dataset.fit).toBe("tight");
+      expect(second.dataset.fit).toBe("full");
+    });
+
+    it.each(["Small", "Medium", "Large"] as const)(
+      "keeps the 07:24 entry's label at %s: one tight line, with room for an Å above it",
+      (density) => {
+        const { container } = renderWeek({ events: OWNER_DAY, density: density as never });
+        const first = block(container, "2026-10-21", "o0");
+        // Drawn down to 07:45, 21 minutes: enough for a label at every density (19.5 minutes).
+        expect(first.dataset.fit).toBe("tight");
+        const title = first.firstElementChild as HTMLElement;
+        expect(title).toHaveTextContent("Acme Logistik");
+        // The title clips at its own padding box, which has to hold the ring of an Å, Ä or Ö and the
+        // descenders; the block centres that box.
+        expect(title).toHaveClass("truncate", "pt-[0.2em]", "pb-[0.1em]");
+        // The other blocks of the day are full and have no such padding.
+        const second = block(container, "2026-10-21", "o1");
+        expect(second.dataset.fit).toBe("full");
+        expect((second.firstElementChild as HTMLElement).className).not.toMatch(/p[tb]-/);
+      },
+    );
+
+    it("makes a 15-minute entry with another right below it a bar, and a 20-minute one tight", () => {
+      // A tight label needs 19.5 minutes at every density: the line, and the room for an Å above it and
+      // for descenders. Anything shorter has no room for text and is a bar: still named, still a button.
+      for (const [end, label, fit] of [
+        ["09:15", "15m", "bar"],
+        ["09:20", "20m", "tight"],
+      ] as const) {
+        const { container, unmount } = renderWeek({
+          events: [
+            { id: "x", date: "2026-10-21", start: "09:00", end, title: "Åre" },
+            { id: "y", date: "2026-10-21", start: end, end: "10:30", title: "Intern" },
+          ],
+        });
+        const short = block(container, "2026-10-21", "x");
+        expect(short.dataset.fit).toBe(fit);
+        if (fit === "bar") expect(short).toBeEmptyDOMElement();
+        else expect(short).toHaveTextContent("Åre");
+        expect(short).toHaveAccessibleName(`Åre, 09:00 to ${end}, ${label}`);
+        unmount();
+      }
+    });
+
+    it("gives bar blocks no text and keeps their accessible name and tooltip", () => {
+      const { container } = renderWeek({
+        events: [
+          { id: "x", date: "2026-10-21", start: "10:00", end: "10:10", title: "Acme Logistik" },
+          { id: "y", date: "2026-10-21", start: "10:10", end: "10:20", title: "Intern" },
+          {
+            id: "z",
+            date: "2026-10-21",
+            start: "10:20",
+            end: "10:50",
+            title: "Fjällbacka webbplats",
+          },
+        ],
+      });
+      const bar = block(container, "2026-10-21", "x");
+      expect(bar.dataset.fit).toBe("bar");
+      expect(bar).toBeEmptyDOMElement();
+      expect(bar.textContent).toBe("");
+      expect(bar).toHaveAccessibleName("Acme Logistik, 10:00 to 10:10, 10m");
+      expect(bar).toHaveAttribute("title", "Acme Logistik, 10:00 to 10:10, 10m");
+      // The second is a bar too, and the third has room for its title.
+      expect(block(container, "2026-10-21", "y")).toHaveAccessibleName(
+        "Intern, 10:10 to 10:20, 10m",
+      );
+      expect(block(container, "2026-10-21", "y").dataset.fit).toBe("bar");
+      expect(block(container, "2026-10-21", "z")).toHaveTextContent("Fjällbacka webbplats");
+      // The accessible name is how a bar is found by role.
+      expect(
+        within(container).getByRole("button", { name: /^Acme Logistik, 10:00 to 10:10/ }),
+      ).toBe(bar);
     });
   });
 

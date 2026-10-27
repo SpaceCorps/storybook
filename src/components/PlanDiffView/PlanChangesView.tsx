@@ -391,7 +391,7 @@ export const PlanChangesView: React.FC<PlanChangesViewProps> = ({
           </span>
           <select
             aria-label="Jump to file"
-            className="flex-1 min-w-0 text-xs px-2 py-1 rounded bg-[var(--background)] text-[var(--foreground)] border border-[var(--border)]"
+            className="flex-1 min-w-0 text-xs px-2 py-1 rounded bg-[var(--background)] text-[var(--foreground)] border border-[var(--input)]"
             value={selectedPath ?? ""}
             onChange={(e) => {
               if (e.target.value) selectFile(e.target.value);

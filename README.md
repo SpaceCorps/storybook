@@ -150,7 +150,7 @@ import {
 
 function LoginForm() {
   return (
-    <form onSubmit={signIn}>
+    <form onSubmit={signIn} className="flex flex-col gap-4">
       <Field label="Username" name="username">
         <Input autoComplete="username" />
       </Field>
@@ -163,6 +163,12 @@ function LoginForm() {
 }
 ```
 
+- **Form spacing** is one rule: `Field` and the react-hook-form `FormItem` space their own label,
+  control, hint and message (`gap-1.5`), and whatever stacks them spaces the steps between them. Put
+  an error `Alert`, every field and the submit button in one `flex flex-col gap-4` (or `grid gap-4`)
+  container, as in the example above. Without it a bare `<form>` stacks them with no gap at all: the
+  next label sits on the input above it and the button on the last input. `Patterns/Auth forms` →
+  `SignInSpacing` and `SignInSpacingWithFormComponents` measure it.
 - **Field** wires `id`, `aria-describedby` (hint and error), `aria-invalid`, `aria-required`, `name`
   and `disabled` into `Input`, `Textarea`, `Select`, `Checkbox`, `Switch`, `RadioGroup`, `NumberInput`,
   `DatePicker`, `DateRangePicker`, `TimeInput` and `MultipleSelector`; the react-hook-form `FormItem`
@@ -220,7 +226,28 @@ function LoginForm() {
   night shift that began the evening before the first column still reaches the week view. `timeZone`
   decides what "today" is and how far a running entry has got, `now` pins the clock, `labels` replaces
   every string. All styling is Tailwind utilities; the root exposes `--sc-hour`, `--sc-cell-min`,
-  `--sc-gutter` and `--sc-max-body`.
+  `--sc-gutter` and `--sc-max-body`. In the week view, entries sit side by side only where they truly
+  overlap: entries that touch (one ends in the minute the next starts), or have any gap between
+  them, share one full-width column at every density. A short entry is lifted to a least height of
+  1.35rem (27 minutes at Medium, 32 at Small, 23 at Large) only into free space, never past the
+  start of the next block that shares its width, so an entry with another right after it is drawn
+  only as tall as it is long (or as the gap leaves it). When that leaves too little height the label
+  degrades instead of the width splitting: from the least height it is the full block; from 19.5
+  minutes (one line of text, with room above it for the ring of an Å, Ä or Ö and below it for
+  descenders, at every density) it is one tight line with the title only; and below that a bar, the
+  colour wash and left edge with no text, which keeps its `aria-label` and `title`, so the name is
+  still read out and shown as a tooltip. Blocks carry `data-fit="full"`, `"tight"` or `"bar"`. In
+  forced-colors mode (Windows High Contrast) a block is told apart by its border, and a tight block
+  keeps only its left and right edge, because a top and bottom border would take the room its label
+  needs. An entry with no known end has no interval to overlap, so it keeps the least height and
+  whatever starts inside it is put beside it. There is no API change: the layout helpers are not part
+  of the package entries, and `PositionedSegment.drawnEndMin` (where a block is drawn to) is
+  optional, a position without it drawing as before. Two things follow from drawing every entry at
+  its true length. A 10-minute bar is 6.7 to 9.3px tall, and an entry of a minute or two that another
+  follows is a sliver of a pixel or two (0.8px per minute at Medium), too small to hit with a
+  pointer; it is still reached by Tab and still has its name. And the least height now comes from the
+  layout, no longer from a CSS `min-height`, so if you override `--sc-hour` keep it at the density's
+  hour height (2.5, 3 and 3.5rem); a smaller one draws the lifted blocks below 1.35rem.
 - **DataTable in a Card**: `variant` is `"bordered"` or `"embedded"`. Inside a `CardContent` it
   defaults to `"embedded"`, so a table in a card never draws a second border inside the card's; a
   table inside a `DialogContent`, `AlertDialogContent`, `SheetContent` or `PopoverContent` opened from
@@ -265,11 +292,23 @@ function LoginForm() {
   `skipLink` prop (`true` for "Skip to content", or a label string; off by default); when the page overflows and nothing in it is tabbable, `SidebarInsetContent` becomes a
   `role="region"` tab stop named "Page content" (`contentLabel`, or `scrollLabel` on
   `SidebarInsetContent`) so the arrow and Page keys can scroll it. A `role`, `aria-label` or
-  `aria-labelledby` you pass wins. `ScrollArea` does the same for its viewport: it is a tab stop and a
+  `aria-labelledby` you pass wins. In the `inset` variant (the default) the island is exactly one viewport
+  tall with its margin included (`100svh` minus four of `--spacing`, the margin being `m-2`), so a long page
+  scrolls inside it and the document never scrolls as well. `ScrollArea` does the same for its viewport: it is a tab stop and a
   `region` (named by `aria-label`, `aria-labelledby` or "Scrollable content") only while the content
   overflows. `VirtualList` does the same for its scroll container (default name "Scrollable list"), and
   stays a tab stop when its rows hold buttons. Name each list once a page has more than one: two unnamed
   lists are two regions with the same name, which axe reports as `landmark-unique`.
+- **Collapsed sidebar rail**: `collapsible="icon"` is a compact rail. `SIDEBAR_WIDTH_ICON` keeps its
+  value (`3rem`) and meaning; the `inset` and `floating` variants (on either `side`) add a 0.25rem
+  gutter and are 52px wide (they were 64px), the plain variant is 48px. Section labels hidden in the
+  rail no longer take the pointer, so the bottom of a button above one can be clicked and hovered. When
+  the nav is taller than the window the rail scrolls (hidden scrollbar, `scroll-py-1` so a focus ring
+  is never clipped). The expanded sidebar keeps its geometry, but its hover, press and current-page
+  fills are now 8%, 12% and 12% foreground tints instead of `--accent` (which equals the sidebar
+  surface, so the current page had no mark); `sidebarMenuButtonVariant`, `SidebarMenuAction`,
+  `SidebarGroupAction` and `SidebarMenuSubButton` change with it, and `--accent` no longer themes the
+  sidebar. An app that sets `--sidebar-width-icon` gets that width plus the gutter.
 - **Ratings and popover links**: `StarRating` and `EmojiRating` with `allowHalf` are one
   `role="slider"` (Left/Right and Up/Down step 0.5, Page Up / Page Down step 1, Home clears, End gives
   the highest) with `aria-label`; without it they are the usual row of buttons. `PopoverLink` opens
@@ -426,14 +465,42 @@ each. Additive props and new components are in the sections above.
   `focus:outline-hidden`, and the Small trailing hit target is `size-6` (was `size-5`).
 - **react-hook-form `Form`**: `FormControl` no longer emits `aria-invalid="false"` or a dangling
   `aria-describedby`; `FormMessage` has `role="alert"`; `FormItem` reports `hasLabel` only while a
-  `FormLabel` is mounted; error text uses the destructive-800/200 steps.
+  `FormLabel` is mounted; error text uses the destructive-800/200 steps. `FormItem` is `grid gap-1.5`
+  (its `gap-y-4` did nothing on a block `div`), so a label no longer sits flush on its control; an item
+  you already spaced yourself, for example with `space-y-2`, now has both.
 - **`Calendar` caption**: Enter in the month or year box no longer blurs it.
+
+**Borders, surfaces and contrast**
+
+- **Borders derive from the foreground**: `--border`, `--input` and `--sidebar-border` are
+  `color-mix(in oklab, <foreground> N%, transparent)` and are recomputed per theme. Redeclare them on a
+  subtree that overrides `--foreground` without the `.dark` class. `getCSSVariable("--border")` and
+  `ThemeColors.border` return that colour string, not a hex: fine in a style prop, SVG stroke or
+  stylesheet, not for canvas or colour-math libraries. Do not use `var(--input)` or `var(--border)` as
+  an opaque fill (a track, thumb or skeleton): they are translucent now, so it is a tint of whatever is
+  behind it; use `--muted` or `--popover`.
+- **Control edges are at 3:1**: input, textarea, select trigger, multiselect (it had none; pass `ghost`
+  for the borderless look), checkbox, radio, switch off track, outline Button, Toggle, the calendar
+  chips and the pagination select. Dark `--card` and `--popover` are lifted above the page, so cards,
+  menus, sheets, toasts, Dialog and AlertDialog read as raised. A dark invalid border uses the named
+  red, not `--destructive`.
+- **Error text uses `fieldErrorTextClass`**, not `text-destructive`, which is a fill colour (3.3:1 on
+  white, 1.9:1 on the dark page). Dim text is `text-muted-foreground`, not `/70`.
 
 **Overlays, focus and keyboard**
 
 - **`Tabs` are always Radix**: inactive panels stay in the DOM as empty hidden `div role="tabpanel"`,
   the active panel is focusable, and triggers select on mousedown, focus and keys (a bare click still
   selects). `useRadix` is accepted and ignored.
+- **`Tabs` look and overflow**: `TabsList` is a bordered `bg-card` segmented control with an equal
+  gutter on every side; the active tab is a foreground tint and the focus ring is whole. There is no
+  `variant` prop. When the tabs do not fit, the list is `max-w-full` and scrolls inside itself (snap
+  to the start of each tab, a fade on the side that has more, no scrollbar, the wheel left native) and
+  never widens its box or the page. The active tab is brought into view on first render, when `value`
+  changes, on keyboard focus and when the width changes; it works right to left. A vertical list does
+  not scroll. The list is a scroll container (`overflow-x-auto overflow-y-hidden`) even when it fits, so
+  anything that overhangs its box, such as a badge positioned above a trigger, is clipped; keep such
+  decorations inside the trigger.
 - **Toasts**: `useToast` no longer dismisses on any document click or Escape. A toast times out after
   5 s (12 s when destructive or with an action) unless you pass `duration`. `ToastClose` is named
   "Close". At most three toasts are open at once; closed ones waiting out their exit animation no
@@ -568,6 +635,20 @@ each. Additive props and new components are in the sections above.
 
 **DataTable and Card**
 
+- **`DataTable` columns can drop out as the table narrows**: `hideBelow` (the table's own container
+  width in px, not the viewport) and `priority` (lower is more important; the highest number goes
+  first, one at a time, until the estimated width fits; `width` in px or rem is the estimate, else
+  8rem) move a column into a row details panel, reached by a disclosure button that exists only
+  while a column is hidden. `hidden` and the column options menu still win. Before the container is
+  measured (server render, first paint) every `hideBelow` column and every `priority` column counts as
+  hidden; the most important one (lowest `priority`, else lowest `hideBelow`) is kept only when that
+  would leave the table with no column at all. A hidden column comes back once the container is 24px
+  wider than it took to hide it, so a scrollbar (15px) appearing or disappearing cannot make a table
+  flip between two layouts; a `hideBelow` column held back that way takes no room from the
+  `priority` columns, so none of them is hidden to pay for a column that is not showing. Columns with
+  neither prop never move, so existing tables are unchanged. `DataTableRowDetail`,
+  `DataTableRowExpander`, `DataTableFooterDetail` and `useColumnsHiddenByWidth` are exported for a
+  custom layout.
 - **`DataTable` in a `CardContent`** defaults to `variant="embedded"` (no border of its own), padded or
   flush; one in a dialog, alert dialog, sheet or popover opened from a card stays `"bordered"`. Pass `variant="bordered"` to keep the old look. `Card` gained `min-w-0`; use `min-w-fit` on a
   `Card` that should grow with a wide child.
@@ -869,7 +950,8 @@ from this list:
   `ControlledOpen`, `ChainedDialogs`, `EscapeWithAToastOver`, `EscapeVetoedWithAToastOver`, `OpenedFromContextMenu`,
   `AsChild`; `UI/AlertDialog` →
   `ControlledOpen`, `ConfirmThenReason`; `UI/Sheet` → `ControlledOpen`; `UI/Sidebar` →
-  `AppShellKeyboard`, `DrawerWithAMenu`, `AppShellCollapsedFooter`; `UI/MultiSelect` → `Chips`,
+  `AppShellKeyboard`, `DrawerWithAMenu`, `AppShellCollapsedFooter`, `InsetFitsViewport`,
+  `InsetFitsViewportDark`; `UI/MultiSelect` → `Chips`,
   `InsideDialog`, `WithActions`, `LongListInsideDialog`; `UI/Toolbar` → `OverflowWithToggles`;
   `UI/DataTable` → `DialogOpenedFromCard`; `Components/PlanWorkspace`; `Components/PlanMarkdown` →
   `WithImage`; `Renderers/MarkdownRenderer` → `ImagesAndPopoverLinks`.
@@ -878,7 +960,16 @@ from this list:
   `IconButtonFocusableWhenDisabled`.
 - **No baseline yet** (the flag comes off once the visual-baseline-refresh workflow has produced one):
   `UI/Card` → `WithFlushTable`, `FlushTableWithoutHeader`; `UI/DataTable` → the `InsideCard*` stories,
-  `Bordered`, `Embedded`, `RowClick`, `RemovableRows`; `Components/PlanDiffView` → `ChangedFilesTree`;
+  `Bordered`, `Embedded`, `RowClick`, `RemovableRows`, `ResponsiveColumns`, `ResponsiveColumnsDark`,
+  `PriorityColumns`, `HideBelowDetail`, `HideBelowDetailDark`, `HideBelowDetailDensities`,
+  `HideBelowDetailVirtualized`, `ResizesLive`, `ColumnOptionsAtNarrowWidth`;
+  `UI/Sidebar` → the `CompactRail*` stories; `UI/Tabs` → `DefaultDark`, `Inline`, `InlineDark`,
+  `InCard`, `InCardDark`, `Overflowing`, `OverflowingDark`, `OverflowingInCard`,
+  `OverflowingInCardDark`, `OverflowingKeyboard`, `ActiveOffscreen`, `ActiveOffscreenDark`,
+  `ActiveOffscreenRtl`, `FollowsResize`, `LoadedLater`, `ScaledAncestor`, `ValueChangedFromOutside`,
+  `Vertical`, `VerticalDark`; `Foundation/Borders and Surfaces` (every story);
+  `Components/SortableVerificationList` → `WithStatusBadgesDark`; `Components/PlanMarkdown` →
+  `AlertsAndMathDark`; `Components/PlanDiffView` → `ChangedFilesTree`;
   `UI/ScrollArea` → `FitsWithoutScrolling`; `UI/VirtualList` (every story);
   `UI/Slider` → `Range`, `CurrencyWithSpokenValues`;
   `UI/Stepper` → `AsChildLinks`, `AsChildDisabledStep`; `UI/Toolbar` → `WithSearchField`;

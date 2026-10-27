@@ -29,7 +29,14 @@ const Switch = React.forwardRef<
         )
     : baseClass;
   return (
-    <SwitchPrimitives.Root className={cn(finalClass, className)} {...rest} ref={ref}>
+    <SwitchPrimitives.Root
+      // The off track is `--input`, a 3:1 tier now. The variant's hover thins it to 80% of that, which
+      // measured 2.5:1 against the page, so an off switch lost its edge exactly while it was pointed at.
+      // Hover darkens it instead, and the last class wins over the variant's.
+      className={cn(finalClass, "hover:data-[state=unchecked]:bg-foreground/50", className)}
+      {...rest}
+      ref={ref}
+    >
       <SwitchPrimitives.Thumb className={cn(switchThumbVariant({ density }))}>
         {icon && (
           <div className="flex items-center justify-center w-full h-full">

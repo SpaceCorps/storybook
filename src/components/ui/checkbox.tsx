@@ -83,11 +83,14 @@ const Checkbox = React.forwardRef<
   };
 
   const isInvalid = className?.includes("border-destructive") || className?.includes("bg-red-50");
-  const baseClass = `peer ${getSizeClasses(effectiveDensity)} shrink-0 rounded-checkbox border border-border shadow transition-colors hover:bg-accent/50 focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=checked]:border-primary data-[state=checked]:hover:bg-primary/90 dark:border-white/10 aria-invalid:border-destructive aria-invalid:focus-visible:ring-destructive dark:aria-invalid:border-red dark:aria-invalid:focus-visible:ring-red aria-invalid:data-[state=checked]:bg-destructive aria-invalid:data-[state=checked]:border-destructive aria-invalid:data-[state=checked]:text-destructive-foreground`;
+  const baseClass = `peer ${getSizeClasses(effectiveDensity)} shrink-0 rounded-checkbox border border-input shadow transition-colors hover:bg-accent/50 focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=checked]:border-primary data-[state=checked]:hover:bg-primary/90 aria-invalid:border-destructive aria-invalid:focus-visible:ring-destructive dark:aria-invalid:border-red dark:aria-invalid:focus-visible:ring-red aria-invalid:data-[state=checked]:bg-destructive aria-invalid:data-[state=checked]:border-destructive dark:aria-invalid:data-[state=checked]:border-red aria-invalid:data-[state=checked]:text-destructive-foreground`;
   const finalClass = isInvalid
     ? baseClass
         .replace("data-[state=checked]:bg-primary", "data-[state=checked]:bg-destructive")
-        .replace("data-[state=checked]:border-primary", "data-[state=checked]:border-destructive")
+        .replace(
+          "data-[state=checked]:border-primary",
+          "data-[state=checked]:border-destructive dark:data-[state=checked]:border-red",
+        )
         .replace(
           "data-[state=checked]:text-primary-foreground",
           "data-[state=checked]:text-destructive-foreground",
@@ -100,8 +103,7 @@ const Checkbox = React.forwardRef<
           "focus-visible:ring-ring",
           "focus-visible:ring-destructive dark:focus-visible:ring-red",
         )
-        .replace("border-border", "border-destructive")
-        .replace("dark:border-white/10", "dark:border-red")
+        .replace("border-input", "border-destructive dark:border-red")
     : baseClass;
 
   return (
