@@ -36,18 +36,168 @@ describe("Tabs component", () => {
     expect(tab.getAttribute("aria-selected")).toBe("true");
   });
 
-  it("applies hover:bg-muted/50 and hover:text-foreground to tab triggers", () => {
+  // Hover and selection are tints of the foreground, not a fill from muted/accent/secondary: each of
+  // those is the colour of some surface a list gets put on, and there the selected tab vanished
+  // (`hover:bg-muted/50` on a `bg-muted` list changed nothing at all). A tint reads on all of them.
+  it("gives a hovered tab and the selected tab a fill that shows on the list", () => {
+    render(
+      <Tabs defaultValue="a">
+        <TabsList>
+          <TabsTrigger value="a">A</TabsTrigger>
+          <TabsTrigger value="b">B</TabsTrigger>
+        </TabsList>
+        <TabsContent value="a">Panel A</TabsContent>
+      </Tabs>,
+    );
+    const tab = screen.getByRole("tab", { name: "B" });
+    expect(tab.className).toContain("hover:bg-foreground/5");
+    expect(tab.className).toContain("hover:text-foreground");
+    expect(tab.className).toContain("data-[state=active]:bg-foreground/10");
+  });
+
+  // The border artefact came from `-ml-px -mt-px py-2` on a tab taller than the list's content box.
+  // jsdom cannot measure, so this pins the classes; the stories measure the gutters in a browser.
+  it("keeps the tabs inside the list: stretched to its content box, with no negative margins", () => {
     render(
       <Tabs defaultValue="a">
         <TabsList>
           <TabsTrigger value="a">A</TabsTrigger>
         </TabsList>
-        <TabsContent value="a">Panel A</TabsContent>
       </Tabs>,
     );
     const tab = screen.getByRole("tab", { name: "A" });
-    expect(tab.className).toContain("hover:bg-muted/50");
-    expect(tab.className).toContain("hover:text-foreground");
+    expect(tab.className).toContain("self-stretch");
+    expect(tab.className).not.toMatch(/(^|\s)-m[a-z]?-/);
+    expect(tab.className).not.toMatch(/(^|\s)py-/);
+  });
+
+  // Nothing stretches a tab to the height of a vertical list (the stretch is across, so it gives the
+  // width), so a tab there needs the padding the horizontal list leaves to the list's own.
+  it("gives a tab in a vertical list its own vertical padding", () => {
+    render(
+      <Tabs defaultValue="a" orientation="vertical">
+        <TabsList>
+          <TabsTrigger value="a">A</TabsTrigger>
+        </TabsList>
+      </Tabs>,
+    );
+    const tab = screen.getByRole("tab", { name: "A" });
+    expect(tab.getAttribute("data-orientation")).toBe("vertical");
+    expect(tab.className).toContain("data-[orientation=vertical]:py-2");
+  });
+
+  // The tab sits inside a list the colour of a card, so the gap between it and its ring is that colour
+  // too: the page's would show as a dark halo wherever a card is a step above the page.
+  it("offsets the focus ring in the list's own surface", () => {
+    render(
+      <Tabs defaultValue="a">
+        <TabsList>
+          <TabsTrigger value="a">A</TabsTrigger>
+        </TabsList>
+      </Tabs>,
+    );
+    expect(screen.getByRole("tablist").className).toContain("bg-card");
+    expect(screen.getByRole("tab", { name: "A" }).className).toContain("ring-offset-card");
+  });
+
+  // The mechanism that keeps a long list from widening its container, which jsdom cannot see work.
+  it("lets the tabs scroll inside the list rather than widen it or the container", () => {
+    const { container } = render(
+      <Tabs defaultValue="a">
+        <TabsList>
+          <TabsTrigger value="a">A</TabsTrigger>
+        </TabsList>
+      </Tabs>,
+    );
+    const list = screen.getByRole("tablist");
+    expect(list.className).toContain("max-w-full");
+    expect(list.className).toContain("overflow-x-auto");
+    expect(list.className).toContain("snap-mandatory");
+    // A flex or grid item stretches to its widest child unless told it may shrink.
+    expect(container.firstElementChild?.className).toContain("min-w-0");
+  });
+
+  // What follows are tests of classes because the class is the whole behaviour: jsdom draws no
+  // scrollbar, snaps nothing and has no forced-colors mode, so the rule that does the work can only
+  // be pinned where it is written. The play functions in src/stories/tabs.stories.tsx read the same
+  // things back from a real browser's computed styles.
+  it("hides the scrollbar in both engine families, since it would double the height of the list", () => {
+    render(
+      <Tabs defaultValue="a">
+        <TabsList>
+          <TabsTrigger value="a">A</TabsTrigger>
+        </TabsList>
+      </Tabs>,
+    );
+    const classes = screen.getByRole("tablist").className.split(/\s+/);
+    expect(classes).toContain("[scrollbar-width:none]");
+    expect(classes).toContain("[&::-webkit-scrollbar]:hidden");
+  });
+
+  it("snaps to the start of a tab, with a margin as wide as the fade so a tab clears it", () => {
+    render(
+      <Tabs defaultValue="a">
+        <TabsList>
+          <TabsTrigger value="a">A</TabsTrigger>
+        </TabsList>
+      </Tabs>,
+    );
+    const list = screen.getByRole("tablist").className.split(/\s+/);
+    expect(list).toContain("snap-x");
+    expect(list).toContain("snap-mandatory");
+    // The margin and the fade are one variable, so they cannot drift apart.
+    expect(list).toContain("scroll-px-(--tabs-fade)");
+    expect(list).toContain("[--tabs-fade:1.5rem]");
+    expect(list.some((name) => name.includes("var(--tabs-fade)"))).toBe(true);
+    expect(screen.getByRole("tab", { name: "A" }).className.split(/\s+/)).toContain("snap-start");
+  });
+
+  it("draws the list as an outlined surface, which is what the tabs are inset from", () => {
+    render(
+      <Tabs defaultValue="a">
+        <TabsList>
+          <TabsTrigger value="a">A</TabsTrigger>
+        </TabsList>
+      </Tabs>,
+    );
+    const list = screen.getByRole("tablist").className.split(/\s+/);
+    expect(list).toContain("border");
+    expect(list).toContain("border-border");
+    expect(list).toContain("p-[4px]");
+  });
+
+  // The tint that marks the selected tab is a background, and forced colors flatten backgrounds: the
+  // underline is all that is left to say which tab is selected.
+  it("underlines the selected tab where forced colors flatten its tint", () => {
+    render(
+      <Tabs defaultValue="a">
+        <TabsList>
+          <TabsTrigger value="a">A</TabsTrigger>
+        </TabsList>
+      </Tabs>,
+    );
+    const tab = screen.getByRole("tab", { name: "A" }).className.split(/\s+/);
+    expect(tab).toContain("forced-colors:data-[state=active]:underline");
+    expect(tab).toContain("forced-colors:data-[state=active]:decoration-2");
+    expect(tab).toContain("forced-colors:data-[state=active]:underline-offset-4");
+  });
+
+  it("keeps a consumer's own classes on the list and the root, winning over the defaults", () => {
+    const { container } = render(
+      <Tabs defaultValue="a" className="w-96 min-w-fit">
+        <TabsList className="grid w-full grid-cols-2 h-auto">
+          <TabsTrigger value="a">A</TabsTrigger>
+          <TabsTrigger value="b">B</TabsTrigger>
+        </TabsList>
+      </Tabs>,
+    );
+    const list = screen.getByRole("tablist");
+    expect(list.className).toContain("grid");
+    expect(list.className).toContain("grid-cols-2");
+    expect(list.className).toContain("h-auto");
+    expect(list.className).not.toContain("h-9");
+    expect(container.firstElementChild?.className).toContain("min-w-fit");
+    expect(container.firstElementChild?.className).not.toContain("min-w-0");
   });
 });
 
