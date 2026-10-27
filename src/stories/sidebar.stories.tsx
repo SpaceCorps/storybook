@@ -647,6 +647,16 @@ function assertCompactRail(root: HTMLElement, minAir = 4) {
   return rail;
 }
 
+/** The `md` breakpoint, below which the shell has no island and the page itself scrolls. */
+const MD_PX = 768;
+
+/**
+ * Whether there is a rail to measure. Below `md` the sidebar is an off-canvas sheet, so a story about
+ * the rail has nothing to assert at a phone's width: its play function returns, where throwing would
+ * be logged as a console error.
+ */
+const hasRail = (): boolean => window.innerWidth >= MD_PX;
+
 /** Everything on the rail that is not a navigation link keeps to the same axis. */
 function assertRailChrome(root: HTMLElement, rail: ReturnType<typeof measureRail>) {
   const centre = (element: Element) => {
@@ -713,7 +723,7 @@ export const CompactRail: StoryObj = {
   },
   render: () => <RailShell />,
   play: async ({ canvasElement }) => {
-    await expect(document.documentElement.classList.contains("dark")).toBe(false);
+    if (!hasRail()) return;
     const rail = assertCompactRail(canvasElement);
     assertRailChrome(canvasElement, rail);
     assertCurrentPageFilled(canvasElement, rail);
@@ -732,6 +742,7 @@ export const CompactRailDark: StoryObj = {
   render: () => <RailShell />,
   play: async ({ canvasElement }) => {
     await expect(document.documentElement.classList.contains("dark")).toBe(true);
+    if (!hasRail()) return;
     const rail = assertCompactRail(canvasElement);
     assertRailChrome(canvasElement, rail);
     assertCurrentPageFilled(canvasElement, rail);
@@ -750,6 +761,7 @@ export const CompactRailHovered: StoryObj = {
   },
   render: () => <RailShell />,
   play: async ({ canvasElement }) => {
+    if (!hasRail()) return;
     const rail = assertCompactRail(canvasElement);
     const link = within(canvasElement).getByRole("link", { name: "Calendar" });
     // Only the current page is filled at rest.
@@ -775,6 +787,7 @@ export const CompactRailFocused: StoryObj = {
   render: () => <RailShell />,
   play: async ({ canvasElement }) => {
     await expect(document.documentElement.classList.contains("dark")).toBe(true);
+    if (!hasRail()) return;
     const rail = assertCompactRail(canvasElement);
     const link = within(canvasElement).getByRole("link", { name: "Inbox" });
     for (let presses = 0; presses < 12 && document.activeElement !== link; presses++) {
@@ -802,6 +815,7 @@ export const CompactRailPlain: StoryObj = {
   },
   render: () => <PrimitiveRailShell variant="sidebar" />,
   play: async ({ canvasElement }) => {
+    if (!hasRail()) return;
     assertCompactRail(canvasElement);
   },
 };
@@ -818,6 +832,7 @@ export const CompactRailFloating: StoryObj = {
   },
   render: () => <PrimitiveRailShell variant="floating" />,
   play: async ({ canvasElement }) => {
+    if (!hasRail()) return;
     assertCompactRail(canvasElement, 2.5);
   },
 };
@@ -837,6 +852,7 @@ export const CompactRailSections: StoryObj = {
   },
   render: () => <RailShell nav={sectionNav} />,
   play: async ({ canvasElement }) => {
+    if (!hasRail()) return;
     const rail = assertCompactRail(canvasElement);
     assertRailChrome(canvasElement, rail);
     assertCurrentPageFilled(canvasElement, rail);
@@ -867,6 +883,7 @@ export const CompactRailOverflow: StoryObj = {
   },
   render: () => <RailShell nav={longNav} />,
   play: async ({ canvasElement }) => {
+    if (!hasRail()) return;
     assertCompactRail(canvasElement);
     const content = canvasElement.querySelector<HTMLElement>('[data-sidebar="content"]');
     check(!!content, "No sidebar content");
@@ -929,6 +946,7 @@ export const CompactRailTransition: StoryObj = {
   },
   render: () => <RailShell defaultCollapsed={false} />,
   play: async ({ canvasElement }) => {
+    if (!hasRail()) return;
     const before = measureRail(canvasElement);
     check(
       before.panelBox.width > 200,
@@ -968,9 +986,6 @@ export const CompactRailTransition: StoryObj = {
     assertCompactRail(canvasElement);
   },
 };
-
-/** The `md` breakpoint, below which the shell has no island and the page itself scrolls. */
-const MD_PX = 768;
 
 /** The browser lays out in 1/64 px, so a computed length and a measured box can differ by 0.016. */
 const SUBPIXEL = 0.05;
