@@ -9,6 +9,7 @@ import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle";
 import {
   TimeCalendar,
+  calendarColorForKey,
   formatTrackedHours,
   getFetchRange,
   getPeriodRange,
@@ -334,7 +335,7 @@ export const ControlledAsync: Story = {
   },
 };
 
-/** Entries logged back to back and shorter than the smallest block: each stays visible and clickable. */
+/** Entries logged back to back, shorter than the least height of a block: see {@link ShortEntries}. */
 const SHORT_ENTRIES: TimeCalendarEvent<TimeEntry>[] = [
   ["10:00", "10:10"],
   ["10:10", "10:20"],
@@ -359,17 +360,36 @@ function overlaps(a: DOMRect, b: DOMRect) {
   );
 }
 
+/**
+ * Entries logged back to back, shorter than the least height of a block (three of 10 minutes and
+ * three of 15). They do not overlap, so they share one full-width column and each is drawn at its
+ * true length, up to the entry below it: only the last of each run has room to be lifted to the least
+ * height. The trade-off is that a block drawn that short has no room for its label. It shows one tight
+ * line from a quarter of an hour, and below that it is a bare bar of colour with no text at all; the
+ * name stays in its tooltip and its accessible name. Every block is still clickable by pointer and
+ * reachable by keyboard (focus the day, then Tab).
+ */
 export const ShortEntries: Story = {
-  render: () => <Demo events={SHORT_ENTRIES} defaultView="week" />,
+  render: () => <Demo events={SHORT_ENTRIES} defaultView="week" defaultDate="2026-10-21" />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await canvas.findByRole("grid", { name: /week 43/ });
-    const blocks = [
-      ...canvasElement.querySelectorAll<HTMLElement>(
-        '[role="gridcell"][data-date="2026-10-21"] button[data-event-id]',
-      ),
-    ];
+    const column = canvasElement.querySelector<HTMLElement>(
+      '[role="gridcell"][data-date="2026-10-21"]',
+    )!;
+    const blocks = [...column.querySelectorAll<HTMLElement>("button[data-event-id]")];
     await expect(blocks).toHaveLength(SHORT_ENTRIES.length);
+
+    // One column: every block has the whole width of the day, and some height.
+    for (const block of blocks) {
+      const { width, height } = block.getBoundingClientRect();
+      await expect(height, `${block.dataset.eventId} has a height`).toBeGreaterThan(0);
+      await expect(
+        Math.abs(width - column.clientWidth),
+        `${block.dataset.eventId}: width ${width.toFixed(1)} of ${column.clientWidth}`,
+      ).toBeLessThan(4);
+    }
+    // None is drawn over another.
     for (const [i, first] of blocks.entries()) {
       for (const second of blocks.slice(i + 1)) {
         const message = `${first.dataset.eventId} and ${second.dataset.eventId} overlap`;
@@ -377,6 +397,171 @@ export const ShortEntries: Story = {
           overlaps(first.getBoundingClientRect(), second.getBoundingClientRect()),
           message,
         ).toBe(false);
+      }
+    }
+
+    // A block too short for text is a bar: no text, but the name is still there.
+    const bars = blocks.filter((block) => block.dataset.fit === "bar");
+    await expect(bars.length).toBeGreaterThan(0);
+    for (const bar of bars) {
+      await expect(bar.textContent, `${bar.dataset.eventId} shows no text`).toBe("");
+      await expect(bar.getAttribute("aria-label"), `${bar.dataset.eventId} is named`).toMatch(
+        /^Short \d, /,
+      );
+      await expect(bar.getAttribute("title")).toBe(bar.getAttribute("aria-label"));
+    }
+    for (const block of blocks.filter((b) => b.dataset.fit !== "bar")) {
+      await expect(block.textContent).toContain("Short");
+    }
+
+    // Clickable by pointer: nothing sits on top of a block's middle.
+    for (const block of blocks) {
+      block.scrollIntoView({ block: "center" });
+      const { left, top, width, height } = block.getBoundingClientRect();
+      const hit = document.elementFromPoint(left + width / 2, top + height / 2);
+      // The hit is the block or its label, never a neighbour or the column behind it.
+      await expect(
+        hit !== null && block.contains(hit),
+        `${block.dataset.eventId} is hit at its middle`,
+      ).toBe(true);
+    }
+
+    // Reachable by keyboard: from the day, Tab visits each block in turn.
+    column.focus();
+    for (const block of blocks) {
+      await userEvent.tab();
+      await expect(document.activeElement, `Tab reaches ${block.dataset.eventId}`).toBe(block);
+    }
+  },
+};
+
+/** One weekday of {@link ADJACENT_CASES}: what is logged, and whether any of it truly overlaps. */
+interface AdjacentCase {
+  /** The weekday column of the week of 19 October the case sits in. */
+  date: string;
+  /** Start and end of each entry, in the order they are logged. */
+  times: readonly (readonly [string, string])[];
+  /** The entries truly overlap, so the week view must put them side by side. */
+  overlap: boolean;
+}
+
+/**
+ * Entries that touch or nearly touch, one case per weekday. The first is the day an accounting app
+ * reported: the server refuses real overlaps, yet the 20-minute entry was drawn beside the next one.
+ */
+const ADJACENT_CASES: readonly AdjacentCase[] = [
+  {
+    date: "2026-10-19",
+    times: [
+      ["07:24", "07:44"],
+      ["07:45", "08:15"],
+      ["08:45", "09:55"],
+      ["11:30", "13:00"],
+    ],
+    overlap: false,
+  },
+  {
+    date: "2026-10-20",
+    times: [
+      ["09:00", "09:20"],
+      ["09:20", "10:00"],
+    ],
+    overlap: false,
+  },
+  {
+    date: "2026-10-21",
+    times: [
+      ["09:00", "09:20"],
+      ["09:21", "10:00"],
+    ],
+    overlap: false,
+  },
+  {
+    date: "2026-10-22",
+    times: [
+      ["10:00", "10:10"],
+      ["10:10", "10:20"],
+      ["10:20", "10:30"],
+    ],
+    overlap: false,
+  },
+  {
+    date: "2026-10-23",
+    times: [
+      ["09:00", "10:00"],
+      ["09:30", "10:30"],
+    ],
+    overlap: true,
+  },
+];
+
+const ADJACENT_PROJECTS = ["Acme Logistik", "Fjällbacka webbplats", "Intern"] as const;
+
+const ADJACENT_EVENTS: TimeCalendarEvent<TimeEntry>[] = ADJACENT_CASES.flatMap(
+  ({ date, times, overlap }, caseIndex) =>
+    times.map(([start, end], index) => {
+      // The owner's day is one project all day, as an accounting app logs it; the others alternate.
+      const project = ADJACENT_PROJECTS[caseIndex === 0 ? 0 : (caseIndex + index) % 3];
+      return {
+        id: `adjacent-${caseIndex}-${index}`,
+        date,
+        start,
+        end,
+        title: project,
+        description: overlap ? "Two entries that really overlap" : "building: Route planning API",
+        color: calendarColorForKey(project),
+      };
+    }),
+);
+
+/**
+ * Entries that do not overlap are never drawn as if they did. Each weekday is one case: the day an
+ * accounting app reported (07:24 to 07:44, 07:45 to 08:15, 08:45 to 09:55, 11:30 to 13:00), a
+ * 20-minute entry followed by one that starts the minute it ends, one that starts a minute later, a
+ * chain of three 10-minute entries, and on Friday two entries that really overlap and so still sit
+ * side by side. Extra columns mean a true overlap, whatever the density; a block shorter than the
+ * least height is lifted only into free space, then trimmed to the next block, and its label
+ * shrinks to one line and then to a bare bar (the name stays in its tooltip and accessible name).
+ */
+export const AdjacentEntries: Story = {
+  render: () => <Demo events={ADJACENT_EVENTS} defaultView="week" defaultDate="2026-10-22" />,
+  parameters: { keyboard: { sweep: true, maxStops: 12, forcedColors: true } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole("grid", { name: /week 43/ });
+    for (const { date, times, overlap } of ADJACENT_CASES) {
+      const column = canvasElement.querySelector<HTMLElement>(
+        `[role="gridcell"][data-date="${date}"]`,
+      );
+      await expect(column, `the column of ${date}`).not.toBeNull();
+      // Blocks are positioned against the column's padding box, which is what `clientWidth` measures.
+      const inner = column!.clientWidth;
+      const blocks = [...column!.querySelectorAll<HTMLElement>("button[data-event-id]")].sort(
+        (a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top,
+      );
+      await expect(blocks, `${date}: entries drawn`).toHaveLength(times.length);
+
+      for (const block of blocks) {
+        const { width, height } = block.getBoundingClientRect();
+        await expect(height, `${date} ${block.dataset.eventId}: height`).toBeGreaterThan(0);
+        const label = `${date} ${block.dataset.eventId}: width ${width.toFixed(1)} of ${inner}`;
+        if (overlap) await expect(Math.abs(width - inner / 2), label).toBeLessThan(4);
+        else await expect(Math.abs(width - inner), label).toBeLessThan(4);
+      }
+
+      for (const [i, first] of blocks.slice(0, -1).entries()) {
+        const a = first.getBoundingClientRect();
+        const b = blocks[i + 1].getBoundingClientRect();
+        const pair = `${date}: ${first.dataset.eventId} and ${blocks[i + 1].dataset.eventId}`;
+        if (overlap) {
+          // Side by side: the left one ends where the right one begins.
+          await expect(a.right, `${pair} are side by side`).toBeLessThanOrEqual(b.left + 0.5);
+        } else {
+          await expect(
+            a.bottom,
+            `${pair}: the first ends before the next begins`,
+          ).toBeLessThanOrEqual(b.top + 0.5);
+        }
       }
     }
   },
