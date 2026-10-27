@@ -24,9 +24,10 @@ const NONE: ReadonlySet<string> = new Set();
  * The names of the columns the container is too narrow for.
  *
  * The container is measured with a `ResizeObserver`, once synchronously before the first paint and on
- * every change after, as the width of its border box. The answer is held as state and only replaced when it is a different set of
- * names, so dragging a divider across a table re-renders it at each breakpoint it crosses and not on
- * every frame in between. The width itself is kept in a ref for the same reason.
+ * every change after, as the width of its border box. The answer is held as state and only replaced
+ * when it is a different set of names, so dragging a divider across a table re-renders it at each
+ * breakpoint it crosses and not on every frame in between. The width itself is kept in a ref for the
+ * same reason.
  *
  * Until a width is known the answer is the narrow one (see `getColumnsHiddenByWidth`), which is what
  * a server render and the first client pass show. A width of 0 is not a measurement: it is a hidden
@@ -34,7 +35,11 @@ const NONE: ReadonlySet<string> = new Set();
  *
  * The observed element is the table's outer wrapper, whose width is the room the host gives it and
  * does not depend on which columns are showing, so hiding a column cannot change the measurement that
- * hid it. The one input that can is the page scrollbar, which the reveal margin absorbs.
+ * hid it. The one input that can is a scrollbar that a change of height brings or takes away (15 px
+ * for a classic one). The previous set is fed back to `getColumnsHiddenByWidth`, whose reveal margin
+ * is larger than that, so a width that jitters by less than the margin can move the set one way and
+ * never back. That holds for a table that mixes `hideBelow` and `priority` columns as well: there a
+ * `hideBelow` column held back by the margin takes no room from the `priority` budget.
  */
 export function useColumnsHiddenByWidth<TRow>({
   containerRef,
