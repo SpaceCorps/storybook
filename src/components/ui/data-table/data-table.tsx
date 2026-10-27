@@ -27,6 +27,12 @@ import { DataTableColumnHeader } from "./data-table-column-header";
 import { DataTableColumnOptions } from "./data-table-column-options";
 import { DataTablePagination, DEFAULT_PAGE_SIZE_OPTIONS } from "./data-table-pagination";
 import { DataTableRowActions } from "./data-table-row-actions";
+import {
+  DataTableFooterDetail,
+  DataTableRowDetail,
+  DataTableRowExpander,
+  getDetailItems,
+} from "./data-table-row-detail";
 import { DataTableToolbar } from "./data-table-toolbar";
 import type {
   DataTableCellCommitEvent,
@@ -39,6 +45,8 @@ import type {
   DataTableVariant,
   DataTableVirtualized,
 } from "./types";
+import { isResponsiveColumn, reservedColumnsWidth } from "./responsive-columns";
+import { useColumnsHiddenByWidth } from "./use-columns-hidden-by-width";
 import { useColumnVisibility } from "./use-column-visibility";
 import { useDataTablePagination } from "./use-data-table-pagination";
 import { INTERACTIVE_WITHIN_ROW, useDataTableRowFocus } from "./use-data-table-row-focus";
@@ -67,6 +75,13 @@ export interface DataTableProps<TRow> extends Omit<
   React.HTMLAttributes<HTMLTableElement>,
   "children" | "className"
 > {
+  /**
+   * `hideBelow` and `priority` on a column hide it while the table's container is too narrow for it.
+   * The values of the hidden columns are listed in a details row, opened by a button that sits next to
+   * the selection checkbox and is there only while a column is hidden. Sorting, paging, the totals row
+   * and the column options keep working over all of the columns: the options list every one and mark
+   * those the width has hidden, which is separate from the ones the person switched off.
+   */
   columns: DataTableColumn<TRow>[];
   /** The full row set, unless `manualPagination` — then the current page only. */
   rows: TRow[];
@@ -146,8 +161,9 @@ export interface DataTableProps<TRow> extends Omit<
    * the inline editor and any button, link or input inside a cell never trigger it.
    *
    * Tab stops: the body is one stop (the active row, moved with the arrow keys, Home/End and
-   * PageUp/PageDown), and each row adds its checkbox, editable cells and row actions as stops of
-   * their own. A page of 25 rows with an inline action each is therefore 26 stops before the footer.
+   * PageUp/PageDown), and each row adds its checkbox, its details button (while a column is hidden by
+   * width), editable cells and row actions as stops of their own. A page of 25 rows with an inline
+   * action each is therefore 26 stops before the footer.
    */
   onRowClick?: (row: TRow, id: string) => void;
 
@@ -396,11 +412,54 @@ function DataTableInner<TRow>(
     return pageRows.some((row) => getRenderableActions(rowActions(row)).length > 0);
   }, [pageRows, rowActions]);
 
+  // Columns the container is too narrow for. Measured on the wrapper below, whose width is the room
+  // the host gives the table and not what the columns want, so hiding one cannot move the number that
+  // hid it. Only tables that ask for it (`hideBelow`, `priority`) observe anything.
+  const rootRef = React.useRef<HTMLDivElement | null>(null);
+  const hiddenByWidth = useColumnsHiddenByWidth({
+    containerRef: rootRef,
+    columns: visibleColumns,
+    reservedWidth: reservedColumnsWidth({ selectable, actions: hasActionsColumn }),
+    enabled: visibleColumns.some(isResponsiveColumn),
+  });
+  const { renderedColumns, detailColumns } = React.useMemo(() => {
+    const narrowed = visibleColumns.filter((column) => hiddenByWidth.has(column.name));
+    // The width logic keeps one column, but it is computed after the render that changed the columns;
+    // a table with none for that one pass would only be a flash of nothing.
+    if (narrowed.length === 0 || narrowed.length === visibleColumns.length) {
+      return { renderedColumns: visibleColumns, detailColumns: [] };
+    }
+    return {
+      renderedColumns: visibleColumns.filter((column) => !hiddenByWidth.has(column.name)),
+      detailColumns: narrowed,
+    };
+  }, [hiddenByWidth, visibleColumns]);
+  const hasDetail = detailColumns.length > 0;
+  // One pinned cell at the start holds the selection checkbox and the details button, whichever the
+  // table has: a second pinned column would need its own offset from the first.
+  const hasStartColumn = selectable || hasDetail;
+
+  const [expandedRowIds, setExpandedRowIds] = React.useState<ReadonlySet<string>>(
+    () => new Set<string>(),
+  );
+  // Open rows are remembered by id and not forgotten when the last hidden column comes back, so a
+  // table nudged across a breakpoint and back shows the same rows open.
+  const toggleRowExpanded = (id: string) => {
+    setExpandedRowIds((current) => {
+      const next = new Set(current);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
+  };
+
   const tableName = typeof caption === "string" ? caption : tableProps["aria-label"];
   const paginationLabel = tableName ? `${tableName} pagination` : "Table pagination";
 
   const hasFooter = visibleColumns.some((column) => column.footer !== undefined);
-  const columnCount = visibleColumns.length + (selectable ? 1 : 0) + (hasActionsColumn ? 1 : 0);
+  const hasFooterRow = renderedColumns.some((column) => column.footer !== undefined);
+  const detailFooterColumns = detailColumns.filter((column) => column.footer !== undefined);
+  const columnCount =
+    renderedColumns.length + (hasStartColumn ? 1 : 0) + (hasActionsColumn ? 1 : 0);
   const showToolbar = Boolean(toolbar?.left || toolbar?.right || showColumnOptions);
 
   // Windowing and roving row focus are mutually dependent — the virtualizer pins the focused row
@@ -414,6 +473,23 @@ function DataTableInner<TRow>(
 
   useScrollEdges(scrollContainerRef);
   useRevealFocus(scrollContainerRef);
+
+  // The row whose details button has focus. When the container widens enough for the last hidden
+  // column to return, the buttons go and take focus with them; it belongs on the row they were in,
+  // not on whichever row the roving focus last visited (which is where the generic rescue would put
+  // it), and a blur never says so, because React is not listening while it commits.
+  const expanderFocus = React.useRef<string | null>(null);
+  React.useLayoutEffect(() => {
+    const rowId = expanderFocus.current;
+    if (hasDetail || rowId === null) return;
+    expanderFocus.current = null;
+    const active = document.activeElement;
+    if (active && active !== document.body) return;
+    const rows = scrollContainerRef.current?.querySelectorAll<HTMLElement>("tr[data-row-id]");
+    Array.from(rows ?? [])
+      .find((row) => row.dataset.rowId === rowId)
+      ?.focus();
+  }, [hasDetail]);
 
   const rowFocus = useDataTableRowFocus({
     count: pageRows.length,
@@ -461,7 +537,10 @@ function DataTableInner<TRow>(
    */
   const fitColumnClass = (kind: "select" | "actions") => {
     if (!virtualization.active) return "w-0";
-    return kind === "select" ? "w-[2.75rem]" : "w-[var(--ivy-data-table-actions-width,5rem)]";
+    if (kind === "actions") return "w-[var(--ivy-data-table-actions-width,5rem)]";
+    // A checkbox, the details button, or both side by side.
+    if (!hasDetail) return "w-[2.75rem]";
+    return selectable ? "w-[5rem]" : "w-[3.5rem]";
   };
 
   /**
@@ -489,6 +568,7 @@ function DataTableInner<TRow>(
         <DataTableColumnOptions
           columns={columns}
           visibility={resolvedVisibility}
+          hiddenByWidth={detailColumns.map((column) => column.name)}
           onToggle={setColumnVisible}
         />
       </PopoverContent>
@@ -611,10 +691,13 @@ function DataTableInner<TRow>(
       const rowId = pageRowIds[rowIndex];
       const rowSelected = selectedSet.has(rowId);
       const actions = hasActionsColumn ? resolveActions(row) : [];
+      const label = getRowLabel ? getRowLabel(row, rowIndex) : rowId;
+      const detailOpen = hasDetail && expandedRowIds.has(rowId);
+      // Not the row id: `aria-controls` is a list of ids split at whitespace, and a row id can hold any.
+      const detailId = `${selectionIdPrefix}-detail-${rowIndex}`;
 
-      return (
+      const mainRow = (
         <TableRow
-          key={rowId}
           // `data-index` is not decoration: virtual-core reads it back off the measured element and
           // warns if it is missing. `data-row-id` is the focus/query handle.
           data-index={rowIndex}
@@ -624,8 +707,11 @@ function DataTableInner<TRow>(
           tabIndex={rowIndex === tabStopIndex ? 0 : -1}
           onFocus={() => rowFocus.handleRowFocus(rowIndex)}
           data-state={rowSelected ? "selected" : undefined}
+          data-expanded={detailOpen ? "" : undefined}
           className={cn(
             dataTableRowVariant({ interactive: Boolean(onRowClick), selected: rowSelected }),
+            // The details under it carry the divider, so the two read as one row.
+            "data-[expanded]:border-b-0",
             // An outline, not a ring: a box-shadow on a `<tr>` is not painted in a collapsed-border
             // table, so the ring never showed. Inset so the scroll container cannot clip it.
             "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
@@ -645,7 +731,7 @@ function DataTableInner<TRow>(
               : undefined
           }
         >
-          {selectable ? (
+          {hasStartColumn ? (
             <TableCell
               data-pin="start"
               className={cn(
@@ -655,23 +741,43 @@ function DataTableInner<TRow>(
               )}
             >
               <div
-                className="flex items-center"
+                className="flex items-center gap-1"
                 onClick={(event) => event.stopPropagation()}
                 role="presentation"
               >
-                <Checkbox
-                  id={`${selectionIdPrefix}-row-${rowId}`}
-                  checked={rowSelected}
-                  onCheckedChange={(checked) => toggleRowSelected(rowId, checked === true)}
-                />
-                <Label htmlFor={`${selectionIdPrefix}-row-${rowId}`} className="sr-only">
-                  Select row {getRowLabel ? getRowLabel(row, rowIndex) : rowId}
-                </Label>
+                {selectable ? (
+                  <>
+                    <Checkbox
+                      id={`${selectionIdPrefix}-row-${rowId}`}
+                      checked={rowSelected}
+                      onCheckedChange={(checked) => toggleRowSelected(rowId, checked === true)}
+                    />
+                    <Label htmlFor={`${selectionIdPrefix}-row-${rowId}`} className="sr-only">
+                      Select row {label}
+                    </Label>
+                  </>
+                ) : null}
+                {hasDetail ? (
+                  <DataTableRowExpander
+                    rowLabel={label}
+                    expanded={detailOpen}
+                    detailId={detailId}
+                    onClick={() => toggleRowExpanded(rowId)}
+                    // Focus on the button is what has to be found again if the last hidden column
+                    // comes back and takes the button with it, see `expanderFocus`.
+                    onFocus={() => {
+                      expanderFocus.current = rowId;
+                    }}
+                    onBlur={() => {
+                      expanderFocus.current = null;
+                    }}
+                  />
+                ) : null}
               </div>
             </TableCell>
           ) : null}
 
-          {visibleColumns.map((column) => (
+          {renderedColumns.map((column) => (
             <TableCell
               key={column.name}
               className={cn(
@@ -705,6 +811,30 @@ function DataTableInner<TRow>(
           ) : null}
         </TableRow>
       );
+
+      // The column's own renderer, and its inline editor if it has one: what the row would show.
+      const items = detailOpen
+        ? getDetailItems(detailColumns, (column) => renderCellContent(column, row, rowId, rowIndex))
+        : [];
+
+      // Always a fragment, so opening the details keeps the row (and the button that has focus) in
+      // place instead of mounting a new one under a different parent.
+      return (
+        <React.Fragment key={rowId}>
+          {mainRow}
+          {detailOpen ? (
+            <DataTableRowDetail
+              ref={virtualization.active ? virtualization.measureDetailElement : undefined}
+              rowId={rowId}
+              rowLabel={label}
+              cellId={detailId}
+              items={items}
+              colSpan={Math.max(1, columnCount)}
+              inset={inset}
+            />
+          ) : null}
+        </React.Fragment>
+      );
     };
 
     const { virtualItems } = virtualization;
@@ -736,6 +866,7 @@ function DataTableInner<TRow>(
 
   return (
     <div
+      ref={rootRef}
       data-slot="data-table"
       data-variant={resolvedVariant}
       // `min-w-0 max-w-full` so the table can be a flex or grid item without its content width
@@ -833,7 +964,7 @@ function DataTableInner<TRow>(
           {caption ? <TableCaption className="sr-only">{caption}</TableCaption> : null}
           <TableHeader>
             <TableRow>
-              {selectable ? (
+              {hasStartColumn ? (
                 <TableHead
                   data-pin="start"
                   className={cn(
@@ -842,23 +973,28 @@ function DataTableInner<TRow>(
                     "[&:has([role=checkbox])]:pr-2",
                   )}
                 >
-                  <div className="flex items-center">
-                    <Checkbox
-                      id={`${selectionIdPrefix}-all`}
-                      // `nullable` is what lets the box show the mixed state, and it also makes an
-                      // unchecked box cycle through it, so it is only switched on while mixed.
-                      nullable={somePageSelected}
-                      checked={somePageSelected ? null : allPageSelected}
-                      onCheckedChange={(checked) => toggleSelectAll(checked === true)}
-                    />
-                    <Label htmlFor={`${selectionIdPrefix}-all`} className="sr-only">
-                      Select all rows
-                    </Label>
-                  </div>
+                  {selectable ? (
+                    <div className="flex items-center">
+                      <Checkbox
+                        id={`${selectionIdPrefix}-all`}
+                        // `nullable` is what lets the box show the mixed state, and it also makes an
+                        // unchecked box cycle through it, so it is only switched on while mixed.
+                        nullable={somePageSelected}
+                        checked={somePageSelected ? null : allPageSelected}
+                        onCheckedChange={(checked) => toggleSelectAll(checked === true)}
+                      />
+                      <Label htmlFor={`${selectionIdPrefix}-all`} className="sr-only">
+                        Select all rows
+                      </Label>
+                    </div>
+                  ) : (
+                    // The column of details buttons: a header cell needs a name of its own.
+                    <span className="sr-only">Row details</span>
+                  )}
                 </TableHead>
               ) : null}
 
-              {visibleColumns.map((column) => (
+              {renderedColumns.map((column) => (
                 <DataTableColumnHeader
                   key={column.name}
                   column={column}
@@ -884,25 +1020,35 @@ function DataTableInner<TRow>(
 
           {hasFooter ? (
             <TableFooter>
-              <TableRow className={DATA_TABLE_FOOTER_ROW}>
-                {selectable ? (
-                  <TableCell data-pin="start" className={dataTablePinClass("start", "cell")} />
-                ) : null}
-                {visibleColumns.map((column) => (
-                  <TableCell
-                    key={column.name}
-                    className={cn(
-                      dataTableCellAlignVariant({ align: column.align ?? "Left" }),
-                      dataTableCellWrapClass(column),
-                    )}
-                  >
-                    {column.footer}
-                  </TableCell>
-                ))}
-                {hasActionsColumn ? (
-                  <TableCell data-pin="end" className={dataTablePinClass("end", "cell")} />
-                ) : null}
-              </TableRow>
+              {hasFooterRow ? (
+                <TableRow className={DATA_TABLE_FOOTER_ROW}>
+                  {hasStartColumn ? (
+                    <TableCell data-pin="start" className={dataTablePinClass("start", "cell")} />
+                  ) : null}
+                  {renderedColumns.map((column) => (
+                    <TableCell
+                      key={column.name}
+                      className={cn(
+                        dataTableCellAlignVariant({ align: column.align ?? "Left" }),
+                        dataTableCellWrapClass(column),
+                      )}
+                    >
+                      {column.footer}
+                    </TableCell>
+                  ))}
+                  {hasActionsColumn ? (
+                    <TableCell data-pin="end" className={dataTablePinClass("end", "cell")} />
+                  ) : null}
+                </TableRow>
+              ) : null}
+              {detailFooterColumns.length > 0 ? (
+                <DataTableFooterDetail
+                  className={DATA_TABLE_FOOTER_ROW}
+                  colSpan={Math.max(1, columnCount)}
+                  inset={inset}
+                  items={getDetailItems(detailFooterColumns, (column) => column.footer)}
+                />
+              ) : null}
             </TableFooter>
           ) : null}
         </Table>

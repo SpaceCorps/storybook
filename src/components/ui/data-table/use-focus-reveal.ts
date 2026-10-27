@@ -11,6 +11,8 @@ const TOLERANCE = 1;
 export const PIN_START_VAR = "--ivy-data-table-pin-start";
 export const PIN_END_VAR = "--ivy-data-table-pin-end";
 export const HEAD_HEIGHT_VAR = "--ivy-data-table-head-height";
+/** The width the scroller shows, which a row's details stay inside while the table scrolls under them. */
+export const VIEWPORT_WIDTH_VAR = "--ivy-data-table-viewport";
 
 function pinnedHeader(container: HTMLElement, side: "start" | "end"): HTMLElement | null {
   return container.querySelector<HTMLElement>(`thead th[data-pin="${side}"]`);
@@ -48,6 +50,7 @@ export function useRevealFocus(containerRef: React.RefObject<HTMLElement | null>
       container.style.setProperty(PIN_START_VAR, `${start ? start.offsetWidth : 0}px`);
       container.style.setProperty(PIN_END_VAR, `${end ? end.offsetWidth : 0}px`);
       container.style.setProperty(HEAD_HEIGHT_VAR, `${head ? head.offsetHeight : 0}px`);
+      container.style.setProperty(VIEWPORT_WIDTH_VAR, `${container.clientWidth}px`);
     };
 
     const reveal = (target: HTMLElement) => {
@@ -60,7 +63,13 @@ export function useRevealFocus(containerRef: React.RefObject<HTMLElement | null>
       let dx = 0;
       let dy = 0;
 
-      if (!target.closest("[data-pin]") && target.tagName !== "TR") {
+      // The panels of a row's details and of the totals line pin themselves to the visible width, so
+      // scrolling cannot bring them any closer.
+      if (
+        !target.closest("[data-pin]") &&
+        !target.closest("[data-slot='data-table-detail-panel']") &&
+        target.tagName !== "TR"
+      ) {
         const start = pinnedHeader(container, "start")?.getBoundingClientRect();
         const end = pinnedHeader(container, "end")?.getBoundingClientRect();
         const visibleLeft = Math.max(box.left, start ? start.right : box.left);
