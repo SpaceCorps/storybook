@@ -150,7 +150,7 @@ import {
 
 function LoginForm() {
   return (
-    <form onSubmit={signIn}>
+    <form onSubmit={signIn} className="flex flex-col gap-4">
       <Field label="Username" name="username">
         <Input autoComplete="username" />
       </Field>
@@ -163,6 +163,12 @@ function LoginForm() {
 }
 ```
 
+- **Form spacing** is one rule: `Field` and the react-hook-form `FormItem` space their own label,
+  control, hint and message (`gap-1.5`), and whatever stacks them spaces the steps between them. Put
+  an error `Alert`, every field and the submit button in one `flex flex-col gap-4` (or `grid gap-4`)
+  container, as in the example above. Without it a bare `<form>` stacks them with no gap at all: the
+  next label sits on the input above it and the button on the last input. `Patterns/Auth forms` →
+  `SignInSpacing` and `SignInSpacingWithFormComponents` measure it.
 - **Field** wires `id`, `aria-describedby` (hint and error), `aria-invalid`, `aria-required`, `name`
   and `disabled` into `Input`, `Textarea`, `Select`, `Checkbox`, `Switch`, `RadioGroup`, `NumberInput`,
   `DatePicker`, `DateRangePicker`, `TimeInput` and `MultipleSelector`; the react-hook-form `FormItem`
@@ -265,7 +271,9 @@ function LoginForm() {
   `skipLink` prop (`true` for "Skip to content", or a label string; off by default); when the page overflows and nothing in it is tabbable, `SidebarInsetContent` becomes a
   `role="region"` tab stop named "Page content" (`contentLabel`, or `scrollLabel` on
   `SidebarInsetContent`) so the arrow and Page keys can scroll it. A `role`, `aria-label` or
-  `aria-labelledby` you pass wins. `ScrollArea` does the same for its viewport: it is a tab stop and a
+  `aria-labelledby` you pass wins. In the `inset` variant (the default) the island is exactly one viewport
+  tall with its margin included (`100svh` minus four of `--spacing`, the margin being `m-2`), so a long page
+  scrolls inside it and the document never scrolls as well. `ScrollArea` does the same for its viewport: it is a tab stop and a
   `region` (named by `aria-label`, `aria-labelledby` or "Scrollable content") only while the content
   overflows. `VirtualList` does the same for its scroll container (default name "Scrollable list"), and
   stays a tab stop when its rows hold buttons. Name each list once a page has more than one: two unnamed
@@ -426,7 +434,9 @@ each. Additive props and new components are in the sections above.
   `focus:outline-hidden`, and the Small trailing hit target is `size-6` (was `size-5`).
 - **react-hook-form `Form`**: `FormControl` no longer emits `aria-invalid="false"` or a dangling
   `aria-describedby`; `FormMessage` has `role="alert"`; `FormItem` reports `hasLabel` only while a
-  `FormLabel` is mounted; error text uses the destructive-800/200 steps.
+  `FormLabel` is mounted; error text uses the destructive-800/200 steps. `FormItem` is `grid gap-1.5`
+  (its `gap-y-4` did nothing on a block `div`), so a label no longer sits flush on its control; an item
+  you already spaced yourself, for example with `space-y-2`, now has both.
 - **`Calendar` caption**: Enter in the month or year box no longer blurs it.
 
 **Overlays, focus and keyboard**
@@ -869,7 +879,8 @@ from this list:
   `ControlledOpen`, `ChainedDialogs`, `EscapeWithAToastOver`, `EscapeVetoedWithAToastOver`, `OpenedFromContextMenu`,
   `AsChild`; `UI/AlertDialog` →
   `ControlledOpen`, `ConfirmThenReason`; `UI/Sheet` → `ControlledOpen`; `UI/Sidebar` →
-  `AppShellKeyboard`, `DrawerWithAMenu`, `AppShellCollapsedFooter`; `UI/MultiSelect` → `Chips`,
+  `AppShellKeyboard`, `DrawerWithAMenu`, `AppShellCollapsedFooter`, `InsetFitsViewport`,
+  `InsetFitsViewportDark`; `UI/MultiSelect` → `Chips`,
   `InsideDialog`, `WithActions`, `LongListInsideDialog`; `UI/Toolbar` → `OverflowWithToggles`;
   `UI/DataTable` → `DialogOpenedFromCard`; `Components/PlanWorkspace`; `Components/PlanMarkdown` →
   `WithImage`; `Renderers/MarkdownRenderer` → `ImagesAndPopoverLinks`.

@@ -968,3 +968,105 @@ export const CompactRailTransition: StoryObj = {
     assertCompactRail(canvasElement);
   },
 };
+
+/** The `md` breakpoint, below which the shell has no island and the page itself scrolls. */
+const MD_PX = 768;
+
+/** The browser lays out in 1/64 px, so a computed length and a measured box can differ by 0.016. */
+const SUBPIXEL = 0.05;
+
+/**
+ * What a user sees as "the page scrolls twice". The inset shell must be exactly one viewport tall, so
+ * a long page scrolls inside the island and the document does not scroll as well.
+ *
+ * The preview wraps every story in `p-6 min-h-screen` (also the fullscreen ones), which makes the
+ * document taller than the window whatever the shell does. That wrapper is taken out of the
+ * measurement and put back afterwards; the shell's own box is measured as well, because it is the
+ * cause and the document is the symptom.
+ */
+async function expectShellFitsViewport(canvasElement: HTMLElement) {
+  const wrapper = canvasElement.querySelector<HTMLElement>('[class~="group/sidebar-wrapper"]');
+  const main = canvasElement.querySelector<HTMLElement>("main");
+  const frame = canvasElement.firstElementChild as HTMLElement | null;
+  const scroller = document.scrollingElement;
+  if (!wrapper || !main || !frame || !scroller) throw new Error("the shell did not render");
+  await expect(window.innerWidth).toBeGreaterThanOrEqual(MD_PX);
+
+  // The island's margin and height are written in the same spacing unit, so they cancel out.
+  const box = main.getBoundingClientRect();
+  const style = getComputedStyle(main);
+  const shell = wrapper.getBoundingClientRect();
+  await expect(Math.abs(shell.height - window.innerHeight)).toBeLessThan(0.5);
+  await expect(box.top - parseFloat(style.marginTop)).toBeGreaterThanOrEqual(shell.top - SUBPIXEL);
+  await expect(box.bottom + parseFloat(style.marginBottom)).toBeLessThanOrEqual(
+    shell.bottom + SUBPIXEL,
+  );
+
+  // The page is longer than the island and scrolls inside it.
+  const content = main.querySelector<HTMLElement>('[data-sidebar="inset-content"]');
+  await expect(content).not.toBeNull();
+  await expect(content!.scrollHeight).toBeGreaterThan(content!.clientHeight);
+
+  const { padding, minHeight } = frame.style;
+  frame.style.padding = "0";
+  frame.style.minHeight = "0";
+  try {
+    await expect(scroller.scrollHeight).toBeLessThanOrEqual(scroller.clientHeight);
+  } finally {
+    frame.style.padding = padding;
+    frame.style.minHeight = minHeight;
+  }
+}
+
+function LongPageShell() {
+  return (
+    <AppShell
+      brandName="Workspace"
+      nav={[
+        {
+          label: "Application",
+          items: items.map((item, i) => ({
+            id: item.title,
+            label: item.title,
+            icon: <item.icon />,
+            href: item.url,
+            active: i === 0,
+          })),
+        },
+      ]}
+      title="Home"
+    >
+      <div className="space-y-4 p-6">
+        {Array.from({ length: 40 }, (_, i) => (
+          <div key={i} className="rounded-lg border p-4 text-sm text-muted-foreground">
+            Card {i + 1}
+          </div>
+        ))}
+      </div>
+    </AppShell>
+  );
+}
+
+/**
+ * The inset shell is one viewport tall and no taller: a long page scrolls inside the island and the
+ * browser shows no second scrollbar. It used to be 1.28px too tall, because the island's height took
+ * a fixed `1rem` off the viewport for a margin that is `m-2`, and this theme's spacing unit is 0.27rem
+ * and not 0.25rem. The height now subtracts four of the unit the margin is written in.
+ */
+export const InsetFitsViewport: StoryObj = {
+  parameters: { layout: "fullscreen", visual: { disable: true } },
+  render: () => <LongPageShell />,
+  play: async ({ canvasElement }) => {
+    await expectShellFitsViewport(canvasElement);
+  },
+};
+
+/** The same check in the dark theme, where the document background shows if it ever scrolls. */
+export const InsetFitsViewportDark: StoryObj = {
+  globals: { theme: "dark" },
+  parameters: { layout: "fullscreen", visual: { disable: true } },
+  render: () => <LongPageShell />,
+  play: async ({ canvasElement }) => {
+    await expectShellFitsViewport(canvasElement);
+  },
+};

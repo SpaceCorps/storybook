@@ -1,10 +1,20 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, userEvent, within } from "@storybook/test";
 import * as React from "react";
+import { useForm } from "react-hook-form";
 
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field } from "@/components/ui/field";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 
 /**
@@ -288,4 +298,106 @@ export const EmailField: StoryObj = {
       <Button type="submit">Save</Button>
     </form>
   ),
+};
+
+/** Pixels from the bottom edge of `above` to the top edge of `below`. */
+const gapBetween = (above: Element, below: Element) =>
+  below.getBoundingClientRect().top - above.getBoundingClientRect().bottom;
+
+/**
+ * A form is one vertical rhythm: a label sits close to its own control, and every other step down
+ * (an alert onto the first label, a control onto the next label, the last control onto the actions)
+ * is the larger field gap. A label that looks glued to the control above it, or a button on the
+ * input above it, is this going wrong, so the play functions below measure it in the browser.
+ */
+const expectFormRhythm = async (canvasElement: HTMLElement) => {
+  const form = within(canvasElement).getByRole("form", { name: "Sign in" });
+  const canvas = within(form);
+  const label = (text: string) => canvas.getByText(text, { selector: "label" });
+  // A password field wraps its input and eye button, and the wrapper is what the next row clears.
+  const control = (text: string) => {
+    const input = canvas.getByLabelText(text);
+    return input.closest("[data-slot='password-input']") ?? input;
+  };
+
+  const labelToControl = gapBetween(label("Username"), control("Username"));
+  const fieldToField = gapBetween(control("Username"), label("Password"));
+  const alertToField = gapBetween(canvas.getByRole("alert"), label("Username"));
+  const controlToActions = gapBetween(
+    control("Password"),
+    canvas.getByRole("button", { name: "Sign in" }),
+  );
+
+  await expect(labelToControl).toBeGreaterThan(2);
+  await expect(fieldToField).toBeGreaterThanOrEqual(labelToControl * 2);
+  await expect(alertToField).toBeCloseTo(fieldToField, 0);
+  await expect(controlToActions).toBeCloseTo(fieldToField, 0);
+};
+
+const SignInError = () => (
+  <Alert variant="destructive">
+    <AlertTitle>Could not sign in</AlertTitle>
+    <AlertDescription>Check your username and password.</AlertDescription>
+  </Alert>
+);
+
+/** An error above the fields, two fields and the submit button: all one `gap-4` stack of `Field`s. */
+export const SignInSpacing: StoryObj = {
+  render: () => (
+    <form className={FORM} aria-label="Sign in" onSubmit={(event) => event.preventDefault()}>
+      <SignInError />
+      <Field label="Username">
+        <Input name="username" autoComplete="username" />
+      </Field>
+      <Field label="Password">
+        <Input name="password" type="password" autoComplete="current-password" />
+      </Field>
+      <Button type="submit">Sign in</Button>
+    </form>
+  ),
+  play: async ({ canvasElement }) => expectFormRhythm(canvasElement),
+};
+
+const FormComponentsSignIn = () => {
+  const form = useForm({ defaultValues: { username: "", password: "" } });
+  return (
+    <Form {...form}>
+      <form className={FORM} aria-label="Sign in" onSubmit={form.handleSubmit(() => {})}>
+        <SignInError />
+        <FormField
+          control={form.control}
+          name="username"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Username</FormLabel>
+              <FormControl>
+                <Input autoComplete="username" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="password"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Password</FormLabel>
+              <FormControl>
+                <Input type="password" autoComplete="current-password" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <Button type="submit">Sign in</Button>
+      </form>
+    </Form>
+  );
+};
+
+/** The same form on the react-hook-form components: a `FormItem` spaces its label like a `Field` does. */
+export const SignInSpacingWithFormComponents: StoryObj = {
+  render: () => <FormComponentsSignIn />,
+  play: async ({ canvasElement }) => expectFormRhythm(canvasElement),
 };
