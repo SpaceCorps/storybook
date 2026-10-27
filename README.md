@@ -278,6 +278,13 @@ function LoginForm() {
   overflows. `VirtualList` does the same for its scroll container (default name "Scrollable list"), and
   stays a tab stop when its rows hold buttons. Name each list once a page has more than one: two unnamed
   lists are two regions with the same name, which axe reports as `landmark-unique`.
+- **Collapsed sidebar rail**: `collapsible="icon"` is a compact rail. `SIDEBAR_WIDTH_ICON` keeps its
+  value (`3rem`) and meaning; the `inset`, `floating` and `inset-right` variants add a 0.25rem gutter
+  and are 52px wide (they were 64px), the plain variant is 48px. Section labels hidden in the rail no
+  longer take the pointer, so the bottom of a button above one can be clicked and hovered. When the
+  nav is taller than the window the rail scrolls (hidden scrollbar, `scroll-py-1` so a focus ring is
+  never clipped). The expanded sidebar is unchanged; an app that sets `--sidebar-width-icon` gets that
+  width plus the gutter.
 - **Ratings and popover links**: `StarRating` and `EmojiRating` with `allowHalf` are one
   `role="slider"` (Left/Right and Up/Down step 0.5, Page Up / Page Down step 1, Home clears, End gives
   the highest) with `aria-label`; without it they are the usual row of buttons. `PopoverLink` opens
@@ -439,11 +446,34 @@ each. Additive props and new components are in the sections above.
   you already spaced yourself, for example with `space-y-2`, now has both.
 - **`Calendar` caption**: Enter in the month or year box no longer blurs it.
 
+**Borders, surfaces and contrast**
+
+- **Borders derive from the foreground**: `--border`, `--input` and `--sidebar-border` are
+  `color-mix(in oklab, <foreground> N%, transparent)` and are recomputed per theme (approach adapted
+  from the RioRec Storybook, `src/packages/storybook`). Redeclare them on a subtree that overrides
+  `--foreground` without the `.dark` class. `getCSSVariable("--border")` and `ThemeColors.border` return
+  that colour string, not a hex: fine in a style prop, SVG stroke or stylesheet, not for canvas or
+  colour-math libraries. Do not use `var(--input)` as an opaque fill; use `--muted` or `--popover`.
+- **Control edges are at 3:1**: input, textarea, select trigger, multiselect (it had none; pass `ghost`
+  for the borderless look), checkbox, radio, switch off track, outline Button, Toggle, the calendar
+  chips and the pagination select. Dark `--card` and `--popover` are lifted above the page, so cards,
+  menus, sheets, toasts, Dialog and AlertDialog read as raised. A dark invalid border uses the named
+  red, not `--destructive`.
+- **Error text uses `fieldErrorTextClass`**, not `text-destructive`, which is a fill colour (3.3:1 on
+  white, 1.9:1 on the dark page). Dim text is `text-muted-foreground`, not `/70`.
+
 **Overlays, focus and keyboard**
 
 - **`Tabs` are always Radix**: inactive panels stay in the DOM as empty hidden `div role="tabpanel"`,
   the active panel is focusable, and triggers select on mousedown, focus and keys (a bare click still
   selects). `useRadix` is accepted and ignored.
+- **`Tabs` look and overflow**: `TabsList` is a bordered `bg-card` segmented control with an equal
+  gutter on every side; the active tab is a foreground tint and the focus ring is whole. There is no
+  `variant` prop. When the tabs do not fit, the list is `max-w-full` and scrolls inside itself (snap
+  to the start of each tab, a fade on the side that has more, no scrollbar, the wheel left native) and
+  never widens its box or the page. The active tab is brought into view on first render, when `value`
+  changes, on keyboard focus and when the width changes; it works right to left. A vertical list does
+  not scroll.
 - **Toasts**: `useToast` no longer dismisses on any document click or Escape. A toast times out after
   5 s (12 s when destructive or with an action) unless you pass `duration`. `ToastClose` is named
   "Close". At most three toasts are open at once; closed ones waiting out their exit animation no
@@ -578,6 +608,14 @@ each. Additive props and new components are in the sections above.
 
 **DataTable and Card**
 
+- **`DataTable` columns can drop out as the table narrows**: `hideBelow` (the table's own container
+  width in px, not the viewport) and `priority` (lower is more important; the highest number goes
+  first, one at a time, until the estimated width fits; `width` in px or rem is the estimate, else
+  8rem) move a column into a row details panel, reached by a disclosure button that exists only
+  while a column is hidden. `hidden` and the column options menu still win. Before the container is
+  measured every `hideBelow` column counts as hidden. Columns with neither prop never move, so
+  existing tables are unchanged. `DataTableRowDetail`, `DataTableRowExpander`, `DataTableFooterDetail`
+  and `useColumnsHiddenByWidth` are exported for a custom layout.
 - **`DataTable` in a `CardContent`** defaults to `variant="embedded"` (no border of its own), padded or
   flush; one in a dialog, alert dialog, sheet or popover opened from a card stays `"bordered"`. Pass `variant="bordered"` to keep the old look. `Card` gained `min-w-0`; use `min-w-fit` on a
   `Card` that should grow with a wide child.
@@ -889,7 +927,16 @@ from this list:
   `IconButtonFocusableWhenDisabled`.
 - **No baseline yet** (the flag comes off once the visual-baseline-refresh workflow has produced one):
   `UI/Card` → `WithFlushTable`, `FlushTableWithoutHeader`; `UI/DataTable` → the `InsideCard*` stories,
-  `Bordered`, `Embedded`, `RowClick`, `RemovableRows`; `Components/PlanDiffView` → `ChangedFilesTree`;
+  `Bordered`, `Embedded`, `RowClick`, `RemovableRows`, `ResponsiveColumns`, `ResponsiveColumnsDark`,
+  `PriorityColumns`, `HideBelowDetail`, `HideBelowDetailDark`, `HideBelowDetailDensities`,
+  `HideBelowDetailVirtualized`, `ResizesLive`, `ColumnOptionsAtNarrowWidth`;
+  `UI/Sidebar` → the `CompactRail*` stories; `UI/Tabs` → `DefaultDark`, `Inline`, `InlineDark`,
+  `InCard`, `InCardDark`, `Overflowing`, `OverflowingDark`, `OverflowingInCard`,
+  `OverflowingInCardDark`, `OverflowingKeyboard`, `ActiveOffscreen`, `ActiveOffscreenDark`,
+  `ActiveOffscreenRtl`, `FollowsResize`, `LoadedLater`, `ScaledAncestor`, `ValueChangedFromOutside`,
+  `Vertical`, `VerticalDark`; `Foundation/Borders and Surfaces` (every story);
+  `Components/SortableVerificationList` → `WithStatusBadgesDark`; `Components/PlanMarkdown` →
+  `AlertsAndMathDark`; `Components/PlanDiffView` → `ChangedFilesTree`;
   `UI/ScrollArea` → `FitsWithoutScrolling`; `UI/VirtualList` (every story);
   `UI/Slider` → `Range`, `CurrencyWithSpokenValues`;
   `UI/Stepper` → `AsChildLinks`, `AsChildDisabledStep`; `UI/Toolbar` → `WithSearchField`;
