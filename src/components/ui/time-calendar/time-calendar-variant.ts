@@ -440,20 +440,29 @@ export const weekDayColumnVariant = cva(
 
 /**
  * An entry's block in a day column. Position it with `blockStyle` (top, height, left and width; the
- * height already holds the least height of a block, and a position without it also gets an inline
- * `min-height`). A `running` block gets a dashed bottom edge. Inside: a `truncate font-medium` title,
- * then optional time and description lines.
+ * height is where the layout draws the block to, which already counts a short block's lift into free
+ * space, and a position without `drawnEndMin` also gets an inline `min-height`). A `running` block
+ * gets a dashed bottom edge. Inside: a `truncate font-medium` title (`weekBlockTitleVariant`), then
+ * optional time and description lines.
  *
  * `fit` is how much of that a short block keeps, from `blockFit`:
  * - `full` (the default): padded, as the block always was.
- * - `tight`: one line, no vertical padding, `leading-none`, centred in the block. Contains only the title.
+ * - `tight`: one line, no vertical padding, `leading-none`, centred in the block. Contains only the
+ *   title, which keeps room above and below its line (`weekBlockTitleVariant`).
  * - `bar`: no vertical padding and no content, so the colour wash and the left bar are all there is.
  *   The button's `aria-label` and `title` carry the name.
  * The padding lives in `fit` and not in the base so that no two `py-` utilities compete.
+ *
+ * In forced-colors mode (Windows High Contrast) the colour wash is gone and a block is told apart by
+ * its border: 3px on the left, 1px on the right (the base) and 1px at the top and the bottom
+ * (`forced-colors:border-y`, in `full` and `bar`). A tight block does not get the last two: a border
+ * is taken out of the block's own height, and a tight block has exactly the room its title needs
+ * (`TIGHT_HEADROOM_EM`), so a 1px border on each edge cut the foot of the text. Its text is what shows
+ * it, and the focus outline is all the way round.
  */
 export const weekBlockVariant = cva(
   [
-    "absolute flex min-w-0 cursor-pointer flex-col items-start overflow-hidden rounded-selector border-l-[3px] px-1 text-left text-foreground transition-colors focus-visible:z-10 forced-colors:border-y forced-colors:border-r",
+    "absolute flex min-w-0 cursor-pointer flex-col items-start overflow-hidden rounded-selector border-l-[3px] px-1 text-left text-foreground transition-colors focus-visible:z-10 forced-colors:border-r",
     FOCUS_RING,
   ],
   {
@@ -465,14 +474,30 @@ export const weekBlockVariant = cva(
         false: "",
       },
       fit: {
-        full: "py-0.5",
+        full: "py-0.5 forced-colors:border-y",
         tight: "justify-center py-0 leading-none",
-        bar: "py-0",
+        bar: "py-0 forced-colors:border-y",
       },
     },
     defaultVariants: { density: "Medium", color: "slate", running: false, fit: "full" },
   },
 );
+
+/**
+ * The title line of a week block. It is `truncate`, which clips at its padding box, and a tight block
+ * sets `leading-none`, which makes that box one em tall, so the ring of an Å and the dots of an Ä or Ö
+ * above the line, and the descenders below it, were cut off. A tight title therefore has padding of
+ * its own, 0.2em above and 0.1em below, inside the clip box; the block centres the whole of it.
+ * `TIGHT_HEADROOM_EM` in `event-button` (which the height a tight block needs counts, and which says
+ * how the amount was measured) is these two numbers. No negative margin takes the room back, and a
+ * full block's title, whose line height is the normal one, needs none.
+ */
+export const weekBlockTitleVariant = cva("block w-full truncate font-medium", {
+  variants: {
+    fit: { full: "", tight: "pt-[0.2em] pb-[0.1em]", bar: "" },
+  },
+  defaultVariants: { fit: "full" },
+});
 
 /**
  * An opaque plate under a week block, with the same `style` and corners. The block's own wash is a

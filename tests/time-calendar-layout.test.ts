@@ -26,9 +26,11 @@ import {
 import { getFetchRange, getVisibleRange } from "../src/components/ui/time-calendar/calendar-math";
 import {
   MIN_BLOCK_REM,
+  TIGHT_HEADROOM_EM,
   blockFit,
   blockStyle,
   minBlockMinutes,
+  tightBlockMinutes,
 } from "../src/components/ui/time-calendar/event-button";
 import {
   DEFAULT_CALENDAR_LABELS,
@@ -42,6 +44,7 @@ import {
   eventDotVariant,
   eventRowVariant,
   timeCalendarVariant,
+  weekBlockTitleVariant,
   weekBlockVariant,
 } from "../src/components/ui/time-calendar/time-calendar-variant";
 import type { CalendarClock, TimeCalendarEvent } from "../src/components/ui/time-calendar/types";
@@ -1179,17 +1182,31 @@ describe("the drawn height of a block that the layout has placed", () => {
 
 describe("how much of its label a block shows", () => {
   const HOUR = { Small: 2.5, Medium: 3, Large: 3.5 } as const;
+  /** The text size of a week block at each density, in px: `text-[10px]`, `text-xs`, `text-sm`. */
+  const TEXT_PX = { Small: 10, Medium: 12, Large: 14 } as const;
+  const DENSITIES = ["Small", "Medium", "Large"] as const;
   /** Minutes that make a block `rem` tall at `density`. */
   const minutesFor = (rem: number, density: keyof typeof HOUR) => (rem / HOUR[density]) * 60;
+  /** How tall, in px, a block drawn `minutes` is (a 16px root). */
+  const pxFor = (minutes: number, density: keyof typeof HOUR) =>
+    (minutes / 60) * HOUR[density] * 16;
+  /**
+   * What a tight block has to hold, in px: its title's box, which is the line (the text size, at
+   * `leading-none`) plus the room above and below it that keeps the ring of an Å and the descenders
+   * inside the title's clip box.
+   */
+  const tightNeedPx = (density: keyof typeof HOUR) =>
+    TEXT_PX[density] * (1 + TIGHT_HEADROOM_EM.top + TIGHT_HEADROOM_EM.bottom);
 
-  it.each(["Small", "Medium", "Large"] as const)(
-    "is full from the least block height and tight from one line of text at %s",
+  it.each(DENSITIES)(
+    "is full from the least block height, tight from what its label needs and a bar below, at %s",
     (density) => {
-      const text = { Small: 0.625, Medium: 0.75, Large: 0.875 }[density];
+      const tight = minutesFor(tightNeedPx(density) / 16, density);
+      expect(tightBlockMinutes(density)).toBeCloseTo(tight, 9);
       expect(blockFit(minBlockMinutes(density), density)).toBe("full");
       expect(blockFit(minutesFor(MIN_BLOCK_REM, density) - 0.01, density)).toBe("tight");
-      expect(blockFit(minutesFor(text, density), density)).toBe("tight");
-      expect(blockFit(minutesFor(text, density) - 0.01, density)).toBe("bar");
+      expect(blockFit(tight, density)).toBe("tight");
+      expect(blockFit(tight - 0.01, density)).toBe("bar");
       expect(blockFit(240, density)).toBe("full");
       expect(blockFit(1, density)).toBe("bar");
       expect(blockFit(0, density)).toBe("bar");
@@ -1197,16 +1214,43 @@ describe("how much of its label a block shows", () => {
     },
   );
 
-  it("is a quarter of an hour for the text at every density, and the lifted height is full", () => {
-    for (const density of ["Small", "Medium", "Large"] as const) {
-      expect(blockFit(15, density)).toBe("tight");
-      expect(blockFit(14.9, density)).toBe("bar");
+  it("starts the tight label at 19.5 minutes at every density, so a quarter of an hour is a bar", () => {
+    // THE THRESHOLD MOVED. A tight block used to start at one line of text, a quarter of an hour at
+    // every density. That left no room for the ring of an Å (the title's own clip box cut it, and so
+    // did the block's edge): the label now starts where the line, the room above it and the room
+    // below it fit. The line is a quarter of an hour at every density, the room 30 percent of it.
+    for (const density of DENSITIES) {
+      expect(tightBlockMinutes(density)).toBeCloseTo(19.5, 9);
+      expect(blockFit(15, density)).toBe("bar");
+      expect(blockFit(19, density)).toBe("bar");
+      expect(blockFit(19.5, density)).toBe("tight");
+      // A 20-minute entry that another follows keeps its label; 07:24 to 07:44, drawn down to 07:45, is 21.
+      expect(blockFit(20, density)).toBe("tight");
+      expect(blockFit(21, density)).toBe("tight");
+      expect(blockFit(22, density)).toBe("tight");
     }
     // The lifted minimum is full at every density, so a block that gets its whole lift looks as it did.
     expect(blockFit(32.4, "Small")).toBe("full");
     expect(blockFit(27, "Medium")).toBe("full");
     expect(blockFit(23.142857, "Large")).toBe("full");
   });
+
+  it.each(DENSITIES)(
+    "never calls a block tight that is too short for its title and the room it keeps, at %s",
+    (density) => {
+      for (let minutes = 0; minutes <= 60; minutes += 0.05) {
+        const room = pxFor(minutes, density);
+        const fit = blockFit(minutes, density);
+        if (fit === "bar") {
+          expect(room, `${minutes} min is a bar`).toBeLessThan(tightNeedPx(density));
+        } else {
+          expect(room, `${minutes} min is ${fit}`).toBeGreaterThanOrEqual(
+            tightNeedPx(density) - 1e-6,
+          );
+        }
+      }
+    },
+  );
 
   it("has a variant per fit that drops the padding when the block is short", () => {
     const full = weekBlockVariant({ fit: "full" }).split(/\s+/);
@@ -1223,6 +1267,48 @@ describe("how much of its label a block shows", () => {
       expect(classes).toContain("focus-visible:ring-inset");
       expect(classes).toContain("border-l-[3px]");
     }
+  });
+
+  it("keeps a block's border in forced-colors mode, except at the top and the bottom of a tight one", () => {
+    // Forced colors (Windows High Contrast) removes the colour wash, so a block is told apart by its
+    // border. That border is taken out of the block's own height: a 1px top and bottom border left a
+    // 15-minute tight block shorter than its line, and the foot of the text was cut off. A tight block
+    // has exactly the room its title needs, so it keeps the left and right edge and not those two; a
+    // full block and a bar (which has no text) keep all four.
+    const classesOf = (fit: "full" | "tight" | "bar") => weekBlockVariant({ fit }).split(/\s+/);
+    for (const fit of ["full", "tight", "bar"] as const) {
+      expect(classesOf(fit)).toContain("forced-colors:border-r");
+      expect(classesOf(fit)).toContain("border-l-[3px]");
+    }
+    expect(classesOf("full")).toContain("forced-colors:border-y");
+    expect(classesOf("bar")).toContain("forced-colors:border-y");
+    expect(classesOf("tight")).not.toContain("forced-colors:border-y");
+    expect(classesOf("tight").filter((c) => /^forced-colors:border-[tby]/.test(c))).toEqual([]);
+  });
+
+  it("gives a tight title room for the ring of an Å inside its own clip box", () => {
+    // The title is `truncate`, which clips at its padding box, and at `leading-none` that box is exactly
+    // one em tall, so the ring of an Å, Ä or Ö (about 0.125em above the line in Geist) was cut off.
+    // The headroom is padding on the title, so the clip box grows and the block centres the whole of it.
+    // The classes are literals for Tailwind; `TIGHT_HEADROOM_EM` is what the threshold counts.
+    const tight = weekBlockTitleVariant({ fit: "tight" }).split(/\s+/);
+    expect(tight).toContain(`pt-[${TIGHT_HEADROOM_EM.top}em]`);
+    expect(tight).toContain(`pb-[${TIGHT_HEADROOM_EM.bottom}em]`);
+    expect(tight).toEqual(expect.arrayContaining(["block", "w-full", "truncate", "font-medium"]));
+    expect(TIGHT_HEADROOM_EM.top).toBeGreaterThanOrEqual(0.125);
+    expect(TIGHT_HEADROOM_EM.bottom).toBeGreaterThan(0);
+    // Nowhere else: a full block's title is as it was, and a negative margin would undo the room.
+    for (const fit of ["full", "bar"] as const) {
+      const classes = weekBlockTitleVariant({ fit }).split(/\s+/);
+      expect(classes.filter((c) => /^(pt|pb|py|-m)/.test(c))).toEqual([]);
+      expect(classes).toEqual(
+        expect.arrayContaining(["block", "w-full", "truncate", "font-medium"]),
+      );
+    }
+    expect(weekBlockTitleVariant({}).split(/\s+/)).toEqual(
+      weekBlockTitleVariant({ fit: "full" }).split(/\s+/),
+    );
+    expect(tight.filter((c) => c.startsWith("-m"))).toEqual([]);
   });
 });
 

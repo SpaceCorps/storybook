@@ -822,6 +822,47 @@ describe("TimeCalendar week", () => {
       expect(second.dataset.fit).toBe("full");
     });
 
+    it.each(["Small", "Medium", "Large"] as const)(
+      "keeps the 07:24 entry's label at %s: one tight line, with room for an Å above it",
+      (density) => {
+        const { container } = renderWeek({ events: OWNER_DAY, density: density as never });
+        const first = block(container, "2026-10-21", "o0");
+        // Drawn down to 07:45, 21 minutes: enough for a label at every density (19.5 minutes).
+        expect(first.dataset.fit).toBe("tight");
+        const title = first.firstElementChild as HTMLElement;
+        expect(title).toHaveTextContent("Acme Logistik");
+        // The title clips at its own padding box, which has to hold the ring of an Å, Ä or Ö and the
+        // descenders; the block centres that box.
+        expect(title).toHaveClass("truncate", "pt-[0.2em]", "pb-[0.1em]");
+        // The other blocks of the day are full and have no such padding.
+        const second = block(container, "2026-10-21", "o1");
+        expect(second.dataset.fit).toBe("full");
+        expect((second.firstElementChild as HTMLElement).className).not.toMatch(/p[tb]-/);
+      },
+    );
+
+    it("makes a 15-minute entry with another right below it a bar, and a 20-minute one tight", () => {
+      // A tight label needs 19.5 minutes at every density: the line, and the room for an Å above it and
+      // for descenders. Anything shorter has no room for text and is a bar: still named, still a button.
+      for (const [end, label, fit] of [
+        ["09:15", "15m", "bar"],
+        ["09:20", "20m", "tight"],
+      ] as const) {
+        const { container, unmount } = renderWeek({
+          events: [
+            { id: "x", date: "2026-10-21", start: "09:00", end, title: "Åre" },
+            { id: "y", date: "2026-10-21", start: end, end: "10:30", title: "Intern" },
+          ],
+        });
+        const short = block(container, "2026-10-21", "x");
+        expect(short.dataset.fit).toBe(fit);
+        if (fit === "bar") expect(short).toBeEmptyDOMElement();
+        else expect(short).toHaveTextContent("Åre");
+        expect(short).toHaveAccessibleName(`Åre, 09:00 to ${end}, ${label}`);
+        unmount();
+      }
+    });
+
     it("gives bar blocks no text and keeps their accessible name and tooltip", () => {
       const { container } = renderWeek({
         events: [
