@@ -22,7 +22,22 @@ import {
   SIDEBAR_KEYBOARD_SHORTCUT,
 } from "./constants";
 import { SidebarContext, useSidebar } from "./context";
-import { sidebarMenuButtonVariant } from "./variant";
+import {
+  SIDEBAR_CURRENT_FILL,
+  SIDEBAR_HOVER_FILL,
+  SIDEBAR_PRESS_FILL,
+  sidebarMenuButtonVariant,
+} from "./variant";
+
+/**
+ * The collapsed column of the island and floating variants: `--sidebar-width-icon` plus a gutter, as
+ * it was built before (then 1rem, which made the column 64px). A nav button is 38.88px, so the plain
+ * 3rem rail leaves it 4.56px each side; the 0.25rem gutter makes this column 52px and the air 6.56px,
+ * enough for the 2px focus ring and the 4px forced-colors outline to stay inside the rail's clip.
+ * `--sidebar-width-icon` keeps its meaning, so an app that sets it still gets that rail plus a gutter.
+ */
+const RAIL_ISLAND_WIDTH =
+  "group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+0.25rem)]";
 
 /** Radix skips its own pointer and focus handlers once the event is prevented, so a tooltip held shut stays shut. */
 const cancelTooltipOpen = (event: React.SyntheticEvent) => event.preventDefault();
@@ -335,26 +350,38 @@ const Sidebar = React.forwardRef<
         {/* This is what handles the sidebar gap on desktop */}
         <div
           className={cn(
-            "duration-200 relative h-svh bg-transparent transition-[width] ease-linear",
+            "duration-200 relative h-svh bg-transparent transition-[width] ease-linear motion-reduce:transition-none",
             "w-[var(--sidebar-width)]",
             "group-data-[collapsible=offcanvas]:w-0",
             "group-data-[side=right]:rotate-180",
+            // The same column as the panel below: a rail that is a different width from its gap
+            // would leave a strip or an overlap beside the island.
             variant === "floating" || variant === "inset"
-              ? "group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+1rem)]"
+              ? RAIL_ISLAND_WIDTH
               : "group-data-[collapsible=icon]:w-[var(--sidebar-width-icon)]",
           )}
         />
         <div
           className={cn(
-            "duration-200 fixed inset-y-0 z-10 hidden h-svh transition-[left,right,width] ease-linear md:flex",
+            "duration-200 fixed inset-y-0 z-10 hidden h-svh transition-[left,right,width,padding] ease-linear motion-reduce:transition-none md:flex",
             "w-[var(--sidebar-width)]",
             side === "left"
               ? "left-0 group-data-[collapsible=offcanvas]:-left-[var(--sidebar-width)]"
               : "right-0 group-data-[collapsible=offcanvas]:-right-[var(--sidebar-width)]",
-            // Adjust the padding for floating and inset variants.
-            variant === "floating" || variant === "inset"
-              ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+1rem)]"
-              : "group-data-[collapsible=icon]:w-[var(--sidebar-width-icon)] group-data-[side=left]:border-r group-data-[side=right]:border-l",
+            variant === "sidebar"
+              ? "group-data-[collapsible=icon]:w-[var(--sidebar-width-icon)] group-data-[side=left]:border-r group-data-[side=right]:border-l"
+              : [
+                  // The floating and inset variants are padded on every side. In the rail the sides
+                  // give that padding up, since the rail is as wide as its button plus the air a
+                  // focus ring needs: an inset sidebar has no edge of its own to keep clear of, and
+                  // a floating one keeps a sliver for its border. The padding animates with the
+                  // width, so the content does not jump sideways when the sidebar collapses.
+                  "p-2",
+                  RAIL_ISLAND_WIDTH,
+                  variant === "inset"
+                    ? "group-data-[collapsible=icon]:px-0"
+                    : "group-data-[collapsible=icon]:px-0.5",
+                ],
             className,
           )}
           {...props}
@@ -626,7 +653,12 @@ const SidebarContent = React.forwardRef<HTMLDivElement, React.ComponentProps<"di
         ref={ref}
         data-sidebar="content"
         className={cn(
-          "flex min-h-0 flex-1 flex-col gap-2 overflow-auto group-data-[collapsible=icon]:overflow-hidden",
+          "flex min-h-0 flex-1 flex-col gap-2 overflow-auto",
+          // The rail clips sideways but scrolls down, so a nav taller than the window can still be
+          // reached with a wheel. The scrollbar is hidden: a classic one would take a third of the
+          // 52px rail and push the icons off their axis. Focus scrolls a button to the very edge of
+          // the view, which would cut off its 2px ring, so the view keeps a little scroll padding.
+          "group-data-[collapsible=icon]:scroll-py-1 group-data-[collapsible=icon]:overflow-x-hidden group-data-[collapsible=icon]:overflow-y-auto group-data-[collapsible=icon]:[scrollbar-width:none] group-data-[collapsible=icon]:[&::-webkit-scrollbar]:hidden",
           className,
         )}
         {...props}
@@ -664,8 +696,10 @@ const SidebarGroupLabel = React.forwardRef<
       ref={ref}
       data-sidebar="group-label"
       className={cn(
-        "duration-200 flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium text-foreground/70 outline-hidden ring-ring transition-[margin,opa] ease-linear focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
-        "group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0",
+        "duration-200 flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium text-foreground/70 focus-visible:outline-hidden ring-ring transition-[margin,opa] ease-linear motion-reduce:transition-none focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
+        // Hidden in the rail, but still a box, and it is pulled up over the end of the section above. It
+        // has to let the pointer through, or it covers the bottom fifth of that section's last button.
+        "group-data-[collapsible=icon]:pointer-events-none group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0",
         className,
       )}
       {...props}
@@ -685,7 +719,8 @@ const SidebarGroupAction = React.forwardRef<
       ref={ref}
       data-sidebar="group-action"
       className={cn(
-        "absolute right-3 top-3.5 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-foreground outline-hidden ring-ring transition-transform hover:bg-secondary hover:text-accent-foreground focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0 cursor-pointer",
+        "absolute right-3 top-3.5 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-foreground focus-visible:outline-hidden ring-ring transition-transform hover:text-accent-foreground focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0 cursor-pointer",
+        SIDEBAR_HOVER_FILL,
         // Increases the hit area of the button on mobile.
         "after:absolute after:-inset-2 after:md:hidden",
         "group-data-[collapsible=icon]:hidden",
@@ -829,7 +864,8 @@ const SidebarMenuAction = React.forwardRef<
       ref={ref}
       data-sidebar="menu-action"
       className={cn(
-        "absolute right-1 top-1.5 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-foreground outline-hidden ring-ring transition-transform hover:bg-secondary focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0 cursor-pointer",
+        "absolute right-1 top-1.5 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-foreground focus-visible:outline-hidden ring-ring transition-transform focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0 cursor-pointer",
+        SIDEBAR_HOVER_FILL,
         // Increases the hit area of the button on mobile.
         "after:absolute after:-inset-2 after:md:hidden",
         "peer-data-[size=sm]/menu-button:top-1",
@@ -943,12 +979,15 @@ const SidebarMenuSubButton = React.forwardRef<
         data-size={size}
         data-active={isActive}
         className={cn(
-          "flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 text-foreground outline-hidden ring-ring hover:bg-secondary focus-visible:ring-2 active:bg-secondary disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 cursor-pointer",
-          "data-[active=true]:bg-secondary",
+          "flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 text-foreground focus-visible:outline-hidden ring-ring focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 cursor-pointer",
+          SIDEBAR_HOVER_FILL,
+          SIDEBAR_PRESS_FILL,
+          SIDEBAR_CURRENT_FILL,
           size === "sm" && "text-xs",
           size === "md" && "text-sm",
           "group-data-[collapsible=icon]:hidden",
-          isPenHovered && "bg-secondary",
+          // `SIDEBAR_HOVER_FILL` as a plain class: a pen's hover is tracked by hand, not by `:hover`.
+          isPenHovered && "bg-foreground/8",
           className,
         )}
         onClick={(event: React.MouseEvent<HTMLAnchorElement>) => {
