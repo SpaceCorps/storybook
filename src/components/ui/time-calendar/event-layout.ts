@@ -162,6 +162,16 @@ export interface PositionedSegment extends DaySegment {
   cols: number;
   /** Columns the block covers, at least 1: it widens into neighbours that are free during its interval. */
   span: number;
+  /**
+   * Where the block is drawn down to, in minutes since midnight, never before `endMin`. A block is
+   * drawn at least `minMinutes` tall, but only into free space: this is `endMin` lifted to
+   * `startMin + minMinutes` and then cut at the start of the next block that shares its width. So it is
+   * the true end for an entry that is long enough or has a neighbour right below it, and the lifted end
+   * for a short entry with room beneath it. `layoutDayEvents` always sets it. Optional so that a
+   * position an app builds by hand still draws: `blockStyle` then draws `endMin` and leaves the least
+   * height to the CSS `min-height`.
+   */
+  drawnEndMin?: number;
 }
 
 /**
@@ -207,30 +217,70 @@ function hoursToMinutes(hours: number | undefined): number {
 }
 
 interface ClusterItem extends DaySegment {
-  /** Where the block is drawn to: `endMin`, lifted to `minMinutes` past the start. */
+  /**
+   * Where the entry's extent ends, which is what decides whether two entries overlap: its true `endMin`,
+   * or for a zero-extent entry (no known end, `endMin <= startMin`) the lifted minimum, `startMin` plus
+   * `minMinutes`. See {@link layoutDayEvents}.
+   */
   end: number;
   col: number;
 }
 
+interface PlacedItem extends ClusterItem {
+  cols: number;
+  span: number;
+}
+
 /**
- * Packs one day's segments side by side. Segments that overlap share a cluster; inside it each takes
- * the first column whose previous occupant has ended (touching is not overlapping), then widens
- * right over columns that are free during its own interval.
+ * Whether two placed blocks share any of the day column's width. Each covers the fraction
+ * `col / cols` to `(col + span) / cols` of it, and `cols` differs between clusters, so the comparison
+ * is made on those fractions, cross-multiplied to stay in integers. Touching edges do not share.
+ */
+function sharesWidth(a: PlacedItem, b: PlacedItem): boolean {
+  return a.col * b.cols < (b.col + b.span) * a.cols && b.col * a.cols < (a.col + a.span) * b.cols;
+}
+
+/**
+ * Packs one day's segments side by side and works out how far down each block is drawn.
  *
- * Overlap is judged on the extent a block is drawn at, which is its interval lifted to at least
- * `minMinutes` (the least height a block has, expressed in minutes of the hour height; one minute
- * when omitted, which is the true interval and keeps a zero-length block in a column of its own).
- * Judged on the true intervals alone, a run of entries shorter than the minimum would be drawn on
- * top of each other. The positions report the true `startMin` and `endMin`. The output is ordered by
- * start.
+ * Columns mean overlap, and only true overlap. Segments whose intervals overlap share a cluster;
+ * inside it each takes the first column whose previous occupant has ended (touching is not
+ * overlapping), then widens right over columns that are free during its own interval. Entries that
+ * touch, or have any gap between them, are always in the same column at full width, whatever
+ * `minMinutes` is: the least height of a block is not something an entry occupies.
+ *
+ * A block is drawn at least `minMinutes` tall (the least height a block has, expressed in minutes of
+ * the hour height; one minute when omitted), so that a short entry stays readable and clickable, but
+ * only into free space. `drawnEndMin` is the true end lifted to `startMin + minMinutes`, then cut at
+ * the smallest `o.startMin` over the other blocks `o` that start at or after this entry's end and
+ * share any of its width. Sharing is judged across clusters too (`sharesWidth`), since the entry right
+ * below a short one is usually in the next cluster.
+ *
+ * - The cut never goes below the true end. A block `o` that shares width with this one cannot overlap
+ *   it: overlapping blocks are in different columns of one cluster, and a block never widens over a
+ *   column that an overlapping block sits in, so their widths are disjoint. So `o` either ends at or
+ *   before this entry starts, or starts at or after it ends. Only the second kind cuts, and it cuts at
+ *   its own start, which is at or after the end.
+ * - Nothing is drawn over anything. Of two blocks that share width, one is above the other, and the
+ *   upper one is cut at or above the start of the lower one.
+ *
+ * An entry with no known end (`endMin <= startMin`, which is what `segmentsForDay` makes of an entry
+ * that has only a start) has no true interval to be mistaken for an overlap, and a cut would shrink it
+ * to a sliver of about a pixel. It keeps the old rule, and only it does: its extent for overlap
+ * purposes is the lifted minimum, `startMin + minMinutes`, so an entry that starts inside that is put
+ * beside it, and it is always drawn the whole minimum. Every other entry is judged on its true
+ * interval.
+ *
+ * The positions report the true `startMin` and `endMin`. The output is ordered by start, does not
+ * depend on the order of the input, and the input is left alone.
  */
 export function layoutDayEvents(input: readonly DaySegment[], minMinutes = 1): PositionedSegment[] {
   const least = Number.isFinite(minMinutes) ? Math.max(minMinutes, 1) : 1;
   const items: ClusterItem[] = input
-    .map((s) => ({ ...s, end: Math.max(s.endMin, s.startMin + least), col: 0 }))
+    .map((s) => ({ ...s, end: s.endMin > s.startMin ? s.endMin : s.startMin + least, col: 0 }))
     .sort((a, b) => a.startMin - b.startMin || b.end - a.end || compareText(a.id, b.id));
 
-  const out: PositionedSegment[] = [];
+  const placed: PlacedItem[] = [];
   let cluster: ClusterItem[] = [];
   let clusterEnd = -1;
 
@@ -260,16 +310,7 @@ export function layoutDayEvents(input: readonly DaySegment[], minMinutes = 1): P
       ) {
         span++;
       }
-      out.push({
-        id: item.id,
-        startMin: item.startMin,
-        endMin: item.endMin,
-        continued: item.continued,
-        continues: item.continues,
-        col: item.col,
-        cols,
-        span,
-      });
+      placed.push({ ...item, cols, span });
     }
     cluster = [];
   };
@@ -283,7 +324,27 @@ export function layoutDayEvents(input: readonly DaySegment[], minMinutes = 1): P
     clusterEnd = Math.max(clusterEnd, item.end);
   }
   flush();
-  return out;
+
+  // `placed` is ordered by start, so the first block below this one that shares its width is the one
+  // that starts soonest, and nothing that starts at or after the lifted end can cut it.
+  return placed.map((item, index) => {
+    let drawnEnd = Math.max(item.endMin, item.startMin + least);
+    for (let next = index + 1; next < placed.length && placed[next].startMin < drawnEnd; next++) {
+      const other = placed[next];
+      if (other.startMin >= item.end && sharesWidth(item, other)) drawnEnd = other.startMin;
+    }
+    return {
+      id: item.id,
+      startMin: item.startMin,
+      endMin: item.endMin,
+      continued: item.continued,
+      continues: item.continues,
+      col: item.col,
+      cols: item.cols,
+      span: item.span,
+      drawnEndMin: drawnEnd,
+    };
+  });
 }
 
 /**

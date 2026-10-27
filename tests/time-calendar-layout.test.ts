@@ -21,10 +21,12 @@ import {
   slotMinutes,
   toMinutes,
   type DaySegment,
+  type PositionedSegment,
 } from "../src/components/ui/time-calendar/event-layout";
 import { getFetchRange, getVisibleRange } from "../src/components/ui/time-calendar/calendar-math";
 import {
   MIN_BLOCK_REM,
+  blockFit,
   blockStyle,
   minBlockMinutes,
 } from "../src/components/ui/time-calendar/event-button";
@@ -527,26 +529,45 @@ describe("layoutDayEvents", () => {
   });
 
   describe("with a minimum drawn length", () => {
+    // THE PREMISE CHANGED here. These cases used to say that entries drawn on top of each other get
+    // separate columns: the layout lifted every block to the minimum height before it decided what
+    // overlapped, so a 20-minute entry followed by one that starts the minute it ends was put beside
+    // it, and ten-minute entries back to back took a column each. That drew entries that do not overlap
+    // as if they did. A column now means a TRUE overlap and nothing else; a short block is lifted to
+    // its minimum only into free space (`drawnEndMin`), so touching entries, and entries with any gap
+    // between them, share one full-width column whatever the density. Genuine overlaps split exactly
+    // as they did, and an entry with no known end keeps the old lifted rule (see below).
+
     /** The 27 minutes a Medium block is drawn at least, as `minBlockMinutes` says. */
     const MIN = 27;
     const placeMin = (input: DaySegment[], min = MIN) =>
       Object.fromEntries(layoutDayEvents(input, min).map((p) => [p.id, [p.col, p.cols, p.span]]));
+    const drawnMin = (input: DaySegment[], min = MIN) =>
+      Object.fromEntries(layoutDayEvents(input, min).map((p) => [p.id, p.drawnEndMin]));
 
-    it("puts entries that are drawn on top of each other in separate columns", () => {
-      // Ten-minute entries back to back: each is drawn 27 minutes tall, so each hides the one before.
-      expect(placeMin([seg("a", 600, 610), seg("b", 610, 620), seg("c", 620, 630)])).toEqual({
-        a: [0, 3, 1],
-        b: [1, 3, 1],
-        c: [2, 3, 1],
-      });
+    it("keeps ten-minute entries back to back in one column, each drawn at its true length", () => {
+      const input = [seg("a", 600, 610), seg("b", 610, 620), seg("c", 620, 630)];
+      expect(placeMin(input)).toEqual({ a: [0, 1, 1], b: [0, 1, 1], c: [0, 1, 1] });
+      // The first two end where the next one starts; only the last has room below it to be lifted.
+      expect(drawnMin(input)).toEqual({ a: 610, b: 620, c: 647 });
     });
 
-    it("reuses a column as soon as the drawn block above it has ended", () => {
-      expect(placeMin([seg("a", 780, 795), seg("b", 795, 810), seg("c", 810, 825)])).toEqual({
-        a: [0, 2, 1],
-        b: [1, 2, 1],
-        c: [0, 2, 1],
-      });
+    it("keeps entries a minute apart in one column, drawn up to the next one", () => {
+      const input = [seg("a", 600, 610), seg("b", 611, 640)];
+      expect(placeMin(input)).toEqual({ a: [0, 1, 1], b: [0, 1, 1] });
+      expect(drawnMin(input)).toEqual({ a: 611, b: 640 });
+    });
+
+    it("lifts a short entry to the minimum when nothing is below it", () => {
+      expect(drawnMin([seg("a", 600, 610)])).toEqual({ a: 627 });
+      expect(drawnMin([seg("a", 600, 610), seg("b", 627, 660)])).toEqual({ a: 627, b: 660 });
+      expect(drawnMin([seg("a", 600, 610), seg("b", 700, 760)])).toEqual({ a: 627, b: 760 });
+    });
+
+    it("cuts the lift at the start of the next entry, and only looks downwards", () => {
+      const input = [seg("above", 590, 600), seg("a", 600, 610), seg("below", 615, 700)];
+      // `above` ends where `a` starts; `a` is cut at 615; neither is cut by what is above it.
+      expect(drawnMin(input)).toEqual({ above: 600, a: 615, below: 700 });
     });
 
     it("leaves entries that are far enough apart at full width", () => {
@@ -561,22 +582,64 @@ describe("layoutDayEvents", () => {
     });
 
     it("measures the minimum from the start, so a long block is unaffected", () => {
-      expect(placeMin([seg("a", 600, 700), seg("b", 700, 710)])).toEqual({
-        a: [0, 1, 1],
-        b: [0, 1, 1],
+      const input = [seg("a", 600, 700), seg("b", 700, 710)];
+      expect(placeMin(input)).toEqual({ a: [0, 1, 1], b: [0, 1, 1] });
+      expect(drawnMin(input)).toEqual({ a: 700, b: 727 });
+    });
+
+    it("still splits a true overlap into columns, a short entry included", () => {
+      expect(placeMin([seg("a", 540, 660), seg("b", 600, 720)])).toEqual({
+        a: [0, 2, 1],
+        b: [1, 2, 1],
+      });
+      // A ten-minute entry inside a long one is beside it, and keeps the least height.
+      const nested = [seg("long", 540, 720), seg("short", 600, 610)];
+      expect(placeMin(nested)).toEqual({ long: [0, 2, 1], short: [1, 2, 1] });
+      expect(drawnMin(nested)).toEqual({ long: 720, short: 627 });
+      // Two entries that overlap by a single minute are still two columns.
+      expect(placeMin([seg("a", 600, 630), seg("b", 629, 660)])).toEqual({
+        a: [0, 2, 1],
+        b: [1, 2, 1],
       });
     });
 
-    it("separates a zero-length entry from the one a minute after it", () => {
+    it("cuts a block at the next one that shares its width, even in the next cluster", () => {
+      // `x` is alone at full width; the two below it overlap each other, so they are side by side in a
+      // cluster of their own. Both are under `x`, so the earlier of them ends the lift.
+      const input = [seg("x", 600, 605), seg("p", 612, 700), seg("q", 615, 700)];
+      expect(placeMin(input)).toEqual({ x: [0, 1, 1], p: [0, 2, 1], q: [1, 2, 1] });
+      expect(drawnMin(input).x).toBe(612);
+      // The reverse: a half-width block is cut by a full-width one below it.
+      const half = [seg("l", 540, 560), seg("s", 541, 545), seg("below", 560, 640)];
+      expect(placeMin(half)).toEqual({ l: [0, 2, 1], s: [1, 2, 1], below: [0, 1, 1] });
+      expect(drawnMin(half).s).toBe(560);
+    });
+
+    it("keeps an entry with no known end on the old rule: its extent is the lifted minimum", () => {
+      // Without an interval it cannot be mistaken for an overlap, and a cut would leave a sliver, so
+      // something that starts inside the minimum is put beside it, and it is always drawn in full.
       expect(placeMin([seg("x", 600, 600), seg("y", 601, 660)])).toEqual({
         x: [0, 2, 1],
         y: [1, 2, 1],
+      });
+      expect(drawnMin([seg("x", 600, 600), seg("y", 601, 660)])).toEqual({ x: 627, y: 660 });
+      // One that starts at or after the minimum is below it, in the same column.
+      expect(placeMin([seg("x", 600, 600), seg("y", 627, 660)])).toEqual({
+        x: [0, 1, 1],
+        y: [0, 1, 1],
+      });
+      expect(drawnMin([seg("x", 600, 600), seg("y", 627, 660)]).x).toBe(627);
+      // An entry that has an end is judged on it, so it does not get the same treatment.
+      expect(placeMin([seg("x", 600, 610), seg("y", 611, 660)])).toEqual({
+        x: [0, 1, 1],
+        y: [0, 1, 1],
       });
     });
 
     it("reports the real interval of each block, not the drawn one", () => {
       const [first] = layoutDayEvents([seg("a", 600, 610)], MIN);
       expect([first.startMin, first.endMin]).toEqual([600, 610]);
+      expect(first.drawnEndMin).toBe(627);
     });
 
     it("is the same as no minimum for a minimum of a minute or less, or one that is not a number", () => {
@@ -586,8 +649,88 @@ describe("layoutDayEvents", () => {
         seg("z", 600, 600),
         seg("y", 601, 602),
       ];
-      const plain = place(input);
-      for (const min of [0, 1, -5, Number.NaN]) expect(placeMin(input, min)).toEqual(plain);
+      const plain = layoutDayEvents(input);
+      for (const min of [0, 1, -5, Number.NaN]) {
+        expect(layoutDayEvents(input, min)).toEqual(plain);
+      }
+      expect(place(input)).toEqual(
+        Object.fromEntries(plain.map((p) => [p.id, [p.col, p.cols, p.span]])),
+      );
+      // With no minimum a block is drawn at its true end, and an entry with no end a minute tall.
+      expect(Object.fromEntries(plain.map((p) => [p.id, p.drawnEndMin]))).toEqual({
+        a: 610,
+        b: 620,
+        z: 601,
+        y: 602,
+      });
+    });
+
+    describe("the owner's day, at every density", () => {
+      // An accounting app's week view drew 07:24 to 07:44 beside 07:45 to 08:15, though the server
+      // refuses real overlaps. `minBlockMinutes` is what the week view passes.
+      const at = (h: number, m: number) => h * 60 + m;
+      const ownerDay = [
+        seg("a", at(7, 24), at(7, 44)),
+        seg("b", at(7, 45), at(8, 15)),
+        seg("c", at(8, 45), at(9, 55)),
+        seg("d", at(11, 30), at(13, 0)),
+      ];
+
+      describe.each(["Small", "Medium", "Large"] as const)("%s", (density) => {
+        const least = minBlockMinutes(density);
+        const placed = (input: DaySegment[]) =>
+          Object.fromEntries(layoutDayEvents(input, least).map((p) => [p.id, p]));
+        const shape = (p: PositionedSegment) => [p.col, p.cols, p.span];
+
+        it("puts 07:24 to 07:44 and 07:45 to 08:15 in one column at full width", () => {
+          const { a, b } = placed(ownerDay);
+          expect(shape(a)).toEqual([0, 1, 1]);
+          expect(shape(b)).toEqual([0, 1, 1]);
+          // The 20-minute entry would be lifted past 07:45, so it is trimmed to end where the next begins.
+          expect(a.drawnEndMin).toBe(at(7, 45));
+          expect(b.drawnEndMin).toBeGreaterThanOrEqual(at(8, 15));
+        });
+
+        it("leaves 08:45 to 09:55 and 11:30 to 13:00 untouched", () => {
+          const { c, d } = placed(ownerDay);
+          expect(shape(c)).toEqual([0, 1, 1]);
+          expect(shape(d)).toEqual([0, 1, 1]);
+          expect(c.drawnEndMin).toBe(at(9, 55));
+          expect(d.drawnEndMin).toBe(at(13, 0));
+        });
+
+        it("puts a 20-minute entry and one that starts the minute it ends in one column", () => {
+          const { a, b } = placed([seg("a", at(9, 0), at(9, 20)), seg("b", at(9, 20), at(10, 0))]);
+          expect(shape(a)).toEqual([0, 1, 1]);
+          expect(shape(b)).toEqual([0, 1, 1]);
+          expect(a.drawnEndMin).toBe(at(9, 20));
+        });
+
+        it("puts a 20-minute entry and one a minute later in one column", () => {
+          const { a, b } = placed([seg("a", at(9, 0), at(9, 20)), seg("b", at(9, 21), at(10, 0))]);
+          expect(shape(a)).toEqual([0, 1, 1]);
+          expect(shape(b)).toEqual([0, 1, 1]);
+          expect(a.drawnEndMin).toBe(at(9, 21));
+        });
+
+        it("keeps a chain of three ten-minute entries in one column", () => {
+          const { a, b, c } = placed([
+            seg("a", at(10, 0), at(10, 10)),
+            seg("b", at(10, 10), at(10, 20)),
+            seg("c", at(10, 20), at(10, 30)),
+          ]);
+          for (const block of [a, b, c]) expect(shape(block)).toEqual([0, 1, 1]);
+          expect([a.drawnEndMin, b.drawnEndMin]).toEqual([at(10, 10), at(10, 20)]);
+          expect(c.drawnEndMin).toBeCloseTo(at(10, 20) + least, 9);
+        });
+
+        it("still splits one genuine overlap into two columns", () => {
+          const { a, b } = placed([seg("a", at(9, 0), at(10, 0)), seg("b", at(9, 30), at(10, 30))]);
+          expect(shape(a)).toEqual([0, 2, 1]);
+          expect(shape(b)).toEqual([1, 2, 1]);
+          expect([a.drawnEndMin, b.drawnEndMin]).toEqual([at(10, 0), at(10, 30)]);
+        });
+      });
     });
   });
 
@@ -602,6 +745,7 @@ describe("layoutDayEvents", () => {
         col: 0,
         cols: 1,
         span: 1,
+        drawnEndMin: 601,
       },
     ]);
     expect(place([seg("x", 600, 600), seg("y", 600, 660)])).toEqual({
@@ -733,7 +877,12 @@ describe("layoutDayEvents", () => {
   });
 });
 
-describe("layoutDayEvents on random days, with blocks drawn at least 27 minutes tall", () => {
+describe("layoutDayEvents on random days, with a minimum drawn height", () => {
+  // THE PREMISE CHANGED here, as in "with a minimum drawn length" above. This used to assert that no
+  // two blocks in one column are drawn over each other, judged on the extent they are drawn at, which
+  // it got by giving entries that merely sit close their own columns. The layout now keeps columns for
+  // true overlaps and keeps blocks apart by trimming the lift instead, so the properties are about
+  // those two things: where columns appear, and how far down each block is drawn.
   function random(seed: number): () => number {
     let a = seed;
     return () => {
@@ -743,37 +892,155 @@ describe("layoutDayEvents on random days, with blocks drawn at least 27 minutes 
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
   }
-  const MIN = 27;
-  const drawnEnd = (s: DaySegment) => Math.max(s.endMin, s.startMin + MIN);
+  const id = (i: number) => `s${String(i).padStart(2, "0")}`;
+  const segment = (i: number, startMin: number, endMin: number): DaySegment => ({
+    id: id(i),
+    startMin,
+    endMin,
+    continued: false,
+    continues: false,
+  });
+  const EPS = 1e-9;
+  /** Whether two placed blocks share any of the day column's width, as fractions (clusters differ in `cols`). */
+  const sharesWidth = (a: PositionedSegment, b: PositionedSegment) =>
+    a.col * b.cols < (b.col + b.span) * a.cols && b.col * a.cols < (a.col + a.span) * b.cols;
+  const seeds = Array.from({ length: 20 }, (_, i) => i + 1);
 
-  it.each(Array.from({ length: 20 }, (_, i) => i + 1))(
-    "never draws two blocks of one column over each other (seed %i)",
-    (seed) => {
-      const next = random(seed);
-      const input: DaySegment[] = Array.from({ length: 40 }, (_, i) => {
-        const startMin = Math.floor(next() * 1400);
-        const length = next() < 0.5 ? Math.floor(next() * 30) : Math.floor(next() * 200);
-        return {
-          id: `s${String(i).padStart(2, "0")}`,
-          startMin,
-          endMin: Math.min(startMin + length, 1440),
-          continued: false,
-          continues: false,
-        };
-      });
-      const out = layoutDayEvents(input, MIN);
-      expect(out).toHaveLength(input.length);
-      for (let i = 0; i < out.length; i++) {
-        for (let j = i + 1; j < out.length; j++) {
-          const [a, b] = [out[i], out[j]];
-          const drawnOverlap = a.startMin < drawnEnd(b) && b.startMin < drawnEnd(a);
-          if (!drawnOverlap) continue;
-          const columnsIntersect = a.col < b.col + b.span && b.col < a.col + a.span;
-          expect(columnsIntersect, `${a.id} and ${b.id} are drawn over each other`).toBe(false);
+  describe.each(["Small", "Medium", "Large"] as const)("at %s density", (density) => {
+    const least = minBlockMinutes(density);
+    /**
+     * Where an entry's extent ends for overlap purposes: its true end, or for one with no known end
+     * (`endMin <= startMin`) the lifted minimum, which is the one case the true interval is not used.
+     */
+    const extentEnd = (s: DaySegment) => (s.endMin > s.startMin ? s.endMin : s.startMin + least);
+    const overlap = (a: DaySegment, b: DaySegment) =>
+      a.startMin < extentEnd(b) && b.startMin < extentEnd(a);
+
+    it.each(seeds)(
+      "puts columns only where true intervals overlap and keeps every block clear of the next (seed %i)",
+      (seed) => {
+        const next = random(seed);
+        const input: DaySegment[] = Array.from({ length: 45 }, (_, i) => {
+          // Half of the entries sit on a five-minute grid, so entries that touch are common.
+          const onGrid = next() < 0.5;
+          const startMin = onGrid ? 360 + 5 * Math.floor(next() * 60) : Math.floor(next() * 1400);
+          const kind = next();
+          let length: number;
+          if (kind < 0.1) length = 0;
+          else if (kind < 0.6) {
+            length = onGrid ? 5 * (1 + Math.floor(next() * 8)) : 1 + Math.floor(next() * 40);
+          } else length = Math.floor(next() * 200);
+          return segment(i, startMin, Math.min(startMin + length, 1440));
+        });
+        const before = JSON.stringify(input);
+        const out = layoutDayEvents(input, least);
+        const byId = new Map(input.map((s) => [s.id, s]));
+
+        expect(JSON.stringify(input)).toBe(before);
+        expect(out).toHaveLength(input.length);
+        expect(new Set(out.map((p) => p.id)).size).toBe(input.length);
+        // The same whatever order the entries arrive in, and ordered by start.
+        expect(layoutDayEvents([...input].reverse(), least)).toEqual(out);
+        for (let i = 1; i < out.length; i++) {
+          expect(out[i].startMin).toBeGreaterThanOrEqual(out[i - 1].startMin);
         }
-      }
-    },
-  );
+
+        for (const p of out) {
+          const original = byId.get(p.id)!;
+          // The positions report the true interval.
+          expect([p.startMin, p.endMin]).toEqual([original.startMin, original.endMin]);
+          // (e) columns, spans and the column count agree.
+          expect(p.col).toBeGreaterThanOrEqual(0);
+          expect(p.span).toBeGreaterThanOrEqual(1);
+          expect(p.col + p.span).toBeLessThanOrEqual(p.cols);
+          // (c) a block is never drawn shorter than its entry, and has some height.
+          const drawnEnd = p.drawnEndMin!;
+          expect(drawnEnd, `${p.id} drawn end`).toBeGreaterThanOrEqual(p.endMin);
+          expect(drawnEnd, `${p.id} drawn end`).toBeGreaterThanOrEqual(p.startMin + 1);
+          // (d) it is lifted to the least height and no further, unless the entry is longer.
+          expect(drawnEnd, `${p.id} drawn end`).toBeLessThanOrEqual(
+            Math.max(p.endMin, p.startMin + least) + EPS,
+          );
+          // An entry with no known end is never cut: it is drawn the whole minimum.
+          if (p.endMin <= p.startMin) expect(drawnEnd).toBeCloseTo(p.startMin + least, 9);
+        }
+
+        for (let i = 0; i < out.length; i++) {
+          for (let j = i + 1; j < out.length; j++) {
+            const [a, b] = [out[i], out[j]];
+            if (overlap(a, b)) {
+              // (a) a true overlap: separate columns of one cluster, neither covering the other.
+              expect(a.col, `${a.id} and ${b.id} share a column`).not.toBe(b.col);
+              expect(a.cols).toBe(b.cols);
+              expect(b.col >= a.col && b.col < a.col + a.span, `${a.id} covers ${b.id}`).toBe(
+                false,
+              );
+              expect(a.col >= b.col && a.col < b.col + b.span, `${b.id} covers ${a.id}`).toBe(
+                false,
+              );
+            }
+            // (b) blocks that share any width have drawn extents that do not intersect.
+            if (sharesWidth(a, b)) {
+              const drawnOver =
+                a.startMin < b.drawnEndMin! - EPS && b.startMin < a.drawnEndMin! - EPS;
+              expect(drawnOver, `${a.id} and ${b.id} are drawn over each other`).toBe(false);
+            }
+          }
+        }
+
+        // (a) Columns exist only for overlap: an entry that overlaps nothing is alone at full width,
+        // and a cluster has as many columns as the most entries that are ever at once.
+        const parent = out.map((_, i) => i);
+        const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i])));
+        for (let i = 0; i < out.length; i++) {
+          for (let j = i + 1; j < out.length; j++) {
+            if (overlap(out[i], out[j])) parent[find(i)] = find(j);
+          }
+        }
+        const deepest = new Map<number, number>();
+        for (const [i, p] of out.entries()) {
+          const depth = out.filter(
+            (q) => q.startMin <= p.startMin && p.startMin < extentEnd(q),
+          ).length;
+          deepest.set(find(i), Math.max(deepest.get(find(i)) ?? 0, depth));
+        }
+        for (const [i, p] of out.entries()) {
+          expect(p.cols, `${p.id} cluster width`).toBe(deepest.get(find(i)));
+          if (!out.some((q, j) => j !== i && overlap(p, q))) {
+            expect([p.col, p.cols, p.span], `${p.id} overlaps nothing`).toEqual([0, 1, 1]);
+          }
+        }
+      },
+    );
+
+    it.each(seeds)(
+      "keeps entries that do not overlap in one full-width column, whatever the gap (seed %i)",
+      (seed) => {
+        const next = random(seed);
+        // One after the other with gaps of nothing, one minute, a few minutes or an hour, and lengths from
+        // a minute to an hour: touching and nearly touching entries, the case the bug was reported on.
+        const input: DaySegment[] = [];
+        let at = Math.floor(next() * 300);
+        for (let i = 0; i < 30 && at < 1380; i++) {
+          const length = 1 + Math.floor(next() * 60);
+          input.push(segment(i, at, at + length));
+          at += length + [0, 0, 1, 2, 5, 60][Math.floor(next() * 6)];
+        }
+        const out = layoutDayEvents(input, least);
+        for (const p of out) {
+          expect([p.col, p.cols, p.span], `${p.id} is in a column of its own`).toEqual([0, 1, 1]);
+        }
+        // Each is drawn from its start to its true end, or lifted into the free space below it.
+        for (const [i, p] of out.entries()) {
+          const nextStart = out[i + 1]?.startMin ?? Number.POSITIVE_INFINITY;
+          expect(p.drawnEndMin).toBeCloseTo(
+            Math.min(Math.max(p.endMin, p.startMin + least), nextStart),
+            9,
+          );
+        }
+      },
+    );
+  });
 });
 
 describe("the drawn height of a block", () => {
@@ -805,6 +1072,109 @@ describe("the drawn height of a block", () => {
     const globalsCss = readCssInlined(resolve(__dirname, "..", "src/styles/globals.css"));
     const spacing = /--spacing:\s*([\d.]+)rem/.exec(globalsCss)?.[1];
     expect(Number(spacing) * 5).toBeCloseTo(MIN_BLOCK_REM, 10);
+  });
+});
+
+describe("the drawn height of a block that the layout has placed", () => {
+  const positioned = (drawnEndMin: number | undefined, endMin = 610): PositionedSegment => ({
+    id: "a",
+    startMin: 600,
+    endMin,
+    continued: false,
+    continues: false,
+    col: 0,
+    cols: 1,
+    span: 1,
+    drawnEndMin,
+  });
+
+  it("takes its height from `drawnEndMin` and leaves no CSS minimum, which the layout has counted", () => {
+    const style = blockStyle(positioned(627), 6);
+    // 27 minutes is 0.45 of an hour, and 600 is 10 hours from midnight, 4 below the 06:00 grid start.
+    expect(style.height).toBe("calc(var(--sc-hour) * 0.45)");
+    expect(style.top).toBe("calc(var(--sc-hour) * 4)");
+    expect("minHeight" in style).toBe(false);
+  });
+
+  it("draws a block trimmed to the next one at its true length, with no minimum under it", () => {
+    const style = blockStyle(positioned(610), 6);
+    expect(style.height).toBe("calc(var(--sc-hour) * 0.1667)");
+    expect(style.minHeight).toBeUndefined();
+  });
+
+  it("keeps today's behaviour for a position without it: the true length and a CSS minimum", () => {
+    const style = blockStyle(positioned(undefined), 6);
+    expect(style.height).toBe("calc(var(--sc-hour) * 0.1667)");
+    expect(style.minHeight).toBe(`${MIN_BLOCK_REM}rem`);
+    // A value that is not a number is no value.
+    expect(blockStyle(positioned(Number.NaN), 6).minHeight).toBe(`${MIN_BLOCK_REM}rem`);
+  });
+
+  it("never draws a block shorter than its entry, whatever `drawnEndMin` says", () => {
+    expect(blockStyle(positioned(605), 6).height).toBe("calc(var(--sc-hour) * 0.1667)");
+    expect(blockStyle(positioned(600, 600), 6).height).toBe("calc(var(--sc-hour) * 0.0167)");
+  });
+
+  it("is what the layout hands it, for the same hour height the density gives", () => {
+    for (const density of ["Small", "Medium", "Large"] as const) {
+      const [placed] = layoutDayEvents(
+        [{ id: "a", startMin: 600, endMin: 610, continued: false, continues: false }],
+        minBlockMinutes(density),
+      );
+      const hours = Number(/\* ([\d.]+)\)/.exec(String(blockStyle(placed, 6).height))?.[1]);
+      // The lifted block is exactly the least height, in rem, at that density's hour height.
+      const rem = hours * { Small: 2.5, Medium: 3, Large: 3.5 }[density];
+      expect(rem).toBeCloseTo(MIN_BLOCK_REM, 3);
+    }
+  });
+});
+
+describe("how much of its label a block shows", () => {
+  const HOUR = { Small: 2.5, Medium: 3, Large: 3.5 } as const;
+  /** Minutes that make a block `rem` tall at `density`. */
+  const minutesFor = (rem: number, density: keyof typeof HOUR) => (rem / HOUR[density]) * 60;
+
+  it.each(["Small", "Medium", "Large"] as const)(
+    "is full from the least block height and tight from one line of text at %s",
+    (density) => {
+      const text = { Small: 0.625, Medium: 0.75, Large: 0.875 }[density];
+      expect(blockFit(minBlockMinutes(density), density)).toBe("full");
+      expect(blockFit(minutesFor(MIN_BLOCK_REM, density) - 0.01, density)).toBe("tight");
+      expect(blockFit(minutesFor(text, density), density)).toBe("tight");
+      expect(blockFit(minutesFor(text, density) - 0.01, density)).toBe("bar");
+      expect(blockFit(240, density)).toBe("full");
+      expect(blockFit(1, density)).toBe("bar");
+      expect(blockFit(0, density)).toBe("bar");
+      expect(blockFit(-5, density)).toBe("bar");
+    },
+  );
+
+  it("is a quarter of an hour for the text at every density, and the lifted height is full", () => {
+    for (const density of ["Small", "Medium", "Large"] as const) {
+      expect(blockFit(15, density)).toBe("tight");
+      expect(blockFit(14.9, density)).toBe("bar");
+    }
+    // The lifted minimum is full at every density, so a block that gets its whole lift looks as it did.
+    expect(blockFit(32.4, "Small")).toBe("full");
+    expect(blockFit(27, "Medium")).toBe("full");
+    expect(blockFit(23.142857, "Large")).toBe("full");
+  });
+
+  it("has a variant per fit that drops the padding when the block is short", () => {
+    const full = weekBlockVariant({ fit: "full" }).split(/\s+/);
+    const tight = weekBlockVariant({ fit: "tight" }).split(/\s+/);
+    const bar = weekBlockVariant({ fit: "bar" }).split(/\s+/);
+    expect(weekBlockVariant({}).split(/\s+/)).toEqual(full);
+    expect(full).toContain("py-0.5");
+    expect(tight).toEqual(expect.arrayContaining(["py-0", "leading-none"]));
+    expect(bar).toContain("py-0");
+    for (const classes of [tight, bar]) expect(classes).not.toContain("py-0.5");
+    expect(full).not.toContain("leading-none");
+    // The focus ring and the left bar stay on every fit.
+    for (const classes of [full, tight, bar]) {
+      expect(classes).toContain("focus-visible:ring-inset");
+      expect(classes).toContain("border-l-[3px]");
+    }
   });
 });
 

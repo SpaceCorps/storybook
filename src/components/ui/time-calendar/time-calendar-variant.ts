@@ -439,13 +439,21 @@ export const weekDayColumnVariant = cva(
 );
 
 /**
- * An entry's block in a day column. Position it with `blockStyle` (top, height, left, width and the
- * minimum height that keeps a short entry readable and clickable). A `running` block gets a dashed
- * bottom edge. Inside: a `truncate font-medium` title, then optional time and description lines.
+ * An entry's block in a day column. Position it with `blockStyle` (top, height, left and width; the
+ * height already holds the least height of a block, and a position without it also gets an inline
+ * `min-height`). A `running` block gets a dashed bottom edge. Inside: a `truncate font-medium` title,
+ * then optional time and description lines.
+ *
+ * `fit` is how much of that a short block keeps, from `blockFit`:
+ * - `full` (the default): padded, as the block always was.
+ * - `tight`: one line, no vertical padding, `leading-none`, centred in the block. Contains only the title.
+ * - `bar`: no vertical padding and no content, so the colour wash and the left bar are all there is.
+ *   The button's `aria-label` and `title` carry the name.
+ * The padding lives in `fit` and not in the base so that no two `py-` utilities compete.
  */
 export const weekBlockVariant = cva(
   [
-    "absolute flex min-w-0 cursor-pointer flex-col items-start overflow-hidden rounded-selector border-l-[3px] px-1 py-0.5 text-left text-foreground transition-colors focus-visible:z-10 forced-colors:border-y forced-colors:border-r",
+    "absolute flex min-w-0 cursor-pointer flex-col items-start overflow-hidden rounded-selector border-l-[3px] px-1 text-left text-foreground transition-colors focus-visible:z-10 forced-colors:border-y forced-colors:border-r",
     FOCUS_RING,
   ],
   {
@@ -456,8 +464,13 @@ export const weekBlockVariant = cva(
         true: "border-b-2 border-b-foreground/50 [border-bottom-style:dashed]",
         false: "",
       },
+      fit: {
+        full: "py-0.5",
+        tight: "justify-center py-0 leading-none",
+        bar: "py-0",
+      },
     },
-    defaultVariants: { density: "Medium", color: "slate", running: false },
+    defaultVariants: { density: "Medium", color: "slate", running: false, fit: "full" },
   },
 );
 
