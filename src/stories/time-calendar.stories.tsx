@@ -401,6 +401,7 @@ function overlaps(a: DOMRect, b: DOMRect) {
 export const ShortEntries: Story = {
   render: () => <Demo events={SHORT_ENTRIES} defaultView="week" defaultDate="2026-10-21" />,
   play: async ({ canvasElement }) => {
+    if (await showsDayAgenda(canvasElement)) return;
     const canvas = within(canvasElement);
     await canvas.findByRole("grid", { name: /week 43/ });
     const column = canvasElement.querySelector<HTMLElement>(

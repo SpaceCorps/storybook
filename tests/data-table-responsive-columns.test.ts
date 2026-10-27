@@ -268,6 +268,8 @@ describe("getColumnsHiddenByWidth: hysteresis", () => {
     );
     const hidden = new Set(["b"]);
     expect(hiddenAt(ranked, 200, { previouslyHidden: hidden })).toEqual(["b"]);
+    // The margin is exactly DATA_TABLE_REVEAL_MARGIN: a pixel short of it the column is still held.
+    expect(hiddenAt(ranked, 200 + margin - 1, { previouslyHidden: hidden })).toEqual(["b"]);
     expect(hiddenAt(ranked, 200 + margin, { previouslyHidden: hidden })).toEqual([]);
   });
 

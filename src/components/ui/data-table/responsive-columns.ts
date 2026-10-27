@@ -87,8 +87,10 @@ export interface ColumnsHiddenByWidthOptions {
   /**
    * What the previous call returned, for hysteresis: a column that was hidden stays hidden until the
    * container is {@link DATA_TABLE_REVEAL_MARGIN} px wider than it takes to hide it. The history only
-   * ever keeps a column hidden, so hiding is never delayed. Leave it out for a first measurement,
-   * which has nothing to be steady about.
+   * ever keeps a column hidden: it never delays hiding and never keeps showing a column the room
+   * cannot pay for. It can show a `priority` column that a call without history would hide, because a
+   * `hideBelow` column it holds back frees its room. Leave it out for a first measurement, which has
+   * nothing to be steady about.
    *
    * The margin is applied to the `hideBelow` columns first, and the `priority` budget is then run
    * with that outcome: a `hideBelow` column that is being held back takes no room in it, so no
@@ -119,7 +121,7 @@ export interface ColumnsHiddenByWidthOptions {
  *   if `f(W - j, s)` is a set other than `s`, then `f(W, that set)` is not `s`. A table whose height
  *   depends on its width (wrapping text, a longer details list) therefore cannot make its container
  *   alternate between two widths and its columns between two sets. Widths within 15 px of each other
- *   can only move the table one way, never round a loop. A jump of the margin or more is a real
+ *   can only move the table one way, never round a loop. A jump of more than the margin is a real
  *   resize and can still flip a column; that is what the margin is for.
  * - **What shows fits.** If the columns left showing are estimated wider than the container, every
  *   `priority` column is already hidden, bar the one kept when nothing else would be. The history
