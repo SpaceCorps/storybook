@@ -174,10 +174,21 @@ function revealTab(list: HTMLElement, tab: HTMLElement, behavior: ScrollBehavior
 
 const ACTIVE_TAB = '[role="tab"][data-state="active"]';
 
-const prefersReducedMotion = () =>
-  typeof window !== "undefined" &&
-  typeof window.matchMedia === "function" &&
-  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+/**
+ * Whether the person asked for less motion. Anything but a clear yes is "no": a `matchMedia` that is
+ * missing, throws, or hands back nothing (a stub, a sandboxed frame, a partial polyfill) must not
+ * take the tree down on a tab change, which is where this is read.
+ */
+const prefersReducedMotion = (): boolean => {
+  try {
+    return (
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches === true
+    );
+  } catch {
+    return false;
+  }
+};
 
 /** Focus that came from the keyboard (or a script after one); a press is left to the selection. */
 function isKeyboardFocus(element: Element): boolean {

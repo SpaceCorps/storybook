@@ -276,6 +276,40 @@ describe("TabsList scrolling: where it puts the active tab", () => {
     expect(lastScroll()).toEqual([120, "auto"]);
   });
 
+  describe("when matchMedia cannot answer", () => {
+    // Stubbed, partial and sandboxed environments: a `matchMedia` that throws, hands back nothing or
+    // hands back something that is not a list. A tab change must still work, and mean "not reduced".
+    const cases: Array<[string, () => unknown]> = [
+      [
+        "throws",
+        () => {
+          throw new Error("matchMedia is not available here");
+        },
+      ],
+      ["returns undefined", () => undefined],
+      ["returns null", () => null],
+      ["returns an object with no `matches`", () => ({})],
+    ];
+
+    it.each(cases)("scrolls smoothly, as without a preference, when it %s", (_name, answer) => {
+      vi.stubGlobal("matchMedia", answer);
+      const { rerender } = render(<SixTabs value="a" />);
+
+      expect(() => rerender(<SixTabs value="c" />)).not.toThrow();
+
+      expect(lastScroll()).toEqual([120, "smooth"]);
+    });
+
+    it("scrolls smoothly when matchMedia is not a function at all", () => {
+      vi.stubGlobal("matchMedia", "reduce");
+      const { rerender } = render(<SixTabs value="a" />);
+
+      expect(() => rerender(<SixTabs value="c" />)).not.toThrow();
+
+      expect(lastScroll()).toEqual([120, "smooth"]);
+    });
+  });
+
   it("brings a tab into view when it is clicked part-way out", async () => {
     const user = userEvent.setup();
     render(<SixTabs />);
