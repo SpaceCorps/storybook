@@ -1,11 +1,21 @@
+import * as React from "react";
 import type { Meta, StoryObj } from "@storybook/react";
+import { expect, within } from "@storybook/test";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { VirtualList } from "@/components/ui/virtual-list";
 import { Densities } from "@/types/density";
 
 const meta: Meta = {
   title: "UI/VirtualList",
+  parameters: {
+    // An overflowing list is a tab stop of its own: the sweep fails a story whose focus indicator is
+    // missing or faint.
+    keyboard: { sweep: true, forcedColors: true },
+    // No baseline image for any of these yet.
+    visual: { disable: true },
+  },
 };
 
 export default meta;
@@ -52,6 +62,9 @@ const renderEntry = (entry: LogEntry) => (
 /**
  * 1,000 variable-height rows in a bounded container. Only the visible slice plus overscan is in the
  * DOM; the scrollbar still reports the full height.
+ *
+ * While it overflows, the list is a keyboard tab stop and a named region (`aria-label`, or
+ * `aria-labelledby` for a visible heading): Tab to it, then the arrow and Page Up/Down keys scroll it.
  */
 export const VariableHeight: StoryObj = {
   render: () => (
@@ -108,4 +121,87 @@ export const PinnedItem: StoryObj = {
       />
     </div>
   ),
+};
+
+/**
+ * Rows with buttons in them. The overflowing list is still a tab stop of its own, ahead of the
+ * buttons: only the mounted rows have buttons to tab to, and a keyboard needs a way to scroll on to
+ * the rest. The heading names the list (`aria-labelledby`) instead of repeating its text in an
+ * `aria-label`. The rows have a background, and the focus outline is drawn over it.
+ */
+function JobLogWithRetry() {
+  const headingId = React.useId();
+  return (
+    <div className="flex w-[700px] flex-col gap-2">
+      <h3 id={headingId} className="text-sm font-medium">
+        Job log
+      </h3>
+      <div className="h-[400px] rounded-md border">
+        <VirtualList
+          items={entries}
+          getItemKey={(entry) => entry.id}
+          aria-labelledby={headingId}
+          renderItem={(entry, index) => (
+            <div className="flex items-center gap-3 border-b bg-muted px-3 py-2">
+              <Badge variant={levelVariant[entry.level]}>{entry.level}</Badge>
+              <p className="min-w-0 flex-1 text-sm">
+                {entry.source}: {entry.message}
+              </p>
+              <Button size="sm" variant="outline" aria-label={`Retry job ${index + 1}`}>
+                Retry
+              </Button>
+            </div>
+          )}
+        />
+      </div>
+    </div>
+  );
+}
+
+export const WithControls: StoryObj = {
+  parameters: {
+    // Every button that takes focus scrolls the list and mounts the rows after it, so Tab never runs
+    // out of stops to sweep. The list's own stop is the sweep of the other stories.
+    keyboard: { sweep: false },
+  },
+  render: () => <JobLogWithRetry />,
+  play: async ({ canvasElement }) => {
+    // Opaque rows would hide the focus outline were they not beneath it. Only a browser paints, and
+    // a unit test sees class names, so this checks that those classes became the CSS that does it.
+    const list = within(canvasElement).getByRole("region", { name: "Job log" });
+    const spacer = list.firstElementChild;
+    if (!(spacer instanceof HTMLElement)) throw new Error("No spacer rendered");
+    await expect(getComputedStyle(list).isolation).toBe("isolate");
+    await expect(getComputedStyle(spacer).position).toBe("relative");
+    await expect(getComputedStyle(spacer).zIndex).toMatch(/^-\d+$/);
+  },
+};
+
+/**
+ * A list that fits its box has nothing to scroll, so it is not a tab stop and not a region: a stop
+ * with nothing to scroll would be a dead one. The same goes for an empty list.
+ */
+export const FitsWithoutScrolling: StoryObj = {
+  parameters: {
+    // Nothing to focus, and the sweep fails a story with nothing to sweep.
+    keyboard: { sweep: false },
+  },
+  render: () => (
+    <div className="h-[480px] w-[700px] rounded-md border">
+      <VirtualList
+        items={entries.slice(0, 4)}
+        getItemKey={(entry) => entry.id}
+        renderItem={renderEntry}
+        aria-label="Job log"
+        data-testid="short-list"
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const list = within(canvasElement).getByTestId("short-list");
+    await expect(list.scrollHeight).toBeLessThanOrEqual(list.clientHeight + 1);
+    await expect(list).not.toHaveAttribute("tabindex");
+    await expect(list).not.toHaveAttribute("role");
+    await expect(list).not.toHaveAttribute("aria-label");
+  },
 };
