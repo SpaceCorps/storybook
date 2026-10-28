@@ -49,6 +49,7 @@ import {
   estimateActionsColumnWidth,
   estimateStartColumnWidth,
   isResponsiveColumn,
+  type HeaderWidthMetrics,
 } from "./responsive-columns";
 import { useResponsiveFit } from "./use-columns-hidden-by-width";
 import { ACTIONS_WIDTH_VAR, usePinnedMetrics } from "./use-pinned-metrics";
@@ -477,6 +478,17 @@ function DataTableInner<TRow>(
     scope: windowedLayout ? actionsScope : undefined,
   });
   const pinnedMetrics = { density, inset, unitPx: pinned.unitPx } as const;
+  // What a header takes is part of what its column takes, unless the column truncates it (then the
+  // header gives way at the cap, as the cells do, and the column counts as it did). The columns that
+  // carry the sort icon are named because it widens the header. A windowed table is laid out with fixed
+  // widths, where a header cannot push its column wider than `width`, so it counts none.
+  const sortableNames = React.useMemo(
+    () => new Set(visibleColumns.filter(isSortable).map((column) => column.name)),
+    [isSortable, visibleColumns],
+  );
+  const headerMetrics: HeaderWidthMetrics | undefined = windowedLayout
+    ? undefined
+    : { ...pinnedMetrics, sortable: sortableNames };
   const reservedStart = estimateStartColumnWidth({
     selectable,
     checkboxPx: pinned.checkboxPx,
@@ -504,6 +516,7 @@ function DataTableInner<TRow>(
     collapseBelow: foldRowActions ? collapseRowActionsBelow : undefined,
     collapseApplies: maxActionCount > 1,
     remPx: pinned.remPx,
+    header: headerMetrics,
     enabled: visibleColumns.some(isResponsiveColumn) || foldRowActions,
   });
   collapsedRef.current = rowActionsCollapsed;

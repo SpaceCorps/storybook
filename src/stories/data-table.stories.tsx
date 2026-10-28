@@ -1471,6 +1471,8 @@ interface PinnedFrameProps {
   selectable?: boolean;
   /** Windowed rows (all 27 entries) instead of the first four. */
   virtualized?: boolean;
+  /** The table's `className`, which is where `--ivy-data-table-truncate-width` is set. */
+  className?: string;
   onRowAction?: (event: DataTableRowActionEvent<TimeEntry>) => void;
 }
 
@@ -1483,6 +1485,7 @@ function PinnedFrame({
   density,
   selectable = false,
   virtualized = false,
+  className = honestTruncation,
   onRowAction,
 }: PinnedFrameProps) {
   const table = (
@@ -1491,7 +1494,7 @@ function PinnedFrame({
         {label}, {width}px
       </h3>
       <DataTable
-        className={honestTruncation}
+        className={className}
         density={density}
         columns={columns}
         rows={virtualized ? timeEntries : timeEntries.slice(0, 4)}
@@ -1883,5 +1886,193 @@ export const PinnedColumnsDensities: StoryObj = {
     await expect(dataHeaders(large)).toEqual(["Date"]);
     await expectPinnedCellsClear(small);
     await expectPinnedCellsClear(large);
+  },
+};
+
+// ---------------------------------------------------------------------------------------------
+// Headers: a long label is part of its column's width unless the column lets it truncate.
+// ---------------------------------------------------------------------------------------------
+
+/** The cap a phone-sized table puts on its truncating cells, as the accounting app does. */
+const phoneTruncation = "[--ivy-data-table-truncate-width:5rem]";
+
+/**
+ * Labels longer than their cells need. Counterparty and Description truncate (their cells are cut off
+ * at 5rem), so their headers have to as well. Booking date and Amount are kept whole (a date, an
+ * amount), so their headers cannot: each column is as wide as its label and sort icon, and the fit has
+ * to count that, or the column it keeps is wider than the room it was counted into.
+ */
+const longHeaders: Record<string, Partial<DataTableColumn<TimeEntry>>> = {
+  date: { header: "Booking date", width: "100px" },
+  amount: { header: "Amount incl. VAT", width: "104px" },
+  project: { header: "Counterparty", width: "5rem" },
+  message: { header: "Description of the transaction", width: "5rem" },
+};
+
+/** The four columns, ranked by `priority` (1 is kept longest) in the order each frame names. */
+const longHeaderColumns = (ranking: string[]): DataTableColumn<TimeEntry>[] =>
+  timeColumns.flatMap((column) =>
+    longHeaders[column.name]
+      ? [
+          {
+            ...column,
+            ...longHeaders[column.name],
+            footer: undefined,
+            priority: ranking.indexOf(column.name) + 1,
+          },
+        ]
+      : [],
+  );
+
+const dateFirst = longHeaderColumns(["date", "amount", "project", "message"]);
+const textFirst = longHeaderColumns(["project", "message", "date", "amount"]);
+
+const headerCell = (frame: HTMLElement, label: string): HTMLElement => {
+  const cell = Array.from(frame.querySelectorAll<HTMLElement>("thead th:not([data-pin])")).find(
+    (th) => th.textContent?.trim() === label,
+  );
+  if (!cell) throw new Error(`Expected a header named ${label}`);
+  return cell;
+};
+
+const headerLabel = (cell: HTMLElement) => pick<HTMLElement>(cell, "span.truncate");
+const labelIsCutOff = (cell: HTMLElement) =>
+  headerLabel(cell).scrollWidth > headerLabel(cell).clientWidth;
+
+/**
+ * Every header cell lies clear of its neighbours, and what it holds stays inside it: the sort button
+ * and its icon are not pushed out of the cell by a long label, which is what truncating the label is for.
+ */
+async function expectHeadersClear(frame: HTMLElement) {
+  const cells = Array.from(frame.querySelectorAll<HTMLElement>("thead th"));
+  let previous = -Infinity;
+  for (const cell of cells) {
+    const box = cell.getBoundingClientRect();
+    await expect(box.left).toBeGreaterThanOrEqual(previous - 1);
+    previous = box.right;
+    for (const part of Array.from(cell.querySelectorAll("button, svg"))) {
+      const inner = part.getBoundingClientRect();
+      await expect(inner.width).toBeGreaterThan(0);
+      await expect(inner.left).toBeGreaterThanOrEqual(box.left - 0.5);
+      await expect(inner.right).toBeLessThanOrEqual(box.right + 0.5);
+    }
+  }
+}
+
+interface LongHeaderFrame {
+  label: string;
+  width: number;
+  columns: DataTableColumn<TimeEntry>[];
+  /** The headers the table is expected to keep. */
+  headers: string[];
+}
+
+const longHeaderFrames: LongHeaderFrame[] = [
+  { label: "Small phone", width: 330, columns: dateFirst, headers: ["Booking date"] },
+  // Amount's header (about 150px) is wider than the 104px it declares, so 390 has no room for it.
+  { label: "Phone", width: 390, columns: dateFirst, headers: ["Booking date"] },
+  {
+    label: "Phone, text first",
+    width: 390,
+    columns: textFirst,
+    headers: ["Counterparty", "Description of the transaction"],
+  },
+  {
+    label: "Tablet",
+    width: 600,
+    columns: dateFirst,
+    headers: ["Booking date", "Amount incl. VAT", "Counterparty", "Description of the transaction"],
+  },
+];
+
+function LongHeaderFrames() {
+  return (
+    <div className="flex flex-col gap-8">
+      {longHeaderFrames.map(({ label, width, columns }) => (
+        <PinnedFrame
+          key={label}
+          label={label}
+          width={width}
+          columns={columns}
+          className={phoneTruncation}
+        />
+      ))}
+    </div>
+  );
+}
+
+async function playLongHeaders({ canvasElement }: { canvasElement: HTMLElement }) {
+  await document.fonts.ready;
+  for (const { label, headers } of longHeaderFrames) {
+    const frame = pinnedFrame(canvasElement, label);
+    await waitFor(() => expect(dataHeaders(frame)).toEqual(headers));
+    await expectPinnedCellsClear(frame);
+    await expectHeadersClear(frame);
+  }
+
+  // Kept whole: the label is not cut off at any width.
+  for (const label of ["Small phone", "Phone", "Tablet"]) {
+    await expect(labelIsCutOff(headerCell(pinnedFrame(canvasElement, label), "Booking date"))).toBe(
+      false,
+    );
+  }
+  await expect(
+    labelIsCutOff(headerCell(pinnedFrame(canvasElement, "Tablet"), "Amount incl. VAT")),
+  ).toBe(false);
+
+  // Truncating: cut off, and still there in full for a pointer, a screen reader and the keyboard.
+  const phone = pinnedFrame(canvasElement, "Phone, text first");
+  for (const label of ["Counterparty", "Description of the transaction"]) {
+    const cell = headerCell(phone, label);
+    await expect(labelIsCutOff(cell)).toBe(true);
+    await expect(cell.hasAttribute("title")).toBe(false);
+    await userEvent.hover(cell);
+    await expect(cell).toHaveAttribute("title", label);
+    await userEvent.unhover(cell);
+  }
+
+  const counterparty = headerCell(phone, "Counterparty");
+  const sort = within(counterparty).getByRole("button", {
+    name: "Sort by Counterparty ascending",
+  });
+  await expect(counterparty).toHaveAttribute("aria-sort", "none");
+  sort.focus();
+  await userEvent.keyboard("{Enter}");
+  await expect(counterparty).toHaveAttribute("aria-sort", "ascending");
+  await expect(
+    within(counterparty).getByRole("button", { name: "Sort by Counterparty descending" }),
+  ).toBeInTheDocument();
+  await userEvent.keyboard("{Enter}");
+  await expect(counterparty).toHaveAttribute("aria-sort", "descending");
+  // Back to unsorted, so the story leaves the table as it found it.
+  await userEvent.keyboard("{Enter}");
+  await expect(counterparty).toHaveAttribute("aria-sort", "none");
+  sort.blur();
+}
+
+/**
+ * Long header labels in tables that cannot give them the room: no column lies under a neighbour or
+ * under the pinned actions, and the page does not scroll sideways.
+ *
+ * - A header over a column whose cells truncate (Counterparty, Description) truncates with them,
+ *   with its sort icon in view, its full text as a tooltip while it is cut off and as the name of its
+ *   sort button, and it still sorts from the keyboard.
+ * - A header over a column that is kept whole (Booking date, Amount) is shown in full, and the fit
+ *   counts it at that width: Amount, which declares 104px and needs about 150, is dropped at 390.
+ */
+export const LongHeaders: StoryObj = {
+  parameters: noVisualBaseline,
+  render: () => <LongHeaderFrames />,
+  play: playLongHeaders,
+};
+
+/** The same in the dark theme, where the truncated label and the sort icon have to stay readable. */
+export const LongHeadersDark: StoryObj = {
+  globals: { theme: "dark" },
+  parameters: noVisualBaseline,
+  render: () => <LongHeaderFrames />,
+  play: async (context) => {
+    await assertDarkTheme();
+    await playLongHeaders(context);
   },
 };

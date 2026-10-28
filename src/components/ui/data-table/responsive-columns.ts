@@ -1,5 +1,6 @@
 import { Densities } from "@/types/density";
 import type { DataTableColumn } from "./types";
+import { dataTableCellTruncates } from "./variant";
 
 /**
  * What a column is assumed to need, in px, when it names no `width` the estimate can read. 8rem holds
@@ -47,20 +48,46 @@ export function isResponsiveColumn<TRow>(
   return isRank(column.hideBelow) || isRank(column.priority);
 }
 
+/** What a column's `header` and its alignment say about how it is laid out, for {@link estimateColumnWidth}. */
+type ColumnWidthInput<TRow> = Pick<DataTableColumn<TRow>, "width"> &
+  Partial<Pick<DataTableColumn<TRow>, "name" | "header" | "align" | "nowrap" | "wrapText">>;
+
 /**
  * The px a column is taken to need when judging whether a table fits: its `width` when that is a
  * plain `px` or `rem` length, {@link DATA_TABLE_COLUMN_WIDTH_ESTIMATE} otherwise (`auto`, `%`, `calc()`
  * and the like say nothing about a size in px). A `rem` length, and the default, follow `remPx`, the
  * root font size (16 unless told otherwise).
+ *
+ * With `header` the header is counted as well, and the column is as wide as the wider of the two: a
+ * header is not wrapped, so a column whose cells cannot truncate (a date, an amount, wrapping text) is
+ * never narrower than its label and sort icon, see {@link estimateHeaderWidth}. The header of a column
+ * that truncates gives way at the same cap as its cells, so it is not counted: such a column is its
+ * `width`, with the same rule as for its cells (declare what the text needs, or set the cap). Without
+ * `header` no header is counted, as it always was.
  */
 export function estimateColumnWidth<TRow>(
-  column: Pick<DataTableColumn<TRow>, "width">,
+  column: ColumnWidthInput<TRow>,
   remPx: number = REM_PX,
+  header?: HeaderWidthMetrics,
 ): number {
   const match = column.width ? CSS_LENGTH.exec(column.width) : null;
-  if (!match) return DEFAULT_COLUMN_REM * remPx;
-  const value = Number(match[1]);
-  return match[2].toLowerCase() === "rem" ? value * remPx : value;
+  const declared = match
+    ? match[2].toLowerCase() === "rem"
+      ? Number(match[1]) * remPx
+      : Number(match[1])
+    : DEFAULT_COLUMN_REM * remPx;
+  if (!header) return declared;
+
+  const label = column.header ?? column.name;
+  if (!label || dataTableCellTruncates(column)) return declared;
+  return Math.max(
+    declared,
+    estimateHeaderWidth(label, {
+      ...header,
+      remPx,
+      sortable: header.sortable?.has(column.name ?? "") ?? false,
+    }),
+  );
 }
 
 /**
@@ -161,6 +188,69 @@ export function estimateActionsColumnWidth({
   return Math.ceil((padding + buttons + end) * unit);
 }
 
+/** What the estimate of a header needs to know about the table that the columns do not say. */
+export interface HeaderWidthMetrics extends PinnedColumnMetrics {
+  /** Names of the columns whose header carries the sort icon (sorting is on and the column allows it). */
+  sortable?: ReadonlySet<string>;
+}
+
+/** The header's text size at each density (`text-xs`, `text-sm`, `text-base`), in rem. */
+const HEADER_FONT_REM: Record<Densities, number> = {
+  [Densities.Small]: 0.75,
+  [Densities.Medium]: 0.875,
+  [Densities.Large]: 1,
+};
+/** `size-3.5`, and the `gap-1` before it, in steps: what the sort icon adds to a label. */
+const SORT_ICON_STEPS = 3.5 + GAP_STEPS;
+
+// What a glyph takes, in em, at the header's `font-medium`. They are read off the common sans-serif
+// faces (Segoe UI, Arial, Georgia, Verdana), and sit at the wide end of them: the cost of an estimate
+// that is too wide is a column hidden a little early, and the cost of one that is too narrow is the
+// overlap this exists to prevent.
+const FULL_WIDTH_GLYPH = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
+/** Letters and marks that take about a third of an em or less in a sans-serif face. */
+const NARROW_GLYPHS = "iljtfI .,:;'|!()[]/-";
+const WIDE_GLYPH = /[mwMW%@]/;
+const CAPITAL_OR_DIGIT = /[\p{Lu}\p{N}]/u;
+
+function glyphEm(glyph: string): number {
+  if (FULL_WIDTH_GLYPH.test(glyph)) return 1;
+  if (NARROW_GLYPHS.includes(glyph)) return 0.3;
+  if (WIDE_GLYPH.test(glyph)) return 0.88;
+  return CAPITAL_OR_DIGIT.test(glyph) ? 0.7 : 0.58;
+}
+
+/**
+ * px a column header takes when its label is not cut off: the text, the sort icon when it has one, and
+ * the cell's padding (`px-1`, `px-2` or `px-3` by density). A header does not wrap, so this is also the
+ * least a column whose cells cannot truncate (a date, an amount, wrapping text) is as wide as.
+ *
+ * The text is estimated from its characters and not measured. A measurement would be of the headers in
+ * the page, and a column the fit has hidden has none; it would also change once the page's fonts have
+ * loaded, and every change would be a new width for the fit to answer, a column hiding or coming back
+ * for a number that was not known a moment ago. The estimate is a function of the label, the density
+ * and the root font size, none of which depend on the room the table is given, so the fit stays a
+ * function of its arguments and nothing it hides can move the number that hid it. It is wider than
+ * the text in a typical face (by about 10 to 25 percent) on purpose, see `glyphEm`.
+ */
+export function estimateHeaderWidth(
+  label: string,
+  {
+    density = Densities.Medium,
+    remPx = REM_PX,
+    sortable = false,
+    ...metrics
+  }: PinnedColumnMetrics & { remPx?: number; sortable?: boolean },
+): number {
+  const unit = unitOf(metrics);
+  let em = 0;
+  for (const glyph of label) em += glyphEm(glyph);
+  const text = em * HEADER_FONT_REM[density] * remPx;
+  const icon = sortable ? SORT_ICON_STEPS * unit : 0;
+  const padding = 2 * CELL_PADDING_STEPS[density] * unit;
+  return Math.ceil(text + icon + padding);
+}
+
 /**
  * The px the pinned columns around the data columns take, for {@link getColumnsHiddenByWidth}: the
  * start cell with its details button, and the actions cell for `actionCount` icon buttons (two unless
@@ -203,6 +293,11 @@ export interface ColumnsHiddenByWidthOptions {
   reservedWidth?: number;
   /** The root font size in px, which a `rem` width and the default estimate follow. Defaults to 16. */
   remPx?: number;
+  /**
+   * What is known about the headers, which a column that cannot truncate its header is at least as wide
+   * as: see {@link estimateColumnWidth}. Left out, only the columns' `width` is counted.
+   */
+  header?: HeaderWidthMetrics;
   /**
    * What the previous call returned, for hysteresis: a column that was hidden stays hidden until the
    * container is {@link DATA_TABLE_REVEAL_MARGIN} px wider than it takes to hide it. The history only
@@ -260,7 +355,13 @@ export interface ColumnsHiddenByWidthOptions {
  */
 export function getColumnsHiddenByWidth<TRow>(
   columns: readonly DataTableColumn<TRow>[],
-  { width, reservedWidth = 0, remPx = REM_PX, previouslyHidden }: ColumnsHiddenByWidthOptions,
+  {
+    width,
+    reservedWidth = 0,
+    remPx = REM_PX,
+    header,
+    previouslyHidden,
+  }: ColumnsHiddenByWidthOptions,
 ): Set<string> {
   if (columns.length === 0 || !columns.some(isResponsiveColumn)) return new Set();
 
@@ -295,7 +396,8 @@ export function getColumnsHiddenByWidth<TRow>(
     const total =
       reservedWidth +
       columns.reduce(
-        (sum, column) => (hidden.has(column.name) ? sum : sum + estimateColumnWidth(column, remPx)),
+        (sum, column) =>
+          hidden.has(column.name) ? sum : sum + estimateColumnWidth(column, remPx, header),
         0,
       );
     /** How many of `ranked`, from the least important, a container of `room` px has to drop. */
@@ -303,7 +405,7 @@ export function getColumnsHiddenByWidth<TRow>(
       let needed = total;
       let dropped = 0;
       while (dropped < ranked.length && needed > room) {
-        needed -= estimateColumnWidth(ranked[dropped], remPx);
+        needed -= estimateColumnWidth(ranked[dropped], remPx, header);
         dropped += 1;
       }
       return dropped;
@@ -403,6 +505,7 @@ export function getResponsiveFit<TRow>(
     reservedWidth = 0,
     reservedFoldedWidth,
     remPx,
+    header,
     collapseBelow,
     collapseApplies = true,
     previous,
@@ -418,6 +521,7 @@ export function getResponsiveFit<TRow>(
     width,
     reservedWidth: collapsed ? (reservedFoldedWidth ?? reservedWidth) : reservedWidth,
     remPx,
+    header,
     previouslyHidden: previous?.hidden,
   });
   return { hidden, trigger, collapsed };

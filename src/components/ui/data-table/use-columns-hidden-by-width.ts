@@ -4,6 +4,7 @@ import {
   estimateColumnWidth,
   getResponsiveFit,
   sameColumnNames,
+  type HeaderWidthMetrics,
   type ResponsiveFit,
 } from "./responsive-columns";
 import type { DataTableColumn } from "./types";
@@ -28,6 +29,8 @@ export interface UseResponsiveFitOptions<TRow> extends UseColumnsHiddenByWidthOp
   collapseApplies?: boolean;
   /** The root font size in px, which `rem` widths and the default estimate follow. Defaults to 16. */
   remPx?: number;
+  /** What is known about the headers, which a column that cannot truncate its header is as wide as. */
+  header?: HeaderWidthMetrics;
 }
 
 export interface UseResponsiveFitResult {
@@ -77,6 +80,7 @@ export function useResponsiveFit<TRow>({
   collapseBelow,
   collapseApplies = true,
   remPx,
+  header,
   enabled,
 }: UseResponsiveFitOptions<TRow>): UseResponsiveFitResult {
   const [state, setState] = React.useState<FitState>(() => {
@@ -88,6 +92,7 @@ export function useResponsiveFit<TRow>({
       remPx,
       collapseBelow,
       collapseApplies,
+      header,
     });
     return { hidden: first.hidden, trigger: first.trigger };
   });
@@ -101,6 +106,7 @@ export function useResponsiveFit<TRow>({
     collapseBelow,
     collapseApplies,
     remPx,
+    header,
   });
   latest.current = {
     columns,
@@ -109,6 +115,7 @@ export function useResponsiveFit<TRow>({
     collapseBelow,
     collapseApplies,
     remPx,
+    header,
   };
 
   const recompute = React.useCallback(() => {
@@ -118,6 +125,7 @@ export function useResponsiveFit<TRow>({
       reservedWidth: latest.current.reservedWidth,
       reservedFoldedWidth: latest.current.reservedFoldedWidth,
       remPx: latest.current.remPx,
+      header: latest.current.header,
       collapseBelow: latest.current.collapseBelow,
       collapseApplies: latest.current.collapseApplies,
       // The first measurement replaces the narrow-first guess outright: nothing to be steady about.
@@ -164,7 +172,7 @@ export function useResponsiveFit<TRow>({
   const signature = columns
     .map(
       (column) =>
-        `${column.name}:${column.hideBelow ?? ""}:${column.priority ?? ""}:${estimateColumnWidth(column, remPx)}`,
+        `${column.name}:${column.hideBelow ?? ""}:${column.priority ?? ""}:${estimateColumnWidth(column, remPx, header)}`,
     )
     .join("|");
   React.useLayoutEffect(() => {
