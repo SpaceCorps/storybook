@@ -1926,8 +1926,17 @@ const longHeaderColumns = (ranking: string[]): DataTableColumn<TimeEntry>[] =>
 
 const dateFirst = longHeaderColumns(["date", "amount", "project", "message"]);
 const textFirst = longHeaderColumns(["project", "message", "date", "amount"]);
-/** The same columns with sorting off: their headers are plain labels, with no button around them. */
-const textFirstUnsorted = textFirst.map((column) => ({ ...column, sortable: false }));
+/**
+ * The same columns with sorting off: their headers are plain labels, with no button around them. With
+ * no sort icon to share the cell, "Counterparty" is only a few px wider than it, so the label is a
+ * longer one: whether it is cut off must not hang on how a font rounds.
+ */
+const textFirstUnsorted = textFirst.map((column) => ({
+  ...column,
+  sortable: false,
+  ...(column.name === "project" && { header: "Counterparty of the booking" }),
+}));
+const unsortedHeaders = ["Counterparty of the booking", "Description of the transaction"];
 
 const headerCell = (frame: HTMLElement, label: string): HTMLElement => {
   const cell = Array.from(frame.querySelectorAll<HTMLElement>("thead th:not([data-pin])")).find(
@@ -1983,7 +1992,7 @@ const longHeaderFrames: LongHeaderFrame[] = [
     label: "Phone, not sortable",
     width: 390,
     columns: textFirstUnsorted,
-    headers: ["Counterparty", "Description of the transaction"],
+    headers: unsortedHeaders,
   },
   {
     label: "Tablet",
@@ -2042,7 +2051,7 @@ async function playLongHeaders({ canvasElement }: { canvasElement: HTMLElement }
   // Not sortable: a plain label, which is cut at its cell's edge like the one in a sort button and
   // does not run on over the next header.
   const unsorted = pinnedFrame(canvasElement, "Phone, not sortable");
-  for (const label of ["Counterparty", "Description of the transaction"]) {
+  for (const label of unsortedHeaders) {
     const cell = headerCell(unsorted, label);
     await expect(within(cell).queryByRole("button")).toBeNull();
     await expect(labelIsCutOff(cell)).toBe(true);
