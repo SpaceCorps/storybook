@@ -1,6 +1,6 @@
 {
   "name": "@spacecorps/components",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "private": false,
   "description": "SpaceCorps design system: React component library, renderers, diagrams, charts, and widgets, showcased in Storybook.",
   "homepage": "https://github.com/SpaceCorps/storybook#readme",
