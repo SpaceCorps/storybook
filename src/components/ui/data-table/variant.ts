@@ -136,6 +136,10 @@ const CELL_NOWRAP = "whitespace-nowrap";
 // ellipsis real; it is a custom property so a table that wants longer lines can raise it.
 const CELL_TRUNCATE =
   "max-w-[var(--ivy-data-table-truncate-width,20rem)] overflow-hidden text-ellipsis whitespace-nowrap";
+// The header of a truncating column takes the same cap. Without it the label and its sort icon, which
+// do not wrap, set the column's minimum width however short the cap makes the cells, and the column
+// ends up wider than the fit assumed. The label inside is what gives way, see `DataTableColumnHeader`.
+const HEADER_TRUNCATE = "max-w-[var(--ivy-data-table-truncate-width,20rem)]";
 
 type CellWrapColumn<TRow> = Pick<DataTableColumn<TRow>, "nowrap" | "wrapText" | "align">;
 
@@ -145,6 +149,15 @@ const isNowrap = <TRow>(column: CellWrapColumn<TRow>): boolean =>
 /** Whether a column's cells are cut off with an ellipsis (as opposed to wrapped or kept whole). */
 export function dataTableCellTruncates<TRow>(column: CellWrapColumn<TRow>): boolean {
   return !isNowrap(column) && !column.wrapText;
+}
+
+/**
+ * The cap on a column's header: the cells' own, while they truncate, and none otherwise. A column whose
+ * cells are kept whole (dates, amounts) or wrap is as wide as its header needs, and
+ * {@link estimateColumnWidth} counts it.
+ */
+export function dataTableHeaderWrapClass<TRow>(column: CellWrapColumn<TRow>): string {
+  return dataTableCellTruncates(column) ? HEADER_TRUNCATE : "";
 }
 
 /** Resolves a column's `nowrap` / `wrapText` / `align` into the cell's overflow classes. */

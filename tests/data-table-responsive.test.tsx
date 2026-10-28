@@ -320,6 +320,70 @@ describe("DataTable columns hidden by width: what is measured", () => {
     expect(expanders(container)).toHaveLength(entries.length);
   });
 
+  describe("a header that cannot truncate is part of its column's width", () => {
+    const LONG = "Total hours worked including breaks";
+    // Three columns that each declare 100px, which 400px holds with room to spare. The Hours header is
+    // far wider than its 100px and, right-aligned, kept whole, so the column cannot be that narrow.
+    const withLongHeader = (overrides: Partial<DataTableColumn<Entry>> = {}) => [
+      { name: "date", header: "Date", priority: 1, width: "100px" },
+      {
+        name: "hours",
+        header: LONG,
+        align: "Right" as const,
+        priority: 2,
+        width: "100px",
+        ...overrides,
+      },
+      { name: "note", header: "Note", priority: 3, width: "100px" },
+    ];
+
+    it("hides the columns whose room the header takes, where the width alone would keep them", () => {
+      const { container } = renderTable({ columns: withLongHeader() });
+
+      resizeTo(container, 400);
+
+      expect(dataHeaders(container)).toEqual(["Date"]);
+      expect(expanders(container)).toHaveLength(entries.length);
+    });
+
+    it("keeps them once the header has the room it needs", () => {
+      const { container } = renderTable({ columns: withLongHeader() });
+
+      resizeTo(container, 400);
+      expect(dataHeaders(container)).toEqual(["Date"]);
+      // 50px of pinned cells and border, 100 for Date, about 280 for the Hours header, 100 for Note.
+      resizeTo(container, 640);
+      expect(dataHeaders(container)).toEqual(["Date", LONG, "Note"]);
+    });
+
+    it("counts a column that keeps its cells whole or wrapped the same way", () => {
+      for (const overrides of [{ nowrap: true }, { wrapText: true }]) {
+        const { container, unmount } = renderTable({
+          columns: withLongHeader({ align: undefined, ...overrides }),
+        });
+        resizeTo(container, 400);
+        expect(dataHeaders(container)).toEqual(["Date"]);
+        unmount();
+      }
+    });
+
+    it("counts a column that truncates its cells, and so its header, as it declares", () => {
+      const { container } = renderTable({ columns: withLongHeader({ align: undefined }) });
+
+      resizeTo(container, 400);
+
+      expect(dataHeaders(container)).toEqual(["Date", LONG, "Note"]);
+    });
+
+    it("counts no header in a windowed table, whose columns are laid out at fixed widths", () => {
+      const { container } = renderTable({ columns: withLongHeader(), virtualized: true });
+
+      resizeTo(container, 400);
+
+      expect(dataHeaders(container)).toEqual(["Date", LONG, "Note"]);
+    });
+  });
+
   it("does not spend the room of a column the person switched off", () => {
     const ranked: DataTableColumn<Entry>[] = [
       { name: "date", header: "Date", priority: 1, width: "100px" },
@@ -466,9 +530,11 @@ describe("DataTable columns hidden by width: the columns change under a width th
     expect(dataHeaders(ranks.container)).toEqual(["Date", "Note"]);
     ranks.unmount();
 
-    // width: a Note of 20px is cheap enough to keep, where one of 100px was not.
+    // width: a Note of 20px is cheap enough to keep, where one of 100px was not. Its header, "Note" and
+    // the sort icon, needs about 67px whatever the column declares, which is what is counted for it:
+    // 317px in all, and a hidden column comes back with the reveal margin to spare, so 345 is enough.
     const widths = render(tableOf(ranked));
-    resizeTo(widths.container, 300);
+    resizeTo(widths.container, 345);
     expect(dataHeaders(widths.container)).toEqual(["Date", "Hours"]);
     widths.rerender(tableOf(withNote({ width: "20px" })));
     expect(dataHeaders(widths.container)).toEqual(["Date", "Hours", "Note"]);

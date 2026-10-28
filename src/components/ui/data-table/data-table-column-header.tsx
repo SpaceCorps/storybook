@@ -5,7 +5,11 @@ import { cn } from "@/lib/utils";
 import { TableHead, type TableHeadProps } from "@/components/ui/table";
 import type { DataTableColumn, DataTableSortDirection } from "./types";
 import { ariaSortValue, nextSortDirection } from "./utils";
-import { dataTableCellAlignVariant } from "./variant";
+import {
+  dataTableCellAlignVariant,
+  dataTableCellTruncates,
+  dataTableHeaderWrapClass,
+} from "./variant";
 
 export interface DataTableColumnHeaderProps<TRow> extends Omit<
   TableHeadProps,
@@ -30,6 +34,12 @@ function sortActionLabel(label: string, direction: DataTableSortDirection | null
  * A single `<th>`. Sortable headers wrap their label in a real `<button>` so Enter and Space
  * activate natively and the header joins the tab order; non-sortable headers render plain text and
  * carry no `aria-sort` at all.
+ *
+ * The header of a column whose cells truncate truncates too, at the same cap, so a long label never
+ * makes the column wider than its cells: the label gives way and the sort icon stays. It stays
+ * readable in full: the sort button is named by the whole label, a screen reader reads the text that
+ * is in the DOM, and a pointer rested on the header shows it as a tooltip while it is cut off. A column
+ * whose cells are kept whole or wrap keeps its whole header, and the column is as wide as it needs.
  */
 function DataTableColumnHeaderInner<TRow>(
   {
@@ -39,11 +49,23 @@ function DataTableColumnHeaderInner<TRow>(
     onToggleSort,
     className,
     style,
+    onMouseEnter,
+    onMouseLeave,
     ...props
   }: DataTableColumnHeaderProps<TRow>,
   ref: React.ForwardedRef<HTMLTableCellElement>,
 ) {
   const label = column.header ?? column.name;
+  const truncates = dataTableCellTruncates(column);
+
+  // Whether the label was cut off when the pointer came in, for as long as it stays. Not a permanent
+  // title: a short label would grow a tooltip that repeats it, and assistive tech would read it out as
+  // a description. The browser shows a title only after the pointer has rested, so setting it on enter
+  // is early enough, and it goes again on leave, so a table resized in the meantime does not keep a
+  // title for a label that is no longer cut off.
+  const labelRef = React.useRef<HTMLSpanElement | null>(null);
+  const [cutOff, setCutOff] = React.useState(false);
+  const title = cutOff ? (column.help ? `${label}: ${column.help}` : label) : column.help;
 
   const indicator =
     direction === "Ascending" ? (
@@ -59,9 +81,22 @@ function DataTableColumnHeaderInner<TRow>(
     <TableHead
       ref={ref}
       aria-sort={ariaSortValue(sortable, direction)}
-      title={column.help}
+      title={title}
       style={{ ...style, width: column.width ?? style?.width }}
-      className={cn(dataTableCellAlignVariant({ align: column.align ?? "Left" }), className)}
+      className={cn(
+        dataTableCellAlignVariant({ align: column.align ?? "Left" }),
+        dataTableHeaderWrapClass(column),
+        className,
+      )}
+      onMouseEnter={(event) => {
+        onMouseEnter?.(event);
+        const text = labelRef.current;
+        if (truncates && text) setCutOff(text.scrollWidth > text.clientWidth);
+      }}
+      onMouseLeave={(event) => {
+        onMouseLeave?.(event);
+        setCutOff(false);
+      }}
       {...props}
     >
       {sortable ? (
@@ -71,11 +106,17 @@ function DataTableColumnHeaderInner<TRow>(
           onClick={() => onToggleSort?.(column.name)}
           className="inline-flex max-w-full items-center gap-1 rounded-field font-medium transition-colors hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
         >
-          <span className="truncate">{label}</span>
+          <span ref={labelRef} className="truncate">
+            {label}
+          </span>
           {indicator}
         </button>
       ) : (
-        <span className="truncate">{label}</span>
+        // A block, unlike the label in the button (a flex item, which is blockified): `truncate` does
+        // nothing to an inline box, and the label would run on past the capped cell.
+        <span ref={labelRef} className="block truncate">
+          {label}
+        </span>
       )}
     </TableHead>
   );

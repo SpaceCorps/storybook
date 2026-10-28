@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "../src/co
 import {
   DataTable,
   DataTableCellEditor,
+  DataTableColumnHeader,
   DataTableColumnOptions,
   type DataTableColumn,
   type DataTableRowAction,
@@ -1289,6 +1290,256 @@ describe("DataTable truncation", () => {
       fireEvent.mouseEnter(cells[index]);
       expect(cells[index].hasAttribute("title")).toBe(false);
     }
+  });
+});
+
+describe("DataTable header truncation", () => {
+  const headedColumns: DataTableColumn<Person>[] = [
+    { name: "name", header: "Counterparty of the transaction" },
+    { name: "status", header: "Status of the booking", wrapText: true },
+    { name: "id", header: "Voucher identifier", nowrap: true },
+    { name: "score", header: "Score including VAT", align: "Right" },
+    { name: "note", header: "Note", help: "Free text" },
+  ];
+  const CAP = "max-w-[var(--ivy-data-table-truncate-width,20rem)]";
+
+  const headerOf = (container: HTMLElement, text: string): HTMLElement => {
+    const cell = Array.from(container.querySelectorAll<HTMLElement>("thead th")).find(
+      (th) => th.textContent?.trim() === text,
+    );
+    if (!cell) throw new Error(`No header ${text}`);
+    return cell;
+  };
+
+  function stubOverflow(label: HTMLElement, scrollWidth: number, clientWidth: number) {
+    Object.defineProperty(label, "scrollWidth", { configurable: true, value: scrollWidth });
+    Object.defineProperty(label, "clientWidth", { configurable: true, value: clientWidth });
+  }
+
+  it("caps the header of a column whose cells truncate, at the cells' own cap", () => {
+    const { container } = render(
+      <DataTable columns={headedColumns} rows={people} getRowId={rowId} />,
+    );
+
+    const header = headerOf(container, "Counterparty of the transaction");
+    expect(header.className).toContain(CAP);
+    // The label is what gives way, and the sort icon after it stays.
+    const label = header.querySelector("span")!;
+    expect(label.className).toContain("truncate");
+    expect(header.querySelector("svg")).not.toBeNull();
+    expect(header.querySelector("button")!.className).toContain("max-w-full");
+    // The cells of the same column carry the same cap.
+    expect(container.querySelector("tbody tr td")!.className).toContain(CAP);
+  });
+
+  it("leaves the header of a column that wraps, keeps whole or is right-aligned uncapped", () => {
+    const { container } = render(
+      <DataTable columns={headedColumns} rows={people} getRowId={rowId} />,
+    );
+
+    for (const text of ["Status of the booking", "Voucher identifier", "Score including VAT"]) {
+      expect(headerOf(container, text).className).not.toContain(CAP);
+    }
+  });
+
+  it("follows an explicit nowrap: false on a right-aligned column", () => {
+    const { container } = render(
+      <DataTable
+        columns={[{ name: "score", header: "Score including VAT", align: "Right", nowrap: false }]}
+        rows={people}
+        getRowId={rowId}
+      />,
+    );
+
+    expect(headerOf(container, "Score including VAT").className).toContain(CAP);
+  });
+
+  it("caps a header that cannot be sorted, and one in a table that does not sort", () => {
+    const { container } = render(
+      <DataTable
+        columns={[{ name: "name", header: "Counterparty of the transaction", sortable: false }]}
+        rows={people}
+        getRowId={rowId}
+      />,
+    );
+    const header = headerOf(container, "Counterparty of the transaction");
+    expect(header.className).toContain(CAP);
+    expect(header.querySelector("button")).toBeNull();
+    const label = header.querySelector("span")!;
+    expect(label.className).toContain("truncate");
+    // `truncate` does nothing to an inline box: the label has to be a block to be cut at the cell's edge.
+    expect(label.className.split(/\s+/)).toContain("block");
+  });
+
+  it("shows the full label of a cut-off header that cannot be sorted as a title too", () => {
+    const { container } = render(
+      <DataTable
+        columns={[{ name: "name", header: "Counterparty of the transaction", sortable: false }]}
+        rows={people}
+        getRowId={rowId}
+      />,
+    );
+    const header = headerOf(container, "Counterparty of the transaction");
+
+    stubOverflow(header.querySelector<HTMLElement>("span")!, 220, 80);
+    fireEvent.mouseEnter(header);
+
+    expect(header.getAttribute("title")).toBe("Counterparty of the transaction");
+  });
+
+  it("takes the title away when the pointer leaves, so a stale one is not left on a label that now fits", () => {
+    const { container } = render(
+      <DataTable columns={headedColumns} rows={people} getRowId={rowId} />,
+    );
+    const header = headerOf(container, "Counterparty of the transaction");
+    stubOverflow(header.querySelector<HTMLElement>("span")!, 220, 80);
+
+    fireEvent.mouseEnter(header);
+    expect(header.getAttribute("title")).toBe("Counterparty of the transaction");
+    fireEvent.mouseLeave(header);
+
+    expect(header.hasAttribute("title")).toBe(false);
+  });
+
+  it("keeps the column's help when the pointer leaves", () => {
+    const { container } = render(
+      <DataTable
+        columns={[{ name: "name", header: "Counterparty of the transaction", help: "Who paid" }]}
+        rows={people}
+        getRowId={rowId}
+      />,
+    );
+    const header = headerOf(container, "Counterparty of the transaction");
+    stubOverflow(header.querySelector<HTMLElement>("span")!, 220, 80);
+
+    fireEvent.mouseEnter(header);
+    fireEvent.mouseLeave(header);
+
+    expect(header.getAttribute("title")).toBe("Who paid");
+  });
+
+  it("runs a consumer's onMouseLeave as well", () => {
+    const onMouseLeave = vi.fn();
+    const { container } = render(
+      <table>
+        <thead>
+          <tr>
+            <DataTableColumnHeader
+              column={{ name: "name", header: "Name" }}
+              onMouseLeave={onMouseLeave}
+            />
+          </tr>
+        </thead>
+      </table>,
+    );
+
+    fireEvent.mouseLeave(container.querySelector("th")!);
+    expect(onMouseLeave).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the whole label as the name of the sort button, truncated or not", () => {
+    render(<DataTable columns={headedColumns} rows={people} getRowId={rowId} />);
+
+    expect(
+      screen.queryByRole("button", { name: "Sort by Counterparty of the transaction ascending" }),
+    ).not.toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Sort by Status of the booking ascending" }),
+    ).not.toBeNull();
+  });
+
+  it("still sorts from the keyboard with the label truncated", async () => {
+    const user = userEvent.setup();
+    const { container } = render(
+      <DataTable columns={headedColumns} rows={people} getRowId={rowId} />,
+    );
+    const header = headerOf(container, "Counterparty of the transaction");
+
+    await user.tab();
+    expect(document.activeElement).toBe(header.querySelector("button"));
+    await user.keyboard("{Enter}");
+
+    expect(header.getAttribute("aria-sort")).toBe("ascending");
+    expect(bodyColumn(container)).toEqual(["Alice", "Bob", "Charlie"]);
+    expect(
+      screen.queryByRole("button", { name: "Sort by Counterparty of the transaction descending" }),
+    ).not.toBeNull();
+  });
+
+  it("shows the full label as a title only while it is cut off", () => {
+    const { container } = render(
+      <DataTable columns={headedColumns} rows={people} getRowId={rowId} />,
+    );
+    const header = headerOf(container, "Counterparty of the transaction");
+    const label = header.querySelector<HTMLElement>("span")!;
+
+    // Nothing to read in full yet, and a short label never grows a tooltip that repeats it.
+    expect(header.hasAttribute("title")).toBe(false);
+    stubOverflow(label, 100, 100);
+    fireEvent.mouseEnter(header);
+    expect(header.hasAttribute("title")).toBe(false);
+
+    stubOverflow(label, 220, 80);
+    fireEvent.mouseEnter(header);
+    expect(header.getAttribute("title")).toBe("Counterparty of the transaction");
+
+    // Resized so that it fits again: the stale title goes.
+    stubOverflow(label, 220, 300);
+    fireEvent.mouseEnter(header);
+    expect(header.hasAttribute("title")).toBe(false);
+  });
+
+  it("adds the column's help to a title that names a cut-off label, and keeps it when not cut off", () => {
+    const { container } = render(
+      <DataTable
+        columns={[{ name: "name", header: "Counterparty of the transaction", help: "Who paid" }]}
+        rows={people}
+        getRowId={rowId}
+      />,
+    );
+    const header = headerOf(container, "Counterparty of the transaction");
+    const label = header.querySelector<HTMLElement>("span")!;
+    expect(header.getAttribute("title")).toBe("Who paid");
+
+    stubOverflow(label, 220, 80);
+    fireEvent.mouseEnter(header);
+    expect(header.getAttribute("title")).toBe("Counterparty of the transaction: Who paid");
+
+    stubOverflow(label, 80, 80);
+    fireEvent.mouseEnter(header);
+    expect(header.getAttribute("title")).toBe("Who paid");
+  });
+
+  it("never adds a title to the header of a column that is not truncated", () => {
+    const { container } = render(
+      <DataTable columns={headedColumns} rows={people} getRowId={rowId} />,
+    );
+
+    for (const text of ["Status of the booking", "Voucher identifier", "Score including VAT"]) {
+      const header = headerOf(container, text);
+      stubOverflow(header.querySelector<HTMLElement>("span")!, 400, 100);
+      fireEvent.mouseEnter(header);
+      expect(header.hasAttribute("title")).toBe(false);
+    }
+  });
+
+  it("runs a consumer's onMouseEnter as well", () => {
+    const onMouseEnter = vi.fn();
+    const { container } = render(
+      <table>
+        <thead>
+          <tr>
+            <DataTableColumnHeader
+              column={{ name: "name", header: "Name" }}
+              onMouseEnter={onMouseEnter}
+            />
+          </tr>
+        </thead>
+      </table>,
+    );
+
+    fireEvent.mouseEnter(container.querySelector("th")!);
+    expect(onMouseEnter).toHaveBeenCalledTimes(1);
   });
 });
 

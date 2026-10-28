@@ -5,6 +5,7 @@ import {
   DATA_TABLE_REVEAL_MARGIN,
   estimateActionsColumnWidth,
   estimateColumnWidth,
+  estimateHeaderWidth,
   estimateStartColumnWidth,
   getColumnsHiddenByWidth,
   getDetailItems,
@@ -12,6 +13,7 @@ import {
   getRowActionsCollapsed,
   reservedColumnsWidth,
   type DataTableColumn,
+  type HeaderWidthMetrics,
   type ResponsiveFit,
   type ResponsiveFitOptions,
 } from "../src/components/ui/data-table";
@@ -63,6 +65,208 @@ describe("estimateColumnWidth", () => {
   it("is 16px when the root font size is left out", () => {
     expect(estimateColumnWidth({ width: "5rem" })).toBe(estimateColumnWidth({ width: "5rem" }, 16));
     expect(estimateColumnWidth({})).toBe(estimateColumnWidth({}, 16));
+  });
+});
+
+/**
+ * What a header takes is part of what its column takes. The numbers below were read off a browser at
+ * Medium density and 16px: "Booking date" with its sort icon is a 123px header, "Amount incl. VAT"
+ * 146px and "Description of the transaction" 232px, in the page's own sans-serif face. The model is
+ * deliberately wider than that face (the cost of too wide is a column hidden early, of too narrow the
+ * overlap), so every one of those is a lower bound here, and none is far above it.
+ */
+describe("estimateHeaderWidth", () => {
+  const sorted = { sortable: true };
+
+  it("is at least what the header took in a browser, and not far above it", () => {
+    for (const [label, measured] of [
+      ["Booking date", 123],
+      ["Amount incl. VAT", 146],
+      ["Counterparty", 124],
+      ["Description of the transaction", 232],
+    ] as const) {
+      const estimate = estimateHeaderWidth(label, sorted);
+      expect(estimate).toBeGreaterThanOrEqual(measured);
+      expect(estimate).toBeLessThanOrEqual(measured * 1.3);
+    }
+  });
+
+  it("adds the sort icon and its gap (4.5 steps) only to a header that has one", () => {
+    const plain = estimateHeaderWidth("Counterparty", {});
+    const withIcon = estimateHeaderWidth("Counterparty", sorted);
+    // 4.5 steps of 0.27rem at 16px, rounded up with the rest of the width.
+    expect(withIcon - plain).toBeGreaterThanOrEqual(19);
+    expect(withIcon - plain).toBeLessThanOrEqual(20);
+    expect(estimateHeaderWidth("Counterparty", { sortable: false })).toBe(plain);
+  });
+
+  it("is wider for a longer label and for wider glyphs, and counts every character", () => {
+    expect(estimateHeaderWidth("Description of the transaction", {})).toBeGreaterThan(
+      estimateHeaderWidth("Description", {}),
+    );
+    // Capitals and digits take more than lower case, and m and w more than either.
+    expect(estimateHeaderWidth("AMOUNT", {})).toBeGreaterThan(estimateHeaderWidth("amount", {}));
+    expect(estimateHeaderWidth("mmmmmm", {})).toBeGreaterThan(estimateHeaderWidth("AMOUNT", {}));
+    expect(estimateHeaderWidth("iiiiii", {})).toBeLessThan(estimateHeaderWidth("amount", {}));
+    // East Asian text is a full em a character.
+    expect(estimateHeaderWidth("日付指定", {})).toBeGreaterThan(estimateHeaderWidth("abcd", {}));
+  });
+
+  it("is only the cell's padding for an empty label", () => {
+    expect(estimateHeaderWidth("", {})).toBe(18);
+    expect(estimateHeaderWidth("", { density: Densities.Small })).toBe(9);
+    expect(estimateHeaderWidth("", { density: Densities.Large })).toBe(26);
+  });
+
+  it("follows the density (text size and padding) and the root font size", () => {
+    const at = (density: Densities, remPx = 16) =>
+      estimateHeaderWidth("Counterparty", { ...sorted, density, remPx });
+    expect(at(Densities.Small)).toBeLessThan(at(Densities.Medium));
+    expect(at(Densities.Medium)).toBeLessThan(at(Densities.Large));
+    // The text is in rem: a 20px root makes it a quarter wider.
+    expect(at(Densities.Medium, 20)).toBeGreaterThan(at(Densities.Medium));
+    // `unitPx` is the spacing step as the page resolves it, and scales the icon and the padding.
+    expect(estimateHeaderWidth("", { unitPx: 5 })).toBe(20);
+  });
+});
+
+describe("estimateColumnWidth with the header counted", () => {
+  const header: HeaderWidthMetrics = { sortable: new Set(["amount", "note"]) };
+  const amount: DataTableColumn<Row> = {
+    name: "amount",
+    header: "Amount including VAT (SEK)",
+    align: "Right",
+    width: "100px",
+  };
+
+  it("is the declared width without a header to count, as it always was", () => {
+    expect(estimateColumnWidth(amount)).toBe(100);
+    expect(estimateColumnWidth(amount, 16)).toBe(100);
+  });
+
+  it("is the header's width when a column that cannot truncate it has a longer one than it declares", () => {
+    const needed = estimateHeaderWidth("Amount including VAT (SEK)", { sortable: true });
+    expect(needed).toBeGreaterThan(200);
+    // Right-aligned, so kept whole: the default of `nowrap`.
+    expect(estimateColumnWidth(amount, 16, header)).toBe(needed);
+    // The same for a column that says so, and for one that wraps its cells: its header still does not.
+    expect(estimateColumnWidth({ ...amount, align: undefined, nowrap: true }, 16, header)).toBe(
+      needed,
+    );
+    expect(estimateColumnWidth({ ...amount, align: undefined, wrapText: true }, 16, header)).toBe(
+      needed,
+    );
+  });
+
+  it("is the declared width when that is the larger", () => {
+    expect(estimateColumnWidth({ ...amount, width: "400px" }, 16, header)).toBe(400);
+  });
+
+  it("counts the sort icon only for the columns that have one", () => {
+    const withIcon = estimateColumnWidth(amount, 16, header);
+    const without = estimateColumnWidth(amount, 16, { sortable: new Set() });
+    expect(withIcon).toBeGreaterThan(without);
+    expect(estimateColumnWidth(amount, 16, {})).toBe(without);
+  });
+
+  it("falls back to the column's name when it has no header", () => {
+    const named = { name: "counterpartyReference", align: "Right" as const, width: "40px" };
+    expect(estimateColumnWidth(named, 16, header)).toBe(
+      estimateHeaderWidth("counterpartyReference", {}),
+    );
+  });
+
+  it("counts nothing for a column with neither a header nor a name", () => {
+    expect(estimateColumnWidth({ width: "70px" }, 16, header)).toBe(70);
+  });
+
+  describe("a column that truncates its cells truncates its header too", () => {
+    const text: DataTableColumn<Row> = {
+      name: "note",
+      header: "Description of the transaction",
+      width: "5rem",
+    };
+
+    it("is its declared width: the header gives way at the cap, as the cells do", () => {
+      expect(estimateColumnWidth(text, 16, header)).toBe(80);
+      expect(estimateColumnWidth(text, 16, header)).toBe(estimateColumnWidth(text, 16));
+      expect(estimateColumnWidth({ ...text, width: undefined }, 16, header)).toBe(128);
+      expect(estimateColumnWidth({ ...text, align: "Center" }, 16, header)).toBe(80);
+    });
+
+    it("is counted whole as soon as the column is kept whole or wrapped, as the cells are", () => {
+      const natural = estimateHeaderWidth("Description of the transaction", { sortable: true });
+      expect(natural).toBeGreaterThan(200);
+      expect(estimateColumnWidth({ ...text, nowrap: true }, 16, header)).toBe(natural);
+      expect(estimateColumnWidth({ ...text, wrapText: true }, 16, header)).toBe(natural);
+      expect(estimateColumnWidth({ ...text, align: "Right" }, 16, header)).toBe(natural);
+      // An explicit `nowrap: false` makes a right-aligned column truncate after all.
+      expect(estimateColumnWidth({ ...text, align: "Right", nowrap: false }, 16, header)).toBe(80);
+    });
+  });
+});
+
+describe("getColumnsHiddenByWidth with the headers counted", () => {
+  // Three columns of 100px, so 400px holds all three on the width alone.
+  const columns = cols(
+    ["date", { priority: 1, width: "100px" }],
+    [
+      "amount",
+      { priority: 2, width: "100px", align: "Right", header: "Amount including VAT (SEK)" },
+    ],
+    ["note", { priority: 3, width: "100px" }],
+  );
+  const header: HeaderWidthMetrics = { sortable: new Set(["date", "amount", "note"]) };
+  const hiddenWithHeaders = (width: number, extra: { previouslyHidden?: Set<string> } = {}) =>
+    [...getColumnsHiddenByWidth(columns, { width, header, ...extra })].sort();
+
+  it("keeps all three on the declared widths, which is what a header-blind count says", () => {
+    expect(hiddenAt(columns, 300)).toEqual([]);
+    expect(hiddenAt(columns, 400)).toEqual([]);
+  });
+
+  it("hides what the long header takes the room of: Amount cannot be narrower than its label", () => {
+    // Amount is about 210px with its icon, not 100: Date and Amount do not fit 300px.
+    expect(hiddenWithHeaders(300)).toEqual(["amount", "note"]);
+    // With room for the header it is counted at that width and kept: Date and Amount, and no Note.
+    const needed = estimateColumnWidth(columns[1], 16, header);
+    expect(needed).toBeGreaterThan(200);
+    expect(hiddenWithHeaders(100 + needed)).toEqual(["note"]);
+    expect(hiddenWithHeaders(400)).toEqual(["note"]);
+    expect(hiddenWithHeaders(100 + needed + 100)).toEqual([]);
+  });
+
+  it("is the same answer as before for headers that fit their declared widths", () => {
+    const short = cols(
+      ["date", { priority: 1, width: "100px", header: "Date" }],
+      ["amount", { priority: 2, width: "100px", align: "Right", header: "Amount" }],
+      ["note", { priority: 3, width: "100px", header: "Note" }],
+    );
+    for (const width of [120, 220, 300, 350, 400]) {
+      expect([...getColumnsHiddenByWidth(short, { width, header })]).toEqual([
+        ...getColumnsHiddenByWidth(short, { width }),
+      ]);
+    }
+  });
+
+  it("keeps the hysteresis: a column that was hidden stays hidden through the margin", () => {
+    const edge = 100 + estimateColumnWidth(columns[1], 16, header);
+    const previouslyHidden = new Set(["note", "amount"]);
+    // Amount would fit from `edge`, but it was hidden: it comes back a margin later.
+    expect(hiddenWithHeaders(edge + DATA_TABLE_REVEAL_MARGIN - 1, { previouslyHidden })).toContain(
+      "amount",
+    );
+    expect(hiddenWithHeaders(edge + DATA_TABLE_REVEAL_MARGIN, { previouslyHidden })).not.toContain(
+      "amount",
+    );
+  });
+
+  it("passes the headers on through getResponsiveFit", () => {
+    expect([...getResponsiveFit(columns, { width: 300, header }).hidden].sort()).toEqual([
+      "amount",
+      "note",
+    ]);
+    expect([...getResponsiveFit(columns, { width: 300 }).hidden]).toEqual([]);
   });
 });
 
