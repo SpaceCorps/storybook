@@ -1365,7 +1365,76 @@ describe("DataTable header truncation", () => {
     const header = headerOf(container, "Counterparty of the transaction");
     expect(header.className).toContain(CAP);
     expect(header.querySelector("button")).toBeNull();
-    expect(header.querySelector("span")!.className).toContain("truncate");
+    const label = header.querySelector("span")!;
+    expect(label.className).toContain("truncate");
+    // `truncate` does nothing to an inline box: the label has to be a block to be cut at the cell's edge.
+    expect(label.className.split(/\s+/)).toContain("block");
+  });
+
+  it("shows the full label of a cut-off header that cannot be sorted as a title too", () => {
+    const { container } = render(
+      <DataTable
+        columns={[{ name: "name", header: "Counterparty of the transaction", sortable: false }]}
+        rows={people}
+        getRowId={rowId}
+      />,
+    );
+    const header = headerOf(container, "Counterparty of the transaction");
+
+    stubOverflow(header.querySelector<HTMLElement>("span")!, 220, 80);
+    fireEvent.mouseEnter(header);
+
+    expect(header.getAttribute("title")).toBe("Counterparty of the transaction");
+  });
+
+  it("takes the title away when the pointer leaves, so a stale one is not left on a label that now fits", () => {
+    const { container } = render(
+      <DataTable columns={headedColumns} rows={people} getRowId={rowId} />,
+    );
+    const header = headerOf(container, "Counterparty of the transaction");
+    stubOverflow(header.querySelector<HTMLElement>("span")!, 220, 80);
+
+    fireEvent.mouseEnter(header);
+    expect(header.getAttribute("title")).toBe("Counterparty of the transaction");
+    fireEvent.mouseLeave(header);
+
+    expect(header.hasAttribute("title")).toBe(false);
+  });
+
+  it("keeps the column's help when the pointer leaves", () => {
+    const { container } = render(
+      <DataTable
+        columns={[{ name: "name", header: "Counterparty of the transaction", help: "Who paid" }]}
+        rows={people}
+        getRowId={rowId}
+      />,
+    );
+    const header = headerOf(container, "Counterparty of the transaction");
+    stubOverflow(header.querySelector<HTMLElement>("span")!, 220, 80);
+
+    fireEvent.mouseEnter(header);
+    fireEvent.mouseLeave(header);
+
+    expect(header.getAttribute("title")).toBe("Who paid");
+  });
+
+  it("runs a consumer's onMouseLeave as well", () => {
+    const onMouseLeave = vi.fn();
+    const { container } = render(
+      <table>
+        <thead>
+          <tr>
+            <DataTableColumnHeader
+              column={{ name: "name", header: "Name" }}
+              onMouseLeave={onMouseLeave}
+            />
+          </tr>
+        </thead>
+      </table>,
+    );
+
+    fireEvent.mouseLeave(container.querySelector("th")!);
+    expect(onMouseLeave).toHaveBeenCalledTimes(1);
   });
 
   it("keeps the whole label as the name of the sort button, truncated or not", () => {

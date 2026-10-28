@@ -50,6 +50,7 @@ function DataTableColumnHeaderInner<TRow>(
     className,
     style,
     onMouseEnter,
+    onMouseLeave,
     ...props
   }: DataTableColumnHeaderProps<TRow>,
   ref: React.ForwardedRef<HTMLTableCellElement>,
@@ -57,9 +58,11 @@ function DataTableColumnHeaderInner<TRow>(
   const label = column.header ?? column.name;
   const truncates = dataTableCellTruncates(column);
 
-  // Whether the label was cut off when the pointer last came in. Not a permanent title: a short label
-  // would grow a tooltip that repeats it, and assistive tech would read it out as a description. The
-  // browser shows a title only after the pointer has rested, so setting it on enter is early enough.
+  // Whether the label was cut off when the pointer came in, for as long as it stays. Not a permanent
+  // title: a short label would grow a tooltip that repeats it, and assistive tech would read it out as
+  // a description. The browser shows a title only after the pointer has rested, so setting it on enter
+  // is early enough, and it goes again on leave, so a table resized in the meantime does not keep a
+  // title for a label that is no longer cut off.
   const labelRef = React.useRef<HTMLSpanElement | null>(null);
   const [cutOff, setCutOff] = React.useState(false);
   const title = cutOff ? (column.help ? `${label}: ${column.help}` : label) : column.help;
@@ -90,6 +93,10 @@ function DataTableColumnHeaderInner<TRow>(
         const text = labelRef.current;
         if (truncates && text) setCutOff(text.scrollWidth > text.clientWidth);
       }}
+      onMouseLeave={(event) => {
+        onMouseLeave?.(event);
+        setCutOff(false);
+      }}
       {...props}
     >
       {sortable ? (
@@ -105,7 +112,9 @@ function DataTableColumnHeaderInner<TRow>(
           {indicator}
         </button>
       ) : (
-        <span ref={labelRef} className="truncate">
+        // A block, unlike the label in the button (a flex item, which is blockified): `truncate` does
+        // nothing to an inline box, and the label would run on past the capped cell.
+        <span ref={labelRef} className="block truncate">
           {label}
         </span>
       )}
