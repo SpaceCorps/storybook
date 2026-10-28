@@ -717,8 +717,6 @@ async function visibleTooltip(text: string) {
 export const CompactRail: StoryObj = {
   parameters: {
     layout: "fullscreen",
-    // No baseline yet.
-    visual: { disable: true },
     keyboard: { sweep: true, forcedColors: true },
   },
   render: () => <RailShell />,
@@ -735,8 +733,6 @@ export const CompactRailDark: StoryObj = {
   globals: { theme: "dark" },
   parameters: {
     layout: "fullscreen",
-    // No baseline yet.
-    visual: { disable: true },
     keyboard: { sweep: true, forcedColors: true },
   },
   render: () => <RailShell />,
@@ -756,8 +752,6 @@ export const CompactRailDark: StoryObj = {
 export const CompactRailHovered: StoryObj = {
   parameters: {
     layout: "fullscreen",
-    // No baseline yet.
-    visual: { disable: true },
   },
   render: () => <RailShell />,
   play: async ({ canvasElement }) => {
@@ -781,8 +775,6 @@ export const CompactRailFocused: StoryObj = {
   globals: { theme: "dark" },
   parameters: {
     layout: "fullscreen",
-    // No baseline yet.
-    visual: { disable: true },
   },
   render: () => <RailShell />,
   play: async ({ canvasElement }) => {
@@ -810,8 +802,6 @@ export const CompactRailFocused: StoryObj = {
 export const CompactRailPlain: StoryObj = {
   parameters: {
     layout: "fullscreen",
-    // No baseline yet.
-    visual: { disable: true },
   },
   render: () => <PrimitiveRailShell variant="sidebar" />,
   play: async ({ canvasElement }) => {
@@ -827,8 +817,6 @@ export const CompactRailPlain: StoryObj = {
 export const CompactRailFloating: StoryObj = {
   parameters: {
     layout: "fullscreen",
-    // No baseline yet.
-    visual: { disable: true },
   },
   render: () => <PrimitiveRailShell variant="floating" />,
   play: async ({ canvasElement }) => {
@@ -847,8 +835,6 @@ export const CompactRailFloating: StoryObj = {
 export const CompactRailSections: StoryObj = {
   parameters: {
     layout: "fullscreen",
-    // No baseline yet.
-    visual: { disable: true },
   },
   render: () => <RailShell nav={sectionNav} />,
   play: async ({ canvasElement }) => {
@@ -878,8 +864,6 @@ export const CompactRailSections: StoryObj = {
 export const CompactRailOverflow: StoryObj = {
   parameters: {
     layout: "fullscreen",
-    // No baseline yet.
-    visual: { disable: true },
   },
   render: () => <RailShell nav={longNav} />,
   play: async ({ canvasElement }) => {
@@ -941,8 +925,6 @@ export const CompactRailOverflow: StoryObj = {
 export const CompactRailTransition: StoryObj = {
   parameters: {
     layout: "fullscreen",
-    // No baseline yet.
-    visual: { disable: true },
   },
   render: () => <RailShell defaultCollapsed={false} />,
   play: async ({ canvasElement }) => {

@@ -30,10 +30,6 @@ export const Default: StoryObj<typeof RadioGroup> = {
 
 /** `aria-invalid` on the group turns every item's border red. */
 export const Invalid: StoryObj<typeof RadioGroup> = {
-  parameters: {
-    // New story: no baseline image yet.
-    visual: { disable: true },
-  },
   render: () => (
     <RadioGroup aria-label="Plan" aria-invalid>
       <div className="flex items-center space-x-2">

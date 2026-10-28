@@ -17,10 +17,6 @@ export const Default: StoryObj<typeof Slider> = {
 };
 
 export const Range: StoryObj<typeof Slider> = {
-  parameters: {
-    // New story: no baseline image yet.
-    visual: { disable: true },
-  },
   render: () => (
     <div className="w-[300px] pt-8">
       <Slider defaultValue={[20, 80]} max={100} step={1} aria-label="Price range" />
@@ -29,10 +25,6 @@ export const Range: StoryObj<typeof Slider> = {
 };
 
 export const CurrencyWithSpokenValues: StoryObj<typeof Slider> = {
-  parameters: {
-    // New story: no baseline image yet.
-    visual: { disable: true },
-  },
   render: () => (
     <div className="w-[300px] pt-8">
       <Slider

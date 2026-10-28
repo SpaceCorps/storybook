@@ -130,7 +130,7 @@ export const LeadingAndTrailing: Story = {
 
 export const OverflowWithToggles: Story = {
   parameters: {
-    // New story: no baseline image yet, and the menu portals out of the screenshotted root.
+    // The menu portals out of the screenshotted root.
     visual: { disable: true },
   },
   render: () => {
@@ -168,10 +168,6 @@ export const OverflowWithToggles: Story = {
  * caret instead of the toolbar's focus.
  */
 export const WithSearchField: Story = {
-  parameters: {
-    // New story: no baseline image yet.
-    visual: { disable: true },
-  },
   render: () => (
     <div className="w-[560px]">
       <Toolbar

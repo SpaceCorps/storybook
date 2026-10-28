@@ -29,10 +29,6 @@ export const Default: StoryObj<typeof Input> = {
  * the form submits.
  */
 export const Password: StoryObj<typeof Input> = {
-  parameters: {
-    // New story: no baseline image yet.
-    visual: { disable: true },
-  },
   render: () => (
     <form className="flex w-[350px] flex-col gap-2" onSubmit={(event) => event.preventDefault()}>
       <Label htmlFor="story-password">Password</Label>
@@ -84,19 +80,11 @@ const DensitiesDemo = () => (
 
 /** The button and the room it needs scale with the field. */
 export const PasswordDensities: StoryObj<typeof Input> = {
-  parameters: {
-    // New story: no baseline image yet.
-    visual: { disable: true },
-  },
   render: () => <DensitiesDemo />,
 };
 
 /** Disabled keeps the (dimmed) button so the field does not remount; read-only still reveals. */
 export const PasswordStates: StoryObj<typeof Input> = {
-  parameters: {
-    // New story: no baseline image yet.
-    visual: { disable: true },
-  },
   render: () => (
     <div className="flex w-[350px] flex-col gap-4">
       <Input
@@ -131,10 +119,6 @@ export const PasswordStates: StoryObj<typeof Input> = {
  * everything else in `className` stays on the input.
  */
 export const PasswordNarrow: StoryObj<typeof Input> = {
-  parameters: {
-    // New story: no baseline image yet.
-    visual: { disable: true },
-  },
   render: () => (
     <div className="flex w-[350px] flex-col gap-4">
       <Input
@@ -191,19 +175,11 @@ const SharedRevealDemo = () => {
 
 /** One `revealed` state across the fields of a sign-up or change-password form. */
 export const SharedReveal: StoryObj<typeof Input> = {
-  parameters: {
-    // New story: no baseline image yet.
-    visual: { disable: true },
-  },
   render: () => <SharedRevealDemo />,
 };
 
 /** `aria-invalid="true"` (a Field sets it from its error) turns the border and the focus ring red. */
 export const Invalid: StoryObj<typeof Input> = {
-  parameters: {
-    // New story: no baseline image yet.
-    visual: { disable: true },
-  },
   render: () => (
     <div className="flex w-[350px] flex-col gap-4">
       <Input aria-label="Organisation number" aria-invalid defaultValue="556000-01" />
@@ -220,10 +196,6 @@ export const Invalid: StoryObj<typeof Input> = {
 
 /** What the browser is told about each kind of field. Inspect the elements to see the attributes. */
 export const Semantics: StoryObj<typeof Input> = {
-  parameters: {
-    // New story: no baseline image yet.
-    visual: { disable: true },
-  },
   render: () => (
     <div className="flex w-[350px] flex-col gap-4">
       <Input aria-label="Plain text (autocomplete off, ignored by password managers)" />

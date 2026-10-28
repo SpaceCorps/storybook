@@ -6,7 +6,7 @@ export default {
   title: "Components/PlanWorkspace",
   component: PlanWorkspace,
   parameters: {
-    // New story: no baseline image yet, and the overflow menu opens over the screenshotted root.
+    // The overflow menu opens over the screenshotted root.
     visual: { disable: true },
   },
 };

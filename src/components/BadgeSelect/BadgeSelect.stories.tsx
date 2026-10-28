@@ -137,7 +137,7 @@ export const CustomBadgeColorsAndStyling = () => {
  */
 export const InsideDialog = {
   parameters: {
-    // New story: no baseline image yet, and the dialog and the list portal out of the root.
+    // The dialog and the list portal out of #storybook-root, which is all the screenshot captures.
     visual: { disable: true },
   },
   render: () => {
@@ -172,10 +172,6 @@ export const InsideDialog = {
  * it instead of a tint alone.
  */
 export const NonRemovableSelected = {
-  parameters: {
-    // New story: no baseline image yet.
-    visual: { disable: true },
-  },
   render: () => {
     const [val, setVal] = useState<string[]>(["urgent", "bug"]);
     const options: BadgeSelectOption[] = mockTags.map((tag) =>

@@ -31,8 +31,6 @@ const meta: Meta<typeof Field> = {
   component: Field,
   parameters: {
     layout: "centered",
-    // New stories: no baseline images yet (they can only be rendered in the Linux container).
-    visual: { disable: true },
   },
 };
 

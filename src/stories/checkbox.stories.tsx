@@ -34,10 +34,6 @@ export const Default: StoryObj<typeof Checkbox> = {
 
 /** `aria-invalid` (a Field sets it from its error) turns the border and a checked fill red. */
 export const Invalid: StoryObj<typeof Checkbox> = {
-  parameters: {
-    // New story: no baseline image yet.
-    visual: { disable: true },
-  },
   render: () => (
     <div className="flex flex-col gap-4">
       <div className="flex items-center space-x-2">
