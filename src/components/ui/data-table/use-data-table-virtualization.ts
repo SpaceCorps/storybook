@@ -117,6 +117,29 @@ export interface UseDataTableVirtualizationResult {
  * (a re-sort, a filter, a page change) drops the measurement cache and returns the viewport to the
  * top, so a re-sort never leaves you mid-list at a stale offset.
  */
+/**
+ * Whether the rows are windowed. A function of the props alone, so a caller that needs the answer
+ * before the hook has run (the pinned columns are sized differently under a fixed layout) asks the
+ * same question the hook does.
+ */
+export function isDataTableWindowed({
+  enabled,
+  count,
+  virtualized,
+  virtualizationThreshold,
+}: {
+  enabled: boolean;
+  count: number;
+  virtualized: DataTableVirtualized;
+  virtualizationThreshold: number;
+}): boolean {
+  return (
+    enabled &&
+    count > 0 &&
+    (virtualized === true || (virtualized === "auto" && count > virtualizationThreshold))
+  );
+}
+
 export function useDataTableVirtualization({
   containerRef,
   rowIds,
@@ -131,10 +154,7 @@ export function useDataTableVirtualization({
 }: UseDataTableVirtualizationOptions): UseDataTableVirtualizationResult {
   const count = rowIds.length;
 
-  const active =
-    enabled &&
-    count > 0 &&
-    (virtualized === true || (virtualized === "auto" && count > virtualizationThreshold));
+  const active = isDataTableWindowed({ enabled, count, virtualized, virtualizationThreshold });
 
   const estimate = estimateRowHeight ?? DATA_TABLE_ROW_HEIGHT_ESTIMATES[density];
   const estimateSize = React.useCallback(() => estimate, [estimate]);
