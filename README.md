@@ -679,6 +679,27 @@ each. Additive props and new components are in the sections above.
     `--ivy-data-table-truncate-width` (20rem), whatever its `width` says: the table cannot know that a
     column declared 130px holds names 250px long. Declare the width the text really needs, or set the
     cap to what the `width`s claim (`className="[--ivy-data-table-truncate-width:8rem]"`).
+  - **A header is part of its column's width.** The header of a column whose cells truncate (one that
+    is not right-aligned, `nowrap` or `wrapText`) now truncates too, at the same cap: the label gets an
+    ellipsis and the sort icon stays. The whole label is still the name of the sort button, and is
+    shown as a tooltip while it is cut off (set when the pointer enters the header, as a cell's is).
+    Before, a label such as "Counterparty" with its icon set the column's minimum width however short
+    the cap made its cells, so the column outgrew what the fit had counted and lay under its neighbour
+    or the pinned actions. A header over a column that cannot truncate (a date, a right-aligned amount,
+    wrapping text) stays whole, so the fit now counts it: a column is as wide as the wider of its
+    declared width and its header. `estimateHeaderWidth` is that header, the label plus the sort icon
+    and the cell's padding at the table's density and root font size, and `getColumnsHiddenByWidth`,
+    `getResponsiveFit` and `useResponsiveFit` take it as an optional `header` (`HeaderWidthMetrics`;
+    left out, they count what they did before). The label is estimated from its characters and not
+    measured, because a column the fit has hidden has no header on the page to measure, and a
+    measurement would change once the fonts load, a new width for the fit to answer. The estimate is
+    wider than the text in a typical face (10 to 25 percent over Segoe UI), so a table whose
+    non-truncating columns have long headers can now hide a column that 0.2.2 kept: the one that
+    lay under its neighbour. The header of a column that truncates is not counted: it gives way at the
+    cap with the cells, so such a column is its `width` as before, with the same rule (declare what
+    the text needs, or set the cap to what the `width`s claim). Windowed tables lay their columns out
+    at fixed widths and count no header. A touch screen has no tooltip, so keep a header short where
+    its full text matters on a phone.
   - **`collapseRowActionsBelow`** (a number of px, opt-in) folds the row actions into one "..." menu
     button while the table's own container is narrower than that. It frees the room of the extra
     buttons for the data columns: 100px for two icon actions at Medium, 57px for the menu button. The
@@ -1037,7 +1058,7 @@ from this list:
   `PriorityColumns`, `HideBelowDetail`, `HideBelowDetailDark`, `HideBelowDetailDensities`,
   `HideBelowDetailVirtualized`, `ResizesLive`, `ColumnOptionsAtNarrowWidth`, `PinnedColumnsFit`,
   `PinnedColumnsDensities`, `RowActionsCollapsed`, `RowActionsCollapsedDark`,
-  `RowActionsCollapsedGroups`, `TextLabelledActions`, `WindowedRowActions`;
+  `RowActionsCollapsedGroups`, `TextLabelledActions`, `WindowedRowActions`, `LongHeaders`, `LongHeadersDark`;
   `UI/Sidebar` → the `CompactRail*` stories; `UI/Tabs` → `DefaultDark`, `Inline`, `InlineDark`,
   `InCard`, `InCardDark`, `Overflowing`, `OverflowingDark`, `OverflowingInCard`,
   `OverflowingInCardDark`, `OverflowingKeyboard`, `ActiveOffscreen`, `ActiveOffscreenDark`,

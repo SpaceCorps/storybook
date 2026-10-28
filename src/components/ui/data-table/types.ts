@@ -20,7 +20,12 @@ export interface DataTableSort {
 export interface DataTableColumn<TRow> {
   /** Stable key. Also the sort key and the `columnVisibility` map key. */
   name: string;
-  /** Header text. Falls back to `name`. */
+  /**
+   * Header text. Falls back to `name`. In a column whose cells truncate the header truncates too, at
+   * the same cap, with its sort icon kept in view and the whole text as a tooltip while it is cut off;
+   * in a column whose cells are kept whole or wrap the header is never cut, and the column is as wide
+   * as it needs.
+   */
   header?: string;
   /** Cell value used for sorting, default rendering and the inline editor's initial value. */
   accessor?: (row: TRow) => unknown;
@@ -62,8 +67,9 @@ export interface DataTableColumn<TRow> {
    * keep and the last to go. While the content does not fit its container the table hides the column
    * with the highest number, one at a time (the later column first among equals), until it does.
    * "Fits" is judged from an estimate, not from layout: each column is taken to need its `width` when
-   * that is in `px` or `rem`, and 8rem otherwise, plus room for the selection, details and action
-   * columns. Name `width` honestly, or use `hideBelow`, where the estimate is too far off.
+   * that is in `px` or `rem`, and 8rem otherwise, or its header when that is wider and the column
+   * cannot truncate it, plus room for the selection, details and action columns. Name `width`
+   * honestly, or use `hideBelow`, where the estimate is too far off.
    *
    * A column with neither `priority` nor `hideBelow` is never hidden by width, and the most important
    * column of a table is kept even when nothing fits. Hidden columns go to the row details, see
