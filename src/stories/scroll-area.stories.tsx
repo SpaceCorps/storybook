@@ -27,10 +27,6 @@ export const Default: StoryObj = {
 };
 
 export const FitsWithoutScrolling: StoryObj = {
-  parameters: {
-    // New story: no baseline image yet.
-    visual: { disable: true },
-  },
   render: () => (
     <ScrollArea className="h-72 w-48 rounded-md border">
       <div className="p-4 text-sm">Short content: nothing to scroll, so it is not a tab stop.</div>

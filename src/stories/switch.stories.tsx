@@ -20,10 +20,6 @@ export const Default: StoryObj<typeof Switch> = {
 
 /** `aria-invalid` outlines the track in red; checked, the fill turns red too. */
 export const Invalid: StoryObj<typeof Switch> = {
-  parameters: {
-    // New story: no baseline image yet.
-    visual: { disable: true },
-  },
   render: () => (
     <div className="flex flex-col gap-4">
       <div className="flex items-center space-x-2">

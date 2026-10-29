@@ -146,10 +146,6 @@ function changedFile(path: string, before: string, after: string): ChangedFile {
 }
 
 export const ChangedFilesTree = {
-  parameters: {
-    // New story: no baseline image yet.
-    visual: { disable: true },
-  },
   render: () => (
     <div style={{ maxWidth: 1100, height: 520, margin: "0 auto", padding: "1.5rem" }}>
       <PlanChangesView

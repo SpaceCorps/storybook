@@ -76,7 +76,7 @@ A [popover link](## "This hint opens from the keyboard too, and Escape gives foc
 
 export const ImagesAndPopoverLinks: Story = {
   parameters: {
-    // New story: no baseline image yet, and the viewer and popover portal out of the screenshotted root.
+    // The viewer and popover portal out of the screenshotted root.
     visual: { disable: true },
   },
   render: () => <MarkdownRenderer content={imagesAndPopoverLinks(sampleImageUrl())} />,

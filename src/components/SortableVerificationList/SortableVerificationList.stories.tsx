@@ -106,10 +106,6 @@ export const WithStatusBadges = () => {
  */
 export const WithStatusBadgesDark: StoryObj = {
   globals: { theme: "dark" },
-  parameters: {
-    // New story: no baseline image yet.
-    visual: { disable: true },
-  },
   play: async () => {
     await expect(document.documentElement.classList.contains("dark")).toBe(true);
   },

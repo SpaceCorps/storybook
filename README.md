@@ -1047,34 +1047,17 @@ from this list:
   `AppShellKeyboard`, `DrawerWithAMenu`, `AppShellCollapsedFooter`, `InsetFitsViewport`,
   `InsetFitsViewportDark`; `UI/MultiSelect` → `Chips`,
   `InsideDialog`, `WithActions`, `LongListInsideDialog`; `UI/Toolbar` → `OverflowWithToggles`;
-  `UI/DataTable` → `DialogOpenedFromCard`; `Components/PlanWorkspace`; `Components/PlanMarkdown` →
-  `WithImage`; `Renderers/MarkdownRenderer` → `ImagesAndPopoverLinks`.
+  `UI/DataTable` → `DialogOpenedFromCard`; `Components/BadgeSelect` → `InsideDialog`;
+  `Foundation/Borders and Surfaces` → `DarkTablesInDialog`, `DarkEmbeddedTableInAlertDialog`,
+  `DarkEmbeddedTableInSheet`, `DarkEmbeddedTableInPopover`; `Components/PlanWorkspace`;
+  `Components/PlanMarkdown` → `WithImage`; `Renderers/MarkdownRenderer` → `ImagesAndPopoverLinks`.
 - **Interaction stories whose look another story already compares**: `UI/Tabs` → `KeyboardNavigation`,
-  `Controlled`; `UI/Button` → `FocusableWhenDisabled`, `FocusableWhenDisabledBothThemes`,
-  `IconButtonFocusableWhenDisabled`.
-- **No baseline yet** (the flag comes off once the visual-baseline-refresh workflow has produced one):
-  `UI/Card` → `WithFlushTable`, `FlushTableWithoutHeader`; `UI/DataTable` → the `InsideCard*` stories,
-  `Bordered`, `Embedded`, `RowClick`, `RemovableRows`, `ResponsiveColumns`, `ResponsiveColumnsDark`,
-  `PriorityColumns`, `HideBelowDetail`, `HideBelowDetailDark`, `HideBelowDetailDensities`,
-  `HideBelowDetailVirtualized`, `ResizesLive`, `ColumnOptionsAtNarrowWidth`, `PinnedColumnsFit`,
-  `PinnedColumnsDensities`, `RowActionsCollapsed`, `RowActionsCollapsedDark`,
-  `RowActionsCollapsedGroups`, `TextLabelledActions`, `WindowedRowActions`, `LongHeaders`, `LongHeadersDark`;
-  `UI/Sidebar` → the `CompactRail*` stories; `UI/Tabs` → `DefaultDark`, `Inline`, `InlineDark`,
-  `InCard`, `InCardDark`, `Overflowing`, `OverflowingDark`, `OverflowingInCard`,
-  `OverflowingInCardDark`, `OverflowingKeyboard`, `ActiveOffscreen`, `ActiveOffscreenDark`,
-  `ActiveOffscreenRtl`, `FollowsResize`, `LoadedLater`, `ScaledAncestor`, `ValueChangedFromOutside`,
-  `Vertical`, `VerticalDark`; `Foundation/Borders and Surfaces` (every story);
-  `Components/SortableVerificationList` → `WithStatusBadgesDark`; `Components/PlanMarkdown` →
-  `AlertsAndMathDark`; `Components/PlanDiffView` → `ChangedFilesTree`;
-  `UI/ScrollArea` → `FitsWithoutScrolling`; `UI/VirtualList` (every story);
-  `UI/Slider` → `Range`, `CurrencyWithSpokenValues`;
-  `UI/Stepper` → `AsChildLinks`, `AsChildDisabledStep`; `UI/Toolbar` → `WithSearchField`;
-  `Components/BadgeSelect` → `InsideDialog`, `NonRemovableSelected`;
-  `Domain/EmojiRating` → `Unrated`, `WholeFaces`, `HalfFaces`; `Domain/StarRating` → `Unrated`,
-  `HalfStars`; `Patterns/Auth forms` and `UI/Field` (every story); `UI/Checkbox`, `UI/RadioGroup`,
-  `UI/Switch` → `Invalid`; `UI/Input` → `Password`, `PasswordDensities`, `PasswordStates`,
-  `PasswordNarrow`, `SharedReveal`, `Invalid`, `Semantics`; `Shell/TendrilShell` → `ManyAgentSessions`,
-  `TwentyFourAgentSessions`, `SingleAgentSession`.
+  `Controlled`, `OverflowingKeyboard`, `ValueChangedFromOutside`; `UI/Button` → `FocusableWhenDisabled`,
+  `FocusableWhenDisabledBothThemes`, `IconButtonFocusableWhenDisabled`.
+
+A new story gets `parameters.visual.disable` only for one of the reasons above. Leave the flag off a story
+that simply has no baseline yet: the next run of the visual-baseline-refresh workflow writes it, and the
+`Visual Regression` job fails until it lands, which is the reminder to run it.
 
 Animated stories do **not** need it: the runner injects CSS that pauses animations and transitions before
 screenshotting.

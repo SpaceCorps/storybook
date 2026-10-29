@@ -31,10 +31,6 @@ export const Default: Story = {
 
 /** Nothing rated yet: the faces not reached are grey and circled, not only dimmed. */
 export const Unrated: Story = {
-  parameters: {
-    // New story: no baseline image yet.
-    visual: { disable: true },
-  },
   args: {
     value: 0,
   },
@@ -47,10 +43,6 @@ function WholeFacesDemo() {
 
 /** Without half values each face is its own button. */
 export const WholeFaces: Story = {
-  parameters: {
-    // New story: no baseline image yet.
-    visual: { disable: true },
-  },
   render: () => <WholeFacesDemo />,
 };
 
@@ -69,9 +61,5 @@ function HalfFacesDemo() {
 
 /** With half values the rating is one slider: every value is reachable from the keyboard. */
 export const HalfFaces: Story = {
-  parameters: {
-    // New story: no baseline image yet.
-    visual: { disable: true },
-  },
   render: () => <HalfFacesDemo />,
 };

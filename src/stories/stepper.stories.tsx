@@ -54,10 +54,6 @@ export const Default: StoryObj = {
 };
 
 export const AsChildLinks: StoryObj = {
-  parameters: {
-    // New story: no baseline image yet.
-    visual: { disable: true },
-  },
   render: () => (
     <div className="w-[600px]">
       <Stepper defaultValue={2}>
@@ -83,10 +79,6 @@ export const AsChildLinks: StoryObj = {
 
 /** A disabled step used as a link looks unavailable and is skipped by Tab, like a disabled button. */
 export const AsChildDisabledStep: StoryObj = {
-  parameters: {
-    // New story: no baseline image yet.
-    visual: { disable: true },
-  },
   render: () => (
     <div className="w-[600px]">
       <Stepper defaultValue={1}>

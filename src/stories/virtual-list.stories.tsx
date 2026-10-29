@@ -13,8 +13,6 @@ const meta: Meta = {
     // An overflowing list is a tab stop of its own: the sweep fails a story whose focus indicator is
     // missing or faint.
     keyboard: { sweep: true, forcedColors: true },
-    // No baseline image for any of these yet.
-    visual: { disable: true },
   },
 };
 

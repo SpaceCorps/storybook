@@ -28,10 +28,6 @@ export const Default: Story = {
 
 /** Nothing rated yet: the empty stars are an outline you can see, not a pale fill. */
 export const Unrated: Story = {
-  parameters: {
-    // New story: no baseline image yet.
-    visual: { disable: true },
-  },
   args: {
     value: 0,
   },
@@ -52,9 +48,5 @@ function HalfStarsDemo() {
 
 /** With half stars the rating is one slider: every value is reachable from the keyboard. */
 export const HalfStars: Story = {
-  parameters: {
-    // New story: no baseline image yet.
-    visual: { disable: true },
-  },
   render: () => <HalfStarsDemo />,
 };

@@ -156,10 +156,6 @@ $$\\int_0^\\infty e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}$$
  */
 export const AlertsAndMathDark = {
   globals: { theme: "dark" },
-  parameters: {
-    // New story: no baseline image yet.
-    visual: { disable: true },
-  },
   play: async () => {
     await expect(document.documentElement.classList.contains("dark")).toBe(true);
   },
@@ -193,7 +189,7 @@ questions:
 
 export const WithImage = {
   parameters: {
-    // New story: no baseline image yet, and the image viewer portals out of the screenshotted root.
+    // The image viewer portals out of the screenshotted root.
     visual: { disable: true },
   },
   render: () => {

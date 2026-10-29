@@ -252,10 +252,6 @@ export const WithActiveSessionPane: Story = {
 
 /** Six sessions in a 1280px window: the tabs share the row and shrink, none runs off its end. */
 export const ManyAgentSessions: Story = {
-  parameters: {
-    // New story: no baseline image yet.
-    visual: { disable: true },
-  },
   render: () => <InteractiveShellDemo initialActiveSession={0} initialTabs={manyTabs} />,
 };
 
@@ -269,18 +265,10 @@ const twentyFourTabs: ShellTabDto[] = Array.from({ length: 24 }, (_, index) => (
  * trackpad, keyboard focus), with the new-session button staying at its end.
  */
 export const TwentyFourAgentSessions: Story = {
-  parameters: {
-    // New story: no baseline image yet.
-    visual: { disable: true },
-  },
   render: () => <InteractiveShellDemo initialActiveSession={0} initialTabs={twentyFourTabs} />,
 };
 
 /** One session: closing it from the keyboard leaves the new-session button holding focus. */
 export const SingleAgentSession: Story = {
-  parameters: {
-    // New story: no baseline image yet.
-    visual: { disable: true },
-  },
   render: () => <InteractiveShellDemo initialActiveSession={0} initialTabs={[sampleTabs[0]]} />,
 };

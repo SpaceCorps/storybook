@@ -27,8 +27,6 @@ const meta: Meta = {
   title: "Patterns/Auth forms",
   parameters: {
     layout: "centered",
-    // New stories: no baseline images yet (they can only be rendered in the Linux container).
-    visual: { disable: true },
   },
 };
 

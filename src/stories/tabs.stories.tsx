@@ -16,8 +16,6 @@ const expectDark = async () => {
   await expect(document.documentElement.classList.contains("dark")).toBe(true);
 };
 
-const NO_BASELINE = { visual: { disable: true } } as const;
-
 export const Default: StoryObj<typeof Tabs> = {
   // The list is a grid here, so its tabs fill it edge to edge: the same gutters as an inline list.
   play: async ({ canvasElement }) => {
@@ -44,8 +42,6 @@ export const Default: StoryObj<typeof Tabs> = {
 export const DefaultDark: StoryObj<typeof Tabs> = {
   ...Default,
   globals: { theme: "dark" },
-  // No baseline yet: dark has none, and the container that renders them is Linux.
-  parameters: NO_BASELINE,
   play: async (context) => {
     await expectDark();
     await Default.play?.(context);
@@ -148,8 +144,6 @@ const InlineTabs = () => (
 
 /** The list as it sits on a page: as wide as its tabs, one of them disabled. */
 export const Inline: StoryObj<typeof Tabs> = {
-  // No baseline yet.
-  parameters: NO_BASELINE,
   play: async ({ canvasElement }) => {
     await expectEvenGutters(canvasElement);
     await expectFits(canvasElement);
@@ -160,8 +154,6 @@ export const Inline: StoryObj<typeof Tabs> = {
 
 export const InlineDark: StoryObj<typeof Tabs> = {
   globals: { theme: "dark" },
-  // No baseline yet.
-  parameters: NO_BASELINE,
   play: async ({ canvasElement }) => {
     await expectDark();
     await expectEvenGutters(canvasElement);
@@ -200,8 +192,6 @@ const InCardTabs = () => (
 
 /** On a card, where the list's surface is the card's: only its outline and the selected tab set it apart. */
 export const InCard: StoryObj<typeof Tabs> = {
-  // No baseline yet.
-  parameters: NO_BASELINE,
   play: async ({ canvasElement }) => {
     await expectEvenGutters(canvasElement);
     await expectFadeFollowsOverflow(canvasElement);
@@ -211,8 +201,6 @@ export const InCard: StoryObj<typeof Tabs> = {
 
 export const InCardDark: StoryObj<typeof Tabs> = {
   globals: { theme: "dark" },
-  // No baseline yet.
-  parameters: NO_BASELINE,
   play: async ({ canvasElement }) => {
     await expectDark();
     await expectEvenGutters(canvasElement);
@@ -286,16 +274,12 @@ const verticalPlay: NonNullable<StoryObj<typeof Tabs>["play"]> = async ({ canvas
 
 /** Orientation vertical: the tabs stack, and the list does not scroll or fade. */
 export const Vertical: StoryObj<typeof Tabs> = {
-  // No baseline yet.
-  parameters: NO_BASELINE,
   play: verticalPlay,
   render: () => <VerticalTabs />,
 };
 
 export const VerticalDark: StoryObj<typeof Tabs> = {
   globals: { theme: "dark" },
-  // No baseline yet.
-  parameters: NO_BASELINE,
   play: async (context) => {
     await expectDark();
     await verticalPlay(context);
@@ -456,16 +440,12 @@ const overflowingPlay: NonNullable<StoryObj<typeof Tabs>["play"]> = async ({ can
  * that has more. Touch or trackpad scroll it, or Tab to a tab and use the arrow keys.
  */
 export const Overflowing: StoryObj<typeof Tabs> = {
-  // No baseline yet.
-  parameters: NO_BASELINE,
   play: overflowingPlay,
   render: () => <OverflowingTabs />,
 };
 
 export const OverflowingDark: StoryObj<typeof Tabs> = {
   globals: { theme: "dark" },
-  // No baseline yet.
-  parameters: NO_BASELINE,
   play: async (context) => {
     await expectDark();
     await overflowingPlay(context);
@@ -504,16 +484,12 @@ const overflowingInCardPlay: NonNullable<StoryObj<typeof Tabs>["play"]> = async 
 
 /** On a card, whose padding is part of what the list must fit inside. */
 export const OverflowingInCard: StoryObj<typeof Tabs> = {
-  // No baseline yet.
-  parameters: NO_BASELINE,
   play: overflowingInCardPlay,
   render: () => <OverflowingInCardTabs />,
 };
 
 export const OverflowingInCardDark: StoryObj<typeof Tabs> = {
   globals: { theme: "dark" },
-  // No baseline yet.
-  parameters: NO_BASELINE,
   play: async (context) => {
     await expectDark();
     await overflowingInCardPlay(context);
@@ -535,16 +511,12 @@ const activeOffscreenPlay: NonNullable<StoryObj<typeof Tabs>["play"]> = async ({
 
 /** The selected tab is the last of twelve: it is already in view when the page first shows. */
 export const ActiveOffscreen: StoryObj<typeof Tabs> = {
-  // No baseline yet.
-  parameters: NO_BASELINE,
   play: activeOffscreenPlay,
   render: () => <OverflowingTabs defaultValue="settings" />,
 };
 
 export const ActiveOffscreenDark: StoryObj<typeof Tabs> = {
   globals: { theme: "dark" },
-  // No baseline yet.
-  parameters: NO_BASELINE,
   play: async (context) => {
     await expectDark();
     await activeOffscreenPlay(context);
@@ -554,8 +526,6 @@ export const ActiveOffscreenDark: StoryObj<typeof Tabs> = {
 
 /** The same list read right to left: the tabs start at the right edge and "Settings" is the far left one. */
 export const ActiveOffscreenRtl: StoryObj<typeof Tabs> = {
-  // No baseline yet.
-  parameters: NO_BASELINE,
   play: async ({ canvasElement }) => {
     const list = within(canvasElement).getByRole("tablist");
     const active = within(list).getByRole("tab", { selected: true });
@@ -603,8 +573,8 @@ const ValueFromOutsideTabs = ({
 
 /** The value is changed by the page, not by a click on a tab: the list follows it, in both directions. */
 export const ValueChangedFromOutside: StoryObj<typeof Tabs> = {
-  // An interaction story: the list looks the same as in Overflowing, which has no baseline yet either.
-  parameters: NO_BASELINE,
+  // An interaction story: the list looks the same as in Overflowing, which has the baseline.
+  parameters: { visual: { disable: true } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const list = canvas.getByRole("tablist");
@@ -666,8 +636,6 @@ const ResizableTabs = () => {
  * so at once. The browser's own re-snap would not: the offset it had is still a snap point.
  */
 export const FollowsResize: StoryObj<typeof Tabs> = {
-  // No baseline yet.
-  parameters: NO_BASELINE,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const list = canvas.getByRole("tablist");
@@ -702,8 +670,6 @@ export const FollowsResize: StoryObj<typeof Tabs> = {
  * trusted them put the tab in the wrong place by the amount of the scale.
  */
 export const ScaledAncestor: StoryObj<typeof Tabs> = {
-  // No baseline yet.
-  parameters: NO_BASELINE,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const list = canvas.getByRole("tablist");
@@ -750,8 +716,6 @@ const LoadedLaterTabs = () => {
  * the rest arrive the tab in use is among them, and the list shows it.
  */
 export const LoadedLater: StoryObj<typeof Tabs> = {
-  // No baseline yet.
-  parameters: NO_BASELINE,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const list = canvas.getByRole("tablist");

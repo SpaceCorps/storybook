@@ -144,10 +144,6 @@ function ReportsField() {
 
 const meta: Meta = {
   title: "Foundation/Borders and Surfaces",
-  parameters: {
-    // No baseline yet: the figures are measured live, and the Dark story needs the dark baseline path.
-    visual: { disable: true },
-  },
 };
 
 export default meta;
@@ -501,6 +497,8 @@ async function expectJoinsHost(hostSelector: string) {
 
 const tableHostStory = (render: () => React.ReactElement, hostSelector: string): StoryObj => ({
   globals: { theme: "dark" },
+  // The host opens in a portal outside #storybook-root, which is all the screenshot captures.
+  parameters: { visual: { disable: true } },
   render,
   play: async () => {
     await expectJoinsHost(hostSelector);
@@ -514,6 +512,8 @@ const tableHostStory = (render: () => React.ReactElement, hostSelector: string):
  */
 export const DarkTablesInDialog: StoryObj = {
   globals: { theme: "dark" },
+  // The dialog opens in a portal outside #storybook-root, which is all the screenshot captures.
+  parameters: { visual: { disable: true } },
   render: () => (
     <Dialog defaultOpen>
       <DialogContent>

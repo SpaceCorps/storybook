@@ -533,9 +533,6 @@ async function expectTableFitsCard(canvasElement: HTMLElement) {
 
 const timeCardArgs: TimeCardArgs = { width: "56rem", selectable: false, flush: true };
 
-// Seeded dates, and visual baselines are produced in a Linux container, so these stories have none yet.
-const noVisualBaseline = { visual: { disable: true } };
-
 const timeCardStory = {
   args: timeCardArgs,
   argTypes: { width: { control: "text" } },
@@ -548,7 +545,6 @@ const timeCardStory = {
  */
 export const InsideCard: StoryObj<TimeCardArgs> = {
   ...timeCardStory,
-  parameters: noVisualBaseline,
   play: async ({ canvasElement }) => expectTableFitsCard(canvasElement),
 };
 
@@ -556,7 +552,6 @@ export const InsideCard: StoryObj<TimeCardArgs> = {
 export const InsideCardNarrow: StoryObj<TimeCardArgs> = {
   ...timeCardStory,
   args: { ...timeCardArgs, width: "22rem", selectable: true },
-  parameters: noVisualBaseline,
   play: async ({ canvasElement }) => expectTableFitsCard(canvasElement),
 };
 
@@ -564,7 +559,6 @@ export const InsideCardNarrow: StoryObj<TimeCardArgs> = {
 export const InsideCardPadded: StoryObj<TimeCardArgs> = {
   ...timeCardStory,
   args: { ...timeCardArgs, flush: false },
-  parameters: noVisualBaseline,
 };
 
 /** Pins the dark tokens on a subtree, whatever the toolbar theme is. */
@@ -574,7 +568,6 @@ function Dark({ children }: { children: React.ReactNode }) {
 
 export const InsideCardDark: StoryObj<TimeCardArgs> = {
   ...timeCardStory,
-  parameters: noVisualBaseline,
   render: (args) => (
     <Dark>
       <TimeEntriesCard {...args} />
@@ -586,7 +579,6 @@ export const InsideCardDark: StoryObj<TimeCardArgs> = {
 export const InsideCardNarrowDark: StoryObj<TimeCardArgs> = {
   ...timeCardStory,
   args: { ...timeCardArgs, width: "22rem", selectable: true },
-  parameters: noVisualBaseline,
   render: (args) => (
     <Dark>
       <TimeEntriesCard {...args} />
@@ -600,7 +592,6 @@ export const InsideCardNarrowDark: StoryObj<TimeCardArgs> = {
  * card instead of stretching it and squeezing its neighbour.
  */
 export const InsideCardFlexRow: StoryObj = {
-  parameters: noVisualBaseline,
   render: () => (
     <div className="flex w-[56rem] max-w-full gap-4" data-testid="row">
       <Card className="flex-1">
@@ -635,7 +626,6 @@ export const InsideCardFlexRow: StoryObj = {
 
 /** No card around it: the default `bordered` variant draws its own box. */
 export const Bordered: StoryObj = {
-  parameters: noVisualBaseline,
   render: () => (
     <div className="w-[56rem] max-w-full">
       <TimeEntriesTable />
@@ -645,7 +635,6 @@ export const Bordered: StoryObj = {
 
 /** `variant="embedded"` for a host that already has a frame; here a dashed one stands in for it. */
 export const Embedded: StoryObj = {
-  parameters: noVisualBaseline,
   render: () => (
     <div className="w-[56rem] max-w-full rounded-box border border-dashed border-border p-3">
       <DataTable
@@ -686,7 +675,6 @@ const ClickableRows = () => {
  * Enter or Space. Buttons, links and the checkbox inside a row never trigger it.
  */
 export const RowClick: StoryObj = {
-  parameters: noVisualBaseline,
   render: () => <ClickableRows />,
   play: async ({ canvasElement }) => {
     const status = pick<HTMLElement>(canvasElement, "[data-testid='opened']");
@@ -825,7 +813,6 @@ const RemovableRowsDemo = () => {
  * and press Enter.
  */
 export const RemovableRows: StoryObj = {
-  parameters: noVisualBaseline,
   render: () => <RemovableRowsDemo />,
   play: async ({ canvasElement }) => {
     const ignore = Array.from(
@@ -1019,7 +1006,6 @@ async function expectFramesRespond(canvasElement: HTMLElement) {
  * sideways inside the story instead of being squeezed into showing different columns.
  */
 export const ResponsiveColumns: StoryObj = {
-  parameters: noVisualBaseline,
   render: () => <WidthShowcase columns={responsiveTimeColumns} />,
   play: async ({ canvasElement }) => expectFramesRespond(canvasElement),
 };
@@ -1031,7 +1017,6 @@ const assertDarkTheme = async () => {
 /** The same in the dark theme, a story-level global because Storybook ignores `parameters.globals`. */
 export const ResponsiveColumnsDark: StoryObj = {
   globals: { theme: "dark" },
-  parameters: noVisualBaseline,
   render: () => <WidthShowcase columns={responsiveTimeColumns} />,
   play: async ({ canvasElement }) => {
     await assertDarkTheme();
@@ -1044,7 +1029,6 @@ export const ResponsiveColumnsDark: StoryObj = {
  * until what is left fits, so the same ranking gives a different set at each width.
  */
 export const PriorityColumns: StoryObj = {
-  parameters: noVisualBaseline,
   render: () => <WidthShowcase columns={priorityTimeColumns} />,
   play: async ({ canvasElement }) => {
     await document.fonts.ready;
@@ -1147,14 +1131,14 @@ async function expectDetailOperable(canvasElement: HTMLElement) {
  * `aria-expanded`. Two rows are left open here.
  */
 export const HideBelowDetail: StoryObj = {
-  parameters: { ...noVisualBaseline, keyboard: { sweep: true, maxStops: 40 } },
+  parameters: { keyboard: { sweep: true, maxStops: 40 } },
   render: () => <DetailTable />,
   play: async ({ canvasElement }) => expectDetailOperable(canvasElement),
 };
 
 export const HideBelowDetailDark: StoryObj = {
   globals: { theme: "dark" },
-  parameters: { ...noVisualBaseline, keyboard: { sweep: true, maxStops: 40 } },
+  parameters: { keyboard: { sweep: true, maxStops: 40 } },
   render: () => <DetailTable />,
   play: async ({ canvasElement }) => {
     await assertDarkTheme();
@@ -1205,7 +1189,6 @@ function LiveResizeDemo() {
  * columns come and go.
  */
 export const ResizesLive: StoryObj = {
-  parameters: noVisualBaseline,
   render: () => <LiveResizeDemo />,
   play: async ({ canvasElement }) => {
     await document.fonts.ready;
@@ -1269,7 +1252,6 @@ export const ResizesLive: StoryObj = {
  * does not appear in any row's details.
  */
 export const ColumnOptionsAtNarrowWidth: StoryObj = {
-  parameters: noVisualBaseline,
   render: () => (
     <div className="w-[22rem] max-w-full">
       <DataTable
@@ -1338,7 +1320,6 @@ const virtualizedResponsiveColumns: DataTableColumn<Deployment>[] = virtualizedC
  * with it; the last of the 1,000 rows is still reachable.
  */
 export const HideBelowDetailVirtualized: StoryObj = {
-  parameters: noVisualBaseline,
   render: () => (
     <div className="w-[22rem] max-w-full">
       <DataTable
@@ -1379,7 +1360,6 @@ export const HideBelowDetailVirtualized: StoryObj = {
 
 /** The details button at each density: never smaller than the 24px WCAG 2.5.8 asks of a target. */
 export const HideBelowDetailDensities: StoryObj = {
-  parameters: noVisualBaseline,
   render: () => (
     <div className="flex flex-wrap items-start gap-6">
       {[Densities.Small, Densities.Medium, Densities.Large].map((density) => (
@@ -1570,7 +1550,6 @@ async function expectPinnedCellsClear(frame: HTMLElement) {
  * instead. At 330 the room is for Date alone.
  */
 export const PinnedColumnsFit: StoryObj = {
-  parameters: noVisualBaseline,
   render: () => (
     <div className="flex flex-col gap-8">
       <PinnedFrame label="Small phone" width={330} />
@@ -1690,7 +1669,6 @@ async function expectRowActionsCollapsed(canvasElement: HTMLElement, args: RowAc
  */
 export const RowActionsCollapsed: StoryObj<RowActionArgs> = {
   args: { onRowAction: fn() },
-  parameters: noVisualBaseline,
   render: (args) => <RowActionsCollapsedFrames {...args} />,
   play: async ({ canvasElement, args }) => expectRowActionsCollapsed(canvasElement, args),
 };
@@ -1698,7 +1676,6 @@ export const RowActionsCollapsed: StoryObj<RowActionArgs> = {
 export const RowActionsCollapsedDark: StoryObj<RowActionArgs> = {
   args: { onRowAction: fn() },
   globals: { theme: "dark" },
-  parameters: noVisualBaseline,
   render: (args) => <RowActionsCollapsedFrames {...args} />,
   play: async ({ canvasElement, args }) => {
     await assertDarkTheme();
@@ -1731,7 +1708,6 @@ const groupedRowActions: DataTableRowAction<TimeEntry>[] = [
  */
 export const RowActionsCollapsedGroups: StoryObj<RowActionArgs> = {
   args: { onRowAction: fn() },
-  parameters: noVisualBaseline,
   render: (args) => (
     <div className="flex flex-col gap-8">
       <PinnedFrame
@@ -1803,7 +1779,6 @@ const textRowActions: DataTableRowAction<TimeEntry>[] = [
  * keeps still leave the labels room: the table does not scroll and nothing lies under them.
  */
 export const TextLabelledActions: StoryObj = {
-  parameters: noVisualBaseline,
   render: () => <PinnedFrame label="Phone" width={360} actions={textRowActions} />,
   play: async ({ canvasElement }) => {
     await document.fonts.ready;
@@ -1835,7 +1810,6 @@ export const TextLabelledActions: StoryObj = {
  * one menu button, and nothing is pushed into the neighbouring column.
  */
 export const WindowedRowActions: StoryObj = {
-  parameters: noVisualBaseline,
   render: () => (
     <div className="flex flex-col gap-8">
       <PinnedFrame label="Windowed" width={390} virtualized />
@@ -1871,7 +1845,6 @@ export const WindowedRowActions: StoryObj = {
  * Amount room by 2px (358 of 360px); Large's are wider and keep Date alone.
  */
 export const PinnedColumnsDensities: StoryObj = {
-  parameters: noVisualBaseline,
   render: () => (
     <div className="flex flex-col gap-8">
       <PinnedFrame label="Small density" width={360} density={Densities.Small} selectable />
@@ -2095,7 +2068,6 @@ async function playLongHeaders({ canvasElement }: { canvasElement: HTMLElement }
  *   counts it at that width: Amount, which declares 104px and needs about 150, is dropped at 390.
  */
 export const LongHeaders: StoryObj = {
-  parameters: noVisualBaseline,
   render: () => <LongHeaderFrames />,
   play: playLongHeaders,
 };
@@ -2103,7 +2075,6 @@ export const LongHeaders: StoryObj = {
 /** The same in the dark theme, where the truncated label and the sort icon have to stay readable. */
 export const LongHeadersDark: StoryObj = {
   globals: { theme: "dark" },
-  parameters: noVisualBaseline,
   render: () => <LongHeaderFrames />,
   play: async (context) => {
     await assertDarkTheme();

@@ -60,8 +60,6 @@ const invoiceColumns: DataTableColumn<Invoice>[] = [
  * frame. The table draws no box of its own; its first and last column keep the card's inset.
  */
 export const WithFlushTable: StoryObj<typeof Card> = {
-  // Visual baselines are produced in a Linux container, so this story has none yet.
-  parameters: { visual: { disable: true } },
   render: () => (
     <Card className="w-[36rem] max-w-full">
       <CardHeader>
@@ -86,7 +84,6 @@ export const WithFlushTable: StoryObj<typeof Card> = {
  * keeps room above its controls, so their focus rings are not clipped by the content.
  */
 export const FlushTableWithoutHeader: StoryObj<typeof Card> = {
-  parameters: { visual: { disable: true } },
   render: () => (
     <Card className="w-[36rem] max-w-full">
       <CardContent flush>
