@@ -9,7 +9,6 @@ RUN corepack prepare pnpm@11.25.0 --activate \
  && pnpm run build-storybook
 
 FROM nginx:1-alpine
-RUN apk add --no-cache openssl
 COPY --from=build /src/storybook-static /usr/share/nginx/html
 # nginx runs every /docker-entrypoint.d/*.sh before it starts; this one writes the server config.
 COPY deploy/40-storybook-config.sh /docker-entrypoint.d/40-storybook-config.sh
