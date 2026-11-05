@@ -12,9 +12,8 @@
 
 The static Storybook is built from the `main` branch and served by a small nginx container on the
 SpaceCorps Sliplane server (see `Dockerfile` and `deploy/`). Work lands on `development`; merging to
-`main` releases, and Sliplane rebuilds on every push to `main`. The site is behind HTTP basic auth
-(`STORYBOOK_USER`, `STORYBOOK_PASSWORD` secret env vars); the container refuses to start without a
-password unless `STORYBOOK_PUBLIC=1`. This replaces the GitHub Pages workflow, which cannot publish
+`main` releases, and Sliplane rebuilds on every push to `main`. The site has no login (the
+`STORYBOOK_*` env vars are no longer used). This replaces the GitHub Pages workflow, which cannot publish
 from a private repo on the free plan.
 
 ## Architecture & Subpath Exports
