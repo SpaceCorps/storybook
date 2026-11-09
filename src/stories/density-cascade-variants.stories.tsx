@@ -204,14 +204,23 @@ export const CalendarOnly: Story = {
       <div>
         <p className="text-sm mb-2">Small Density</p>
         <DensityProvider density={Densities.Small}>
-          <Calendar mode="single" aria-label="Small density calendar" />
+          {/* A past month, so the screenshot does not change with the day it is taken. */}
+          <Calendar
+            mode="single"
+            defaultMonth={new Date(2026, 9, 1)}
+            aria-label="Small density calendar"
+          />
         </DensityProvider>
       </div>
 
       <div>
         <p className="text-sm mb-2">Large Density</p>
         <DensityProvider density={Densities.Large}>
-          <Calendar mode="single" aria-label="Large density calendar" />
+          <Calendar
+            mode="single"
+            defaultMonth={new Date(2026, 9, 1)}
+            aria-label="Large density calendar"
+          />
         </DensityProvider>
       </div>
     </div>

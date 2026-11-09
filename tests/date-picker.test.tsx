@@ -248,24 +248,32 @@ describe("DateRangePicker", () => {
   });
 
   it("picks a range in the calendar: first click starts, second ends, a third starts over", async () => {
-    const user = userEvent.setup();
-    render(<Harness initial={{ from: "", to: "" }} />);
+    // With no range yet the calendar opens on the current month, which these dates are not in
+    // once October is over. Only Date is faked, so userEvent's timers keep running.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 9, 23));
+    try {
+      const user = userEvent.setup();
+      render(<Harness initial={{ from: "", to: "" }} />);
 
-    await user.click(screen.getByRole("button", { name: "Choose date range" }));
-    const grid = () => within(screen.getAllByRole("grid")[0]);
+      await user.click(screen.getByRole("button", { name: "Choose date range" }));
+      const grid = () => within(screen.getAllByRole("grid")[0]);
 
-    await user.click(grid().getByRole("button", { name: /October 20th, 2026/ }));
-    expect(readRange()).toEqual({ from: "2026-10-20", to: "" });
-    expect(screen.getAllByRole("grid")).toHaveLength(2);
+      await user.click(grid().getByRole("button", { name: /October 20th, 2026/ }));
+      expect(readRange()).toEqual({ from: "2026-10-20", to: "" });
+      expect(screen.getAllByRole("grid")).toHaveLength(2);
 
-    // Ending before the start swaps the two.
-    await user.click(grid().getByRole("button", { name: /October 12th, 2026/ }));
-    expect(readRange()).toEqual({ from: "2026-10-12", to: "2026-10-20" });
-    expect(screen.queryByRole("grid")).toBeNull();
+      // Ending before the start swaps the two.
+      await user.click(grid().getByRole("button", { name: /October 12th, 2026/ }));
+      expect(readRange()).toEqual({ from: "2026-10-12", to: "2026-10-20" });
+      expect(screen.queryByRole("grid")).toBeNull();
 
-    await user.click(screen.getByRole("button", { name: "Choose date range" }));
-    await user.click(grid().getByRole("button", { name: /October 14th, 2026/ }));
-    expect(readRange()).toEqual({ from: "2026-10-14", to: "" });
+      await user.click(screen.getByRole("button", { name: "Choose date range" }));
+      await user.click(grid().getByRole("button", { name: /October 14th, 2026/ }));
+      expect(readRange()).toEqual({ from: "2026-10-14", to: "" });
+    } finally {
+      vi.useRealTimers();
+    }
   }, 20_000);
 });
 
