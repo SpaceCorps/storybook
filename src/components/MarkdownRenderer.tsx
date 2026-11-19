@@ -9,7 +9,7 @@ import rehypeSanitize from "rehype-sanitize";
 import type { Options as SanitizeSchema } from "rehype-sanitize";
 import rehypeSlug from "rehype-slug";
 import "katex/dist/katex.min.css";
-import { cn, getIvyHost, convertAppUrlToPath, isLocalFilesEnabled } from "@/lib/utils";
+import { cn, getHostOrigin, convertAppUrlToPath, isLocalFilesEnabled } from "@/lib/utils";
 import {
   validateLinkUrl,
   validateMediaUrl,
@@ -248,15 +248,15 @@ const MarkdownImage: React.FC<MarkdownImageProps> = memo(
     }
 
     // Construct the final image source URL
-    // For file:// URLs, use them directly (no Ivy host prefix)
+    // For file:// URLs, use them directly (no host prefix)
     const imageSrc = validatedSrc.match(/^(https?:\/\/|data:|blob:|app:)/i)
       ? validatedSrc
       : (() => {
           const normalizedSrc = validatedSrc.startsWith("/") ? validatedSrc : `/${validatedSrc}`;
-          const prefixedSrc = normalizedSrc.startsWith("/ivy/")
+          const prefixedSrc = normalizedSrc.startsWith("/host/")
             ? normalizedSrc
-            : `/ivy${normalizedSrc}`;
-          return `${getIvyHost()}${prefixedSrc}`;
+            : `/host${normalizedSrc}`;
+          return `${getHostOrigin()}${prefixedSrc}`;
         })();
 
     // A real button, so Enter and Space both open it and it has a name even when the markdown gave
@@ -754,7 +754,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
         }
         // For images (src), use local-file proxy
         if (isLocalFilesEnabled()) {
-          // Server supports local file proxy - use /ivy/local-file endpoint
+          // Server supports local file proxy - use /host/local-file endpoint
           let filePath: string;
           if (url.startsWith("file:///")) {
             filePath = decodeURIComponent(url.slice(8));
@@ -763,7 +763,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
           } else {
             filePath = url.replace(/\\/g, "/");
           }
-          return `/ivy/local-file?path=${encodeURIComponent(filePath)}`;
+          return `/host/local-file?path=${encodeURIComponent(filePath)}`;
         }
         // Fallback: pass file:// URL through (browser will likely block it)
         if (/^[a-zA-Z]:[\\/]/.test(url)) {

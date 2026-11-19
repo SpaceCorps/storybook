@@ -131,7 +131,7 @@
     postMessage({
       __proxy: true,
       type: "capture-error",
-      message: "Screenshot capture requires the Tendril proxy.",
+      message: "Screenshot capture requires the SpaceCorps proxy.",
     });
   }
 

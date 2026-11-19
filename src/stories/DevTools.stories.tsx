@@ -19,8 +19,8 @@ export const Default: Story = {
       </p>
       <div
         id="sample-widget"
-        data-ivy-widget-id="sample-1"
-        data-ivy-widget-type="Ivy.TextBlock"
+        data-sc-widget-id="sample-1"
+        data-sc-widget-type="Host.TextBlock"
         className="p-4 border rounded mt-4"
       >
         Sample Widget Target

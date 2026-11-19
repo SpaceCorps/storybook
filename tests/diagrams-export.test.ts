@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import * as UI from "../src/index";
 import * as Diagrams from "../src/diagrams";
 import * as Renderers from "../src/renderers";
-import * as Tendril from "../src/tendril";
+import * as SpaceCorps from "../src/workbench";
 
 describe("diagrams export", () => {
   it("should export GraphvizRenderer and MermaidRenderer from diagrams entrypoint", () => {
@@ -27,18 +27,18 @@ describe("diagrams export", () => {
     expect(Renderers.HtmlRenderer).toBeDefined();
   });
 
-  it("should NOT export GraphvizRenderer or MermaidRenderer from tendril entrypoint", () => {
-    expect("GraphvizRenderer" in Tendril).toBe(false);
-    expect("MermaidRenderer" in Tendril).toBe(false);
+  it("should NOT export GraphvizRenderer or MermaidRenderer from workbench entrypoint", () => {
+    expect("GraphvizRenderer" in SpaceCorps).toBe(false);
+    expect("MermaidRenderer" in SpaceCorps).toBe(false);
   });
 
-  it("should keep PlanMarkdown on the main entrypoint and its sub-components on ./tendril", () => {
+  it("should keep PlanMarkdown on the main entrypoint and its sub-components on ./workbench", () => {
     expect(UI.PlanMarkdown).toBeDefined();
-    expect(Tendril.DraftMarkdown).toBeDefined();
-    expect(Tendril.BlockHandler).toBeDefined();
-    expect(Tendril.CodeBlock).toBeDefined();
-    expect(Tendril.ImageRenderer).toBeDefined();
-    expect(Tendril.AlertBlockquote).toBeDefined();
-    expect(Tendril.QuestionsCallout).toBeDefined();
+    expect(SpaceCorps.DraftMarkdown).toBeDefined();
+    expect(SpaceCorps.BlockHandler).toBeDefined();
+    expect(SpaceCorps.CodeBlock).toBeDefined();
+    expect(SpaceCorps.ImageRenderer).toBeDefined();
+    expect(SpaceCorps.AlertBlockquote).toBeDefined();
+    expect(SpaceCorps.QuestionsCallout).toBeDefined();
   });
 });

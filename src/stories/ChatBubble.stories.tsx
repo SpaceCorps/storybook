@@ -21,7 +21,7 @@ export const Conversation: Story = {
     <div className="flex flex-col gap-4 max-w-xl p-4">
       <ChatBubble variant="sent">
         <ChatBubbleMessage variant="sent">
-          Can you review the component porting plan for Ivy Framework?
+          Can you review the component porting plan for Host Framework?
         </ChatBubbleMessage>
       </ChatBubble>
 

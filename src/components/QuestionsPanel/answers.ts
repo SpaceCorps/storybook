@@ -50,7 +50,7 @@ const truncateTitle = (title: string): string =>
 
 /**
  * The footer note explaining why Submit is disabled or what a partial submit leaves to the agent.
- * Shared by `ChatQuestionsBlock` and `TendrilQuestions` so both surfaces read identically.
+ * Shared by `ChatQuestionsBlock` and `QuestionsPanel` so both surfaces read identically.
  */
 export function submitNote(questions: PlanQuestion[], answers: AnswerMap): string | undefined {
   const hasAnyAnswers = questions.some(

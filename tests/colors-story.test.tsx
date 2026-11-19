@@ -154,7 +154,7 @@ describe("the page the stories are measured against", () => {
     const failing = (mode: "light" | "dark") =>
       NAMES.filter((name) => !pairings[mode][name].passes);
 
-    expect(failing("light")).toEqual(["ivy-green", "white"]);
+    expect(failing("light")).toEqual(["sc-green", "white"]);
     expect(failing("dark")).toEqual(["black"]);
   });
 });

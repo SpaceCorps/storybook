@@ -360,7 +360,7 @@
 }
 
 /* ---- comment overlay ----
-   Styled to match the annotation popover in DraftMarkdown (.pmv-popover): the same Ivy
+   Styled to match the annotation popover in DraftMarkdown (.pmv-popover): the same Host
    theme tokens, radii, type scale and ghost/primary buttons, so the two widgets read as
    one product. Using the tokens rather than fixed colours is also what makes this legible
    in dark mode: the previous hard-coded greys were light-only. */
@@ -471,7 +471,7 @@
   tab-size: 2;
 }
 
-/* --accent and --muted carry the same value in Ivy's theme, so swapping the background
+/* --accent and --muted carry the same value in Host's theme, so swapping the background
    alone leaves the marked line invisible. Lift it onto --background instead and rule it
    with --primary; both invert with the theme, so it stays legible in dark mode. An inset
    shadow rather than a border keeps the text from shifting a pixel. */

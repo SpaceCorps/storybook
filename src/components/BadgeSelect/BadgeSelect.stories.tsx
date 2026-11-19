@@ -8,7 +8,7 @@ export default {
 };
 
 const mockProjects: BadgeSelectOption[] = [
-  { value: "tendril", label: "Tendril Core", icon: "Folder" },
+  { value: "workbench", label: "SpaceCorps Core", icon: "Folder" },
   { value: "@spacecorps/components", label: "Components Storybook", icon: "Folder" },
   { value: "example-docs", label: "Example Docs", icon: "Folder" },
   { value: "lots-of-dev-tools", label: "Lots of Dev Tools", icon: "WandSparkles" },
@@ -61,7 +61,7 @@ export const SingleSelectWithPreselected = () => {
 
 export const MultiSelectWithPreselected = () => {
   const [val, setVal] = useState<string[]>([
-    "tendril",
+    "workbench",
     "@spacecorps/components",
     "example-docs",
     "lots-of-dev-tools",

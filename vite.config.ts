@@ -16,7 +16,7 @@ export default defineConfig({
       "src/index.ts",
       "src/ui.ts",
       "src/renderers.ts",
-      "src/tendril.ts",
+      "src/workbench.ts",
       "src/diagrams.ts",
       "src/charts.ts",
       "src/theme.ts",

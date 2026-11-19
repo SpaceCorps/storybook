@@ -38,7 +38,7 @@ export interface DataTableColumn<TRow> {
   /**
    * CSS width for the <th>, e.g. "110px" or "auto". It is a preferred width: a column whose text
    * cannot truncate is never narrower than its content. Truncating cells are capped at
-   * `--ivy-data-table-truncate-width` (20rem by default), settable on the table's `className`.
+   * `--sc-data-table-truncate-width` (20rem by default), settable on the table's `className`.
    */
   width?: string;
   /** Defaults to false. Hidden columns are absent from the DOM. */

@@ -16,7 +16,7 @@ export function normalizeInputDensity(density?: Densities | string | null): Inpu
 }
 
 /**
- * Ivy.Button in affix: outer cell owns spacing (`px-3` or tighter for icon-only).
+ * Host.Button in affix: outer cell owns spacing (`px-3` or tighter for icon-only).
  * Text buttons: `rounded-sm` + `px-2` so the button chrome sits inset from the
  * field's rounded corner instead of clipping square against it. Icon-only
  * (`icon-sm` / `icon`): shrink hit box — the `size-7`/`size-9` target is larger
@@ -25,7 +25,7 @@ export function normalizeInputDensity(density?: Densities | string | null): Inpu
 export const affixEmbeddedButtonClasses =
   "[&_button:not([data-invalid-icon])]:!px-2 [&_button:not([data-invalid-icon])]:shadow-none [&_button:not([data-invalid-icon])]:rounded-sm [&_button:not([data-invalid-icon])]:hover:bg-accent [&_button:not([data-invalid-icon])]:cursor-pointer [&_button:not([data-invalid-icon])]:transition-colors [&_button:not([data-invalid-icon]).size-7]:!size-4 [&_button:not([data-invalid-icon]).size-9]:!size-6";
 
-/** Tighter affix cell padding when the slot only contains an icon-sized Ivy button (not trailing invalid). */
+/** Tighter affix cell padding when the slot only contains an icon-sized Host button (not trailing invalid). */
 export const affixIconOnlyCellPaddingClasses =
   "has-[button.size-7:not([data-invalid-icon])]:px-1.5 has-[button.size-9:not([data-invalid-icon])]:px-2";
 
@@ -44,7 +44,7 @@ export const textInputAffixIconGlyphCellVariant = cva("[&:not(:has(button))]:jus
 });
 
 /**
- * Affix / suffix slot icons (Ivy.Icon) — match trailing invalid icon size per density.
+ * Affix / suffix slot icons (Host.Icon) — match trailing invalid icon size per density.
  * !important overrides Lucide width/height attributes (default 24px).
  */
 export const textInputAffixIconGlyphSizeVariant = cva(
@@ -110,14 +110,14 @@ export function textInputAffixCellClasses(
   );
 }
 
-function unwrapIvyWidget(node: React.ReactNode): React.ReactElement | null {
+function unwrapHostWidget(node: React.ReactNode): React.ReactElement | null {
   if (!React.isValidElement(node)) return null;
-  if (node.type === "ivy-widget") return node;
+  if (node.type === "sc-widget") return node;
   if (node.type === React.Suspense) {
     for (const child of React.Children.toArray(
       (node.props as { children?: React.ReactNode }).children,
     )) {
-      const unwrapped = unwrapIvyWidget(child);
+      const unwrapped = unwrapHostWidget(child);
       if (unwrapped) return unwrapped;
     }
     return null;
@@ -125,14 +125,14 @@ function unwrapIvyWidget(node: React.ReactNode): React.ReactElement | null {
   for (const child of React.Children.toArray(
     (node.props as { children?: React.ReactNode }).children,
   )) {
-    const unwrapped = unwrapIvyWidget(child);
+    const unwrapped = unwrapHostWidget(child);
     if (unwrapped) return unwrapped;
   }
   return null;
 }
 
-function getWidgetPropsFromIvyElement(ivyWidget: React.ReactElement): Record<string, unknown> {
-  const child = (ivyWidget.props as { children?: React.ReactNode }).children;
+function getWidgetPropsFromHostElement(hostWidget: React.ReactElement): Record<string, unknown> {
+  const child = (hostWidget.props as { children?: React.ReactNode }).children;
   if (React.isValidElement(child)) {
     return (child.props as Record<string, unknown>) ?? {};
   }
@@ -140,13 +140,13 @@ function getWidgetPropsFromIvyElement(ivyWidget: React.ReactElement): Record<str
 }
 
 function isAffixIconOnlyNode(node: React.ReactNode): boolean {
-  const ivyWidget = unwrapIvyWidget(node);
-  if (!ivyWidget) return false;
-  const widgetType = (ivyWidget.props as { type?: string }).type;
+  const hostWidget = unwrapHostWidget(node);
+  if (!hostWidget) return false;
+  const widgetType = (hostWidget.props as { type?: string }).type;
   if (!widgetType) return false;
-  if (widgetType === "Ivy.Icon") return true;
-  if (widgetType === "Ivy.Button") {
-    const props = getWidgetPropsFromIvyElement(ivyWidget);
+  if (widgetType === "Host.Icon") return true;
+  if (widgetType === "Host.Button") {
+    const props = getWidgetPropsFromHostElement(hostWidget);
     const icon = props.icon as string | undefined;
     const title = props.title as string | undefined;
     return Boolean(icon && icon !== "None" && !title);

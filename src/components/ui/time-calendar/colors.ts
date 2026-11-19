@@ -2,7 +2,7 @@ import type { CalendarColor } from "./types";
 
 /** The palette an entry can wear: the named colour tokens without `black` and `white`. */
 export const CALENDAR_COLORS = [
-  "ivy-green",
+  "sc-green",
   "slate",
   "gray",
   "zinc",
@@ -28,7 +28,7 @@ export const CALENDAR_COLORS = [
 ] as const satisfies readonly CalendarColor[];
 
 /**
- * What `calendarColorForKey` picks from: twelve colours that stay apart at a glance. `ivy-green` is
+ * What `calendarColorForKey` picks from: twelve colours that stay apart at a glance. `sc-green` is
  * left out because its bar is only 2:1 against a white page, and the five greys because neighbouring
  * projects would be indistinguishable.
  */

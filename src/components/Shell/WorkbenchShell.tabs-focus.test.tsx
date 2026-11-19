@@ -4,7 +4,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom/vitest";
 
-import { TendrilShell } from "./TendrilShell.tsx";
+import { WorkbenchShell } from "./WorkbenchShell.tsx";
 import { ShellTabs } from "./ShellTabs.tsx";
 import type { ShellTabDto } from "./types.ts";
 
@@ -15,7 +15,7 @@ import type { ShellTabDto } from "./types.ts";
 function App({ seed }: { seed: ShellTabDto[] }) {
   const [tabs, setTabs] = useState(seed);
   return (
-    <TendrilShell
+    <WorkbenchShell
       id="shell"
       eventHandler={() => {}}
       hasTabs={tabs.length > 0}
@@ -41,7 +41,7 @@ function App({ seed }: { seed: ShellTabDto[] }) {
 const only: ShellTabDto[] = [{ id: "t1", title: "Plan Execution" }];
 const add = () => screen.getByRole("button", { name: "New agent session" });
 
-describe("TendrilShell closing the last session from the keyboard", () => {
+describe("WorkbenchShell closing the last session from the keyboard", () => {
   it("leaves focus on the new-session button instead of dropping it to the page", async () => {
     const user = userEvent.setup();
     render(<App seed={only} />);

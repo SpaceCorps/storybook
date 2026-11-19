@@ -1,5 +1,5 @@
-export { TendrilQuestions } from "./TendrilQuestions";
-export type { TendrilQuestionsProps } from "./TendrilQuestions";
+export { QuestionsPanel } from "./QuestionsPanel";
+export type { QuestionsPanelProps } from "./QuestionsPanel";
 export { QuestionsForm } from "./QuestionsForm";
 export type { QuestionsFormProps, QuestionsSubmitAction } from "./QuestionsForm";
 export { ChatQuestionsBlock } from "./ChatQuestionsBlock";

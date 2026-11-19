@@ -12,7 +12,7 @@ import { lazyWithRetry } from "@/lib/lazyWithRetry";
  * already imports `QuestionsCallout`). Same reasoning as `questionsContext.ts`.
  */
 
-/** `CodeBlock` is eagerly reachable from the `tendril` entrypoint, so a static import here puts
+/** `CodeBlock` is eagerly reachable from the `workbench` entrypoint, so a static import here puts
  * `react-syntax-highlighter` and its ~600 refractor language packs (617 kB) on the initial load. The
  * shape mirrors `markdown/MarkdownCodeBlock.tsx`, which already does this. */
 const SyntaxHighlighter = lazyWithRetry(() =>

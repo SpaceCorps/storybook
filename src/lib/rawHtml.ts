@@ -2,9 +2,9 @@ import { defaultSchema } from "rehype-sanitize";
 import type { Options as SanitizeSchema } from "rehype-sanitize";
 
 /**
- * Raw HTML support for Tendril markdown.
+ * Raw HTML support for SpaceCorps markdown.
  *
- * Tendril's own promptware instructs agents to emit GitHub-style
+ * SpaceCorps' own promptware instructs agents to emit GitHub-style
  * `<details>` / `<summary>` blocks (see `Promptwares/UpdatePlan/Program.md`,
  * which builds the `## Questions` section out of them), so plan markdown
  * routinely contains raw HTML. react-markdown drops raw HTML unless
@@ -28,7 +28,7 @@ export const hasRawHtml = (content: string): boolean => RAW_HTML_TAG.test(conten
 
 /**
  * hast-util-sanitize's GitHub-derived default schema, which already allows
- * `details`, `summary` and the `open` attribute, plus the Tendril-specific
+ * `details`, `summary` and the `open` attribute, plus the SpaceCorps-specific
  * adjustments below.
  */
 export const rawHtmlSchema: SanitizeSchema = {

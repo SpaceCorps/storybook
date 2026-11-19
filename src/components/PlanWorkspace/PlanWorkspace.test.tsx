@@ -482,7 +482,7 @@ describe("PlanWorkspace", () => {
       slots: {
         ProjectBadges: [
           <span key="1" data-testid="test-badge">
-            tendril
+            workbench
           </span>,
         ],
       },
@@ -490,7 +490,7 @@ describe("PlanWorkspace", () => {
 
     const badge = screen.getByTestId("test-badge");
     expect(badge).toBeInTheDocument();
-    expect(badge).toHaveTextContent("tendril");
+    expect(badge).toHaveTextContent("workbench");
 
     const badgesContainer = badge.closest(".pws-project-badges");
     expect(badgesContainer).toBeInTheDocument();

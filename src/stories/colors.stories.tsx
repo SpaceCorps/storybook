@@ -11,10 +11,10 @@ import tokensCss from "../styles/tokens.css?raw";
  */
 export const NAMED_COLORS = [
   {
-    name: "ivy-green",
-    bg: "bg-ivy-green",
-    fg: "text-ivy-green-foreground",
-    text: "text-ivy-green",
+    name: "sc-green",
+    bg: "bg-sc-green",
+    fg: "text-sc-green-foreground",
+    text: "text-sc-green",
   },
   { name: "slate", bg: "bg-slate", fg: "text-slate-foreground", text: "text-slate" },
   { name: "gray", bg: "bg-gray", fg: "text-gray-foreground", text: "text-gray" },

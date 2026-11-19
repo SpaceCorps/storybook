@@ -156,7 +156,7 @@ function TypographyShowcase() {
               Code / text-xs font-mono
             </span>
             <code className="text-xs font-mono bg-muted text-muted-foreground px-2 py-1 rounded-selector inline-block">
-              tendril job status 00398 --message="Verifying typography"
+              workbench job status 00398 --message="Verifying typography"
             </code>
           </div>
         </div>

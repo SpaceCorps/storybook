@@ -1,5 +1,5 @@
 export { PlanMarkdown, PlanMarkdown as DraftMarkdown } from "./PlanMarkdown";
-export type { PlanMarkdownProps, IvyEventHandler } from "./PlanMarkdown";
+export type { PlanMarkdownProps, HostEventHandler } from "./PlanMarkdown";
 export { AlertBlockquote } from "./AlertBlockquote";
 export {
   AnnotationPopover,

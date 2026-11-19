@@ -109,7 +109,7 @@ describe("PlanChangesView", () => {
       "README.md+1-1",
     ]);
 
-    const diffIds = [...document.querySelectorAll(".ivy-changes-diffs .ivy-diff-file")].map(
+    const diffIds = [...document.querySelectorAll(".sc-changes-diffs .sc-diff-file")].map(
       (el) => el.id,
     );
     expect(diffIds).toEqual([
@@ -123,7 +123,7 @@ describe("PlanChangesView", () => {
   it("does not wrap the tree in its own border box", () => {
     render(<PlanChangesView id="pcv" eventHandler={vi.fn()} files={files} />);
     const tree = screen.getByRole("tree", { name: "Changed files" });
-    expect(tree.parentElement).toHaveClass("ivy-changes-view");
+    expect(tree.parentElement).toHaveClass("sc-changes-view");
     expect(tree.className).not.toMatch(/border/);
   });
 
@@ -216,18 +216,18 @@ describe("PlanChangesView", () => {
   it("hides the tree when showTree is false but keeps the diffs", () => {
     render(<PlanChangesView id="pcv" eventHandler={vi.fn()} files={files} showTree={false} />);
     expect(screen.queryByRole("tree")).toBeNull();
-    expect(document.querySelectorAll(".ivy-changes-diffs .ivy-diff-file")).toHaveLength(4);
+    expect(document.querySelectorAll(".sc-changes-diffs .sc-diff-file")).toHaveLength(4);
   });
 
   it("draws folders with only a chevron and files with only the code icon", () => {
     render(<PlanChangesView id="pcv" eventHandler={vi.fn()} files={files} />);
     const folder = screen.getByRole("treeitem", { name: "src/App" });
     expect(folder.querySelectorAll("svg")).toHaveLength(1);
-    expect(folder.querySelector(".ivy-changes-tree-chevron")).not.toBeNull();
+    expect(folder.querySelector(".sc-changes-tree-chevron")).not.toBeNull();
     const file = screen.getByRole("treeitem", { name: /zeta\.cs/ });
     expect(file.querySelectorAll("svg")).toHaveLength(1);
-    expect(file.querySelector(".ivy-changes-tree-icon")).not.toBeNull();
-    expect(file.querySelector(".ivy-changes-tree-chevron")).toBeNull();
+    expect(file.querySelector(".sc-changes-tree-icon")).not.toBeNull();
+    expect(file.querySelector(".sc-changes-tree-chevron")).toBeNull();
   });
 
   it("shows an empty state without files", () => {

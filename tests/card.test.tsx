@@ -105,7 +105,7 @@ describe("CardContent", () => {
     const { container } = render(<CardContent>Body</CardContent>);
 
     expect(container.querySelector('[data-slot="card-content"]')!.className).toContain(
-      "[--ivy-data-table-surface:var(--card)]",
+      "[--sc-data-table-surface:var(--card)]",
     );
   });
 

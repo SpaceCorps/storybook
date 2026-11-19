@@ -8,17 +8,17 @@ import { describe, expect, it } from "vite-plus/test";
 
 // Import from built dist artifact to test consumer behavior
 import {
-  TendrilShell,
+  WorkbenchShell,
   PlanMarkdown,
   PlanDiffView,
   AgentViewer,
-  TendrilProcessViewer,
+  ProcessViewer,
   ContentInput,
   BadgeSelect,
   SortableVerificationList,
-  TendrilDashboard,
-  TendrilQuestions,
-} from "../dist/tendril.mjs";
+  AgentDashboard,
+  QuestionsPanel,
+} from "../dist/workbench.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -34,8 +34,8 @@ describe("Consumer Smoke Verification", () => {
     });
     expect(packOutput).toContain("@spacecorps/components");
     expect(packOutput).toContain("dist/style.css");
-    expect(packOutput).toContain("dist/tendril.mjs");
-    expect(packOutput).toContain("dist/tendril.d.mts");
+    expect(packOutput).toContain("dist/workbench.mjs");
+    expect(packOutput).toContain("dist/workbench.d.mts");
   }, 60_000);
 
   it("verifies all declared export map targets exist on disk", () => {
@@ -45,7 +45,7 @@ describe("Consumer Smoke Verification", () => {
     >;
 
     expect(exportsMap["."]).toBeDefined();
-    expect(exportsMap["./tendril"]).toBeDefined();
+    expect(exportsMap["./workbench"]).toBeDefined();
     expect(exportsMap["./ui"]).toBeDefined();
     expect(exportsMap["./renderers"]).toBeDefined();
     expect(exportsMap["./style.css"]).toBeDefined();
@@ -53,8 +53,8 @@ describe("Consumer Smoke Verification", () => {
     const expectedFiles = [
       "dist/index.mjs",
       "dist/index.d.mts",
-      "dist/tendril.mjs",
-      "dist/tendril.d.mts",
+      "dist/workbench.mjs",
+      "dist/workbench.d.mts",
       "dist/ui.mjs",
       "dist/ui.d.mts",
       "dist/renderers.mjs",
@@ -78,12 +78,12 @@ describe("Consumer Smoke Verification", () => {
     expect(cssContent).toContain("--font-mono");
   });
 
-  describe("Smoke renders Tendril widgets from built artifact", () => {
+  describe("Smoke renders SpaceCorps widgets from built artifact", () => {
     const noopHandler = () => {};
 
-    it("renders TendrilShell", () => {
+    it("renders WorkbenchShell", () => {
       const { container } = render(
-        React.createElement(TendrilShell, {
+        React.createElement(WorkbenchShell, {
           id: "smoke-shell",
           eventHandler: noopHandler,
           slots: {
@@ -126,9 +126,9 @@ describe("Consumer Smoke Verification", () => {
       expect(container.querySelector(".aov-root, [class*='aov-']")).not.toBeNull();
     });
 
-    it("renders TendrilProcessViewer", () => {
+    it("renders ProcessViewer", () => {
       const { container } = render(
-        React.createElement(TendrilProcessViewer, {
+        React.createElement(ProcessViewer, {
           id: "smoke-process",
           eventHandler: noopHandler,
         }),
@@ -165,9 +165,9 @@ describe("Consumer Smoke Verification", () => {
       expect(container.querySelector(".svl-container, [class*='svl-']")).not.toBeNull();
     });
 
-    it("renders TendrilDashboard", () => {
+    it("renders AgentDashboard", () => {
       const { container } = render(
-        React.createElement(TendrilDashboard, {
+        React.createElement(AgentDashboard, {
           id: "smoke-dashboard",
           eventHandler: noopHandler,
           greeting: "Hello SpaceCorps",
@@ -177,9 +177,9 @@ describe("Consumer Smoke Verification", () => {
       expect(container.textContent).toContain("Hello SpaceCorps");
     });
 
-    it("renders TendrilQuestions", () => {
+    it("renders QuestionsPanel", () => {
       const { container } = render(
-        React.createElement(TendrilQuestions, {
+        React.createElement(QuestionsPanel, {
           id: "smoke-questions",
           eventHandler: noopHandler,
           content: "- id: q1\n  title: Proceed?\n  options:\n    - title: Yes\n      value: yes",

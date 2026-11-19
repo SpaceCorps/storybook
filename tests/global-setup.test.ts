@@ -8,9 +8,9 @@ describe("Vitest global-setup", () => {
     expect(typeof setup).toBe("function");
   });
 
-  it("does not re-build if dist/tendril.mjs already exists", () => {
-    const distTendril = resolve(import.meta.dirname, "../dist/tendril.mjs");
-    expect(existsSync(distTendril)).toBe(true);
+  it("does not re-build if dist/workbench.mjs already exists", () => {
+    const distWorkbench = resolve(import.meta.dirname, "../dist/workbench.mjs");
+    expect(existsSync(distWorkbench)).toBe(true);
 
     // Running setup when dist exists should be a fast no-op
     expect(() => setup()).not.toThrow();

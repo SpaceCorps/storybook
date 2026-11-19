@@ -13,10 +13,10 @@ import { ShellSettingsButton } from "./ShellSettingsButton.tsx";
 import { ShellSidebarHeader } from "./ShellSidebarHeader.tsx";
 import { ShellSidebarSection } from "./ShellSidebarSection.tsx";
 import { ShellTabs } from "./ShellTabs.tsx";
-import { TendrilShell } from "./TendrilShell.tsx";
+import { WorkbenchShell } from "./WorkbenchShell.tsx";
 import type { ShellNavItemDto, ShellSectionItemDto, ShellTabDto } from "./types.ts";
 
-describe("TendrilShell", () => {
+describe("WorkbenchShell", () => {
   let container: HTMLDivElement;
   let root: Root;
 
@@ -37,7 +37,7 @@ describe("TendrilShell", () => {
     const handler = vi.fn();
     act(() => {
       root.render(
-        <TendrilShell
+        <WorkbenchShell
           id="test-shell"
           eventHandler={handler}
           hasTabs
@@ -63,13 +63,13 @@ describe("TendrilShell", () => {
     const handler = vi.fn();
     act(() => {
       root.render(
-        <TendrilShell
+        <WorkbenchShell
           id="test-shell"
           events={["OnCollapsedChanged"]}
           eventHandler={handler}
           slots={{
             SidebarHeader: (
-              <ShellSidebarHeader id="header" title="Tendril" eventHandler={handler} />
+              <ShellSidebarHeader id="header" title="SpaceCorps" eventHandler={handler} />
             ),
             Content: <div>Content</div>,
           }}
@@ -101,7 +101,7 @@ describe("TendrilShell", () => {
   it("switches to active session pane when activeSessionIndex is provided", () => {
     act(() => {
       root.render(
-        <TendrilShell
+        <WorkbenchShell
           id="test-shell"
           eventHandler={vi.fn()}
           activeSessionIndex={0}
@@ -130,7 +130,7 @@ describe("TendrilShell", () => {
     localStorage.clear();
     act(() => {
       root.render(
-        <TendrilShell
+        <WorkbenchShell
           id="test-shell"
           eventHandler={vi.fn()}
           slots={{
@@ -160,7 +160,7 @@ describe("TendrilShell", () => {
       );
     });
     expect(rootEl.style.getPropertyValue("--tsh-sidebar-width")).toBe("450px");
-    expect(localStorage.getItem("tendril.shell.sidebarWidth")).toBe("450");
+    expect(localStorage.getItem("workbench.shell.sidebarWidth")).toBe("450");
 
     // Clamp to MIN_SIDEBAR_WIDTH (200)
     act(() => {
@@ -169,7 +169,7 @@ describe("TendrilShell", () => {
       );
     });
     expect(rootEl.style.getPropertyValue("--tsh-sidebar-width")).toBe("200px");
-    expect(localStorage.getItem("tendril.shell.sidebarWidth")).toBe("200");
+    expect(localStorage.getItem("workbench.shell.sidebarWidth")).toBe("200");
 
     // Clamp to MAX_SIDEBAR_WIDTH (640)
     act(() => {
@@ -178,7 +178,7 @@ describe("TendrilShell", () => {
       );
     });
     expect(rootEl.style.getPropertyValue("--tsh-sidebar-width")).toBe("640px");
-    expect(localStorage.getItem("tendril.shell.sidebarWidth")).toBe("640");
+    expect(localStorage.getItem("workbench.shell.sidebarWidth")).toBe("640");
 
     // Pointer up
     act(() => {
@@ -190,13 +190,13 @@ describe("TendrilShell", () => {
       resizer.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
     });
     expect(rootEl.style.getPropertyValue("--tsh-sidebar-width")).toBe("320px");
-    expect(localStorage.getItem("tendril.shell.sidebarWidth")).toBe("320");
+    expect(localStorage.getItem("workbench.shell.sidebarWidth")).toBe("320");
   });
 
   it("makes the sidebar resizer keyboard-focusable", () => {
     act(() => {
       root.render(
-        <TendrilShell
+        <WorkbenchShell
           id="test-shell"
           eventHandler={vi.fn()}
           slots={{
@@ -217,10 +217,10 @@ describe("TendrilShell", () => {
   });
 
   it("restores stored sidebar width from localStorage on mount", () => {
-    localStorage.setItem("tendril.shell.sidebarWidth", "400");
+    localStorage.setItem("workbench.shell.sidebarWidth", "400");
     act(() => {
       root.render(
-        <TendrilShell
+        <WorkbenchShell
           id="test-shell"
           eventHandler={vi.fn()}
           slots={{

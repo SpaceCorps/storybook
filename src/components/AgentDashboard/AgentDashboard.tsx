@@ -10,7 +10,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import {
-  type TendrilDashboardProps,
+  type AgentDashboardProps,
   formatCountTick,
   formatCurrencyTick,
   hasSlotContent,
@@ -41,7 +41,7 @@ const formatCurrencyValue = (value: number): string =>
 const formatPlansValue = (value: number): string =>
   `${Math.round(value)} plan${Math.round(value) === 1 ? "" : "s"}`;
 
-export const TendrilDashboard: React.FC<TendrilDashboardProps> = ({
+export const AgentDashboard: React.FC<AgentDashboardProps> = ({
   id,
   events = [],
   eventHandler,

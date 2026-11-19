@@ -1566,8 +1566,8 @@ describe("calendarColorForKey", () => {
     expect([...seen].sort()).toEqual([...CALENDAR_PALETTE].sort());
   });
 
-  it("keeps the greys and ivy-green out of the automatic palette", () => {
-    for (const excluded of ["ivy-green", "slate", "gray", "zinc", "neutral", "stone"]) {
+  it("keeps the greys and sc-green out of the automatic palette", () => {
+    for (const excluded of ["sc-green", "slate", "gray", "zinc", "neutral", "stone"]) {
       expect(CALENDAR_PALETTE as readonly string[]).not.toContain(excluded);
     }
     expect(CALENDAR_PALETTE).toHaveLength(12);

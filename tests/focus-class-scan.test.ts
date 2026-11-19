@@ -379,11 +379,11 @@ interface CssAllowEntry {
 const CSS_ALLOWLIST: readonly CssAllowEntry[] = [
   {
     file: "src/components/devtools.css",
-    selector: ".ivy-devtools-input",
+    selector: ".sc-devtools-input",
     reason: "No focus rule at all: focusing the input changes nothing in any mode.",
   },
   {
-    file: "src/components/TendrilQuestions/tendril-questions.css",
+    file: "src/components/QuestionsPanel/questions-panel.css",
     selector: ".tq-text-input",
     reason: "Focus only recolours the border, which forced-colors mode does not carry over.",
   },

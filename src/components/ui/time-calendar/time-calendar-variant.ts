@@ -32,10 +32,10 @@ export const EVENT_COLOR_CLASSES: Record<
   CalendarColor,
   { surface: string; bar: string; dot: string }
 > = {
-  "ivy-green": {
-    surface: "bg-ivy-green/15 hover:bg-ivy-green/25",
-    bar: "border-l-ivy-green",
-    dot: "bg-ivy-green",
+  "sc-green": {
+    surface: "bg-sc-green/15 hover:bg-sc-green/25",
+    bar: "border-l-sc-green",
+    dot: "bg-sc-green",
   },
   slate: { surface: "bg-slate/15 hover:bg-slate/25", bar: "border-l-slate", dot: "bg-slate" },
   gray: { surface: "bg-gray/15 hover:bg-gray/25", bar: "border-l-gray", dot: "bg-gray" },

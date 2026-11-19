@@ -42,7 +42,7 @@ describe("badgeVariant status tints", () => {
     }
   });
 
-  it.each(["success", "warning", "info", "destructive", "ivy-green"])(
+  it.each(["success", "warning", "info", "destructive", "sc-green"])(
     "%s is readable in light (800 on 200) and dark (100 on 800)",
     (scale) => {
       const [s100, s200, s800] = ["100", "200", "800"].map((step) =>

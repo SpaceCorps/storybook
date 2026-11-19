@@ -18,9 +18,9 @@ describe("ContentInput", () => {
     // @ts-expect-error models was never read; the component renders no model picker
     props.models = ["Build"];
     // @ts-expect-error projects was superseded by slots.ProjectPicker
-    props.projects = ["Tendril-App"];
+    props.projects = ["Demo-App"];
     // @ts-expect-error selectedProject was superseded by slots.ProjectPicker
-    props.selectedProject = "Tendril-App";
+    props.selectedProject = "Demo-App";
     expect(props.selectedModel).toBeUndefined();
   });
 
@@ -31,13 +31,13 @@ describe("ContentInput", () => {
   });
 
   it("dispatches OnSubmit with a value containing the file reference when clicked", () => {
-    const onIvyEvent = vi.fn();
-    render(<ContentInput id="civ-1" value=" [file: /tmp/foo.png]" onIvyEvent={onIvyEvent} />);
+    const onHostEvent = vi.fn();
+    render(<ContentInput id="civ-1" value=" [file: /tmp/foo.png]" onHostEvent={onHostEvent} />);
 
     const submitButton = screen.getByTitle("Send");
     fireEvent.click(submitButton);
 
-    expect(onIvyEvent).toHaveBeenCalledWith(
+    expect(onHostEvent).toHaveBeenCalledWith(
       "OnSubmit",
       "civ-1",
       expect.arrayContaining([
@@ -106,9 +106,9 @@ describe("ContentInput", () => {
       },
     );
 
-    const onIvyEvent = vi.fn();
+    const onHostEvent = vi.fn();
     render(
-      <ContentInput id="civ-1" value="" onIvyEvent={onIvyEvent} transcriptionUrl="ws://test" />,
+      <ContentInput id="civ-1" value="" onHostEvent={onHostEvent} transcriptionUrl="ws://test" />,
     );
 
     const micButton = screen.getByTitle("Voice input transcription");

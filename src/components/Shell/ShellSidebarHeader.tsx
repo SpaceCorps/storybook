@@ -11,7 +11,7 @@ interface ShellSidebarHeaderProps extends ShellWidgetProps {
 }
 
 export const ShellSidebarHeader: React.FC<ShellSidebarHeaderProps> = ({
-  title = "Ivy Tendril",
+  title = "SpaceCorps",
   version,
   logoUrl,
 }) => {

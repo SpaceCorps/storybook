@@ -1,17 +1,17 @@
 import { describe, it, expect, vi, afterEach } from "vite-plus/test";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
-import { TendrilProcessViewer } from "./TendrilProcessViewer.tsx";
+import { ProcessViewer } from "./ProcessViewer.tsx";
 
 afterEach(() => {
   cleanup();
 });
 
-describe("TendrilProcessViewer", () => {
+describe("ProcessViewer", () => {
   it("renders basic pipeline boxes and initial state", () => {
     const eventHandler = vi.fn();
     render(
-      <TendrilProcessViewer
+      <ProcessViewer
         id="test-process"
         eventHandler={eventHandler}
         events={["OnCreate", "OnDrafts", "OnReview", "OnJobs"]}
@@ -29,7 +29,7 @@ describe("TendrilProcessViewer", () => {
   it("displays stage counts and active transition counts", () => {
     const eventHandler = vi.fn();
     render(
-      <TendrilProcessViewer
+      <ProcessViewer
         id="test-process"
         eventHandler={eventHandler}
         events={["OnCreate", "OnDrafts", "OnReview", "OnJobs"]}
@@ -58,7 +58,7 @@ describe("TendrilProcessViewer", () => {
   it("fires corresponding event callbacks on click", () => {
     const eventHandler = vi.fn();
     render(
-      <TendrilProcessViewer
+      <ProcessViewer
         id="test-process"
         eventHandler={eventHandler}
         events={["OnCreate", "OnDrafts", "OnReview", "OnJobs"]}
@@ -85,9 +85,7 @@ describe("TendrilProcessViewer", () => {
 
   it("respects enabled events filter", () => {
     const eventHandler = vi.fn();
-    render(
-      <TendrilProcessViewer id="test-process" eventHandler={eventHandler} events={["OnReview"]} />,
-    );
+    render(<ProcessViewer id="test-process" eventHandler={eventHandler} events={["OnReview"]} />);
 
     fireEvent.click(screen.getByText("New Plan"));
     expect(eventHandler).not.toHaveBeenCalled();

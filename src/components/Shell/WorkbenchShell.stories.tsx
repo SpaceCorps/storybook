@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { useState } from "react";
-import { TendrilShell } from "./TendrilShell.tsx";
+import { WorkbenchShell } from "./WorkbenchShell.tsx";
 import { ShellSidebarHeader } from "./ShellSidebarHeader.tsx";
 import { ShellNewPlanButton } from "./ShellNewPlanButton.tsx";
 import { ShellAgentButton } from "./ShellAgentButton.tsx";
@@ -11,16 +11,16 @@ import { ShellTabs } from "./ShellTabs.tsx";
 import type { ShellNavItemDto, ShellSectionItemDto, ShellTabDto } from "./types.ts";
 import "./shell.css";
 
-const meta: Meta<typeof TendrilShell> = {
-  title: "Shell/TendrilShell",
-  component: TendrilShell,
+const meta: Meta<typeof WorkbenchShell> = {
+  title: "Shell/WorkbenchShell",
+  component: WorkbenchShell,
   parameters: {
     layout: "fullscreen",
   },
 };
 
 export default meta;
-type Story = StoryObj<typeof TendrilShell>;
+type Story = StoryObj<typeof WorkbenchShell>;
 
 const sampleNavItems: ShellNavItemDto[] = [
   { id: "plans", label: "Plans", icon: "Feather", badge: "4", isActive: true },
@@ -32,7 +32,7 @@ const sampleNavItems: ShellNavItemDto[] = [
 const samplePlans: ShellSectionItemDto[] = [
   {
     id: "00063",
-    title: "Port Tendril Shell and Navigation Layout Components",
+    title: "Port SpaceCorps Shell and Navigation Layout Components",
     tag: "#00063",
     badges: [
       { label: "storybook", kind: "project" },
@@ -41,7 +41,7 @@ const samplePlans: ShellSectionItemDto[] = [
   },
   {
     id: "00057",
-    title: "Port Tendril Widgets and Dashboard Components",
+    title: "Port SpaceCorps Widgets and Dashboard Components",
     tag: "#00057",
     badges: [
       { label: "storybook", kind: "project" },
@@ -103,8 +103,8 @@ function InteractiveShellDemo({
 
   return (
     <div style={{ width: "100vw", height: "100vh" }}>
-      <TendrilShell
-        id="tendril-shell"
+      <WorkbenchShell
+        id="workbench-shell"
         eventHandler={handleEvent}
         events={["OnCollapsedChanged"]}
         collapsed={collapsed}
@@ -114,7 +114,7 @@ function InteractiveShellDemo({
           SidebarHeader: (
             <ShellSidebarHeader
               id="sidebar-header"
-              title="Tendril"
+              title="SpaceCorps"
               version="v1.0.0"
               eventHandler={handleEvent}
             />

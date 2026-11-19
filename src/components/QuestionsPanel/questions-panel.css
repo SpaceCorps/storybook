@@ -1,4 +1,4 @@
-/* Tendril questions block. Light values follow the chat design (the Figma chat design): flat tinted option cards, a semibold question line, muted descriptions. Every
+/* SpaceCorps questions block. Light values follow the chat design (the Figma chat design): flat tinted option cards, a semibold question line, muted descriptions. Every
    token derives from the host theme so alternate themes recolor it; literals are fallbacks. */
 
 .tq-root {

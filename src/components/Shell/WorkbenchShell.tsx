@@ -8,7 +8,7 @@ import {
 } from "../../hooks/use-resizable-sidebar";
 import "./shell.css";
 
-interface TendrilShellProps extends ShellWidgetProps {
+interface WorkbenchShellProps extends ShellWidgetProps {
   collapsed?: boolean;
   activeSessionIndex?: number | null;
   hasTabs?: boolean;
@@ -23,7 +23,7 @@ interface TendrilShellProps extends ShellWidgetProps {
   };
 }
 
-export const SIDEBAR_WIDTH_STORAGE_KEY = "tendril.shell.sidebarWidth";
+export const SIDEBAR_WIDTH_STORAGE_KEY = "workbench.shell.sidebarWidth";
 export const DEFAULT_SIDEBAR_WIDTH = 320;
 export const MIN_SIDEBAR_WIDTH = 200;
 export const MAX_SIDEBAR_WIDTH = 640;
@@ -37,7 +37,7 @@ export function writeStoredWidth(width: number | null): void {
 }
 
 /**
- * The Tendril app chrome: sidebar (expanded / icon rail) and one rounded,
+ * The SpaceCorps app chrome: sidebar (expanded / icon rail) and one rounded,
  * bordered container holding the white content surface with the session tab
  * strip inside its bottom edge. Collapse is client-side for a smooth
  * animation; the server is notified through OnCollapsedChanged so the state
@@ -46,7 +46,7 @@ export function writeStoredWidth(width: number | null): void {
  * Hidden slot hosts zero-size utility widgets (shortcut ghosts, chunk
  * warm-ups) without letting them paint.
  */
-export const TendrilShell: React.FC<TendrilShellProps> = ({
+export const WorkbenchShell: React.FC<WorkbenchShellProps> = ({
   id,
   events = [],
   eventHandler,

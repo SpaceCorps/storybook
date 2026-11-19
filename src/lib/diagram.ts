@@ -75,7 +75,7 @@ export const sanitizeSvg = (svg: string): string => {
 };
 
 /**
- * Apply Ivy system font to all text elements in SVG.
+ * Apply Host system font to all text elements in SVG.
  * Graphviz WASM renders text with "Times New Roman" by default.
  * We resolve --font-sans and set it on all <text> elements.
  */

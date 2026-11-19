@@ -1,4 +1,4 @@
-// Brand icons for coding agents, ported from the Ivy framework's Icon component
+// Brand icons for coding agents, ported from the host framework's Icon component
 // (ClaudeCode, Antigravity, OpenCode, Corner) and Simple Icons (OpenAI, Gemini,
 // Copilot, Anthropic) so the shell bundle does not depend on react-icons.
 import React from "react";

@@ -22,7 +22,7 @@ export interface ConnectVaultDialogProps {
   isBusy?: boolean;
 }
 
-/** `acme/Tendril-Vault (Organization, private)` — enough to tell two similarly named repos apart. */
+/** `acme/Team-Vault (Organization, private)` — enough to tell two similarly named repos apart. */
 export function formatDiscoveredRepo(repo: DiscoveredVaultRepo): string {
   const privacy = repo.isPrivate ? ", private" : "";
   return `${repo.fullName} (${repo.accountType}${privacy})`;
@@ -64,7 +64,7 @@ export const ConnectVaultDialog: React.FC<ConnectVaultDialogProps> = ({
       open={open}
       onClose={onClose}
       title="Connect Existing Team Vault"
-      description="Connect an existing Tendril Vault repository to synchronize projects, skills, and configuration with your team."
+      description="Connect an existing Team Vault repository to synchronize projects, skills, and configuration with your team."
       testId="connect-vault-dialog"
       error={error}
       submitLabel="Connect Vault"
@@ -110,7 +110,7 @@ export const ConnectVaultDialog: React.FC<ConnectVaultDialogProps> = ({
         <Input
           id="connect-vault-url"
           value={repoUrl}
-          placeholder="https://github.com/my-org/Tendril-Vault.git"
+          placeholder="https://github.com/my-org/Team-Vault.git"
           onChange={(event) => setRepoUrl(event.target.value)}
         />
       </div>

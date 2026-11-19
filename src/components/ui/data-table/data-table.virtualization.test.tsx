@@ -166,8 +166,8 @@ describe("DataTable virtualization", () => {
     const { container } = renderVirtualized();
 
     const table = container.querySelector("table");
-    expect(table).toHaveClass("ivy-data-table");
-    expect(table).toHaveClass("ivy-data-table-virtualized");
+    expect(table).toHaveClass("sc-data-table");
+    expect(table).toHaveClass("sc-data-table-virtualized");
 
     scrollTo(scrollerFor(container), TOTAL_HEIGHT - VIEWPORT_HEIGHT);
 
@@ -324,7 +324,7 @@ describe("DataTable without virtualization", () => {
     // 12 rows is under the "auto" threshold of 50, so the default props must change nothing.
     expect(renderedRows(container)).toHaveLength(12);
     expect(container.querySelectorAll('tr[aria-hidden="true"]')).toHaveLength(0);
-    expect(container.querySelector("table")).not.toHaveClass("ivy-data-table-virtualized");
+    expect(container.querySelector("table")).not.toHaveClass("sc-data-table-virtualized");
     expect(scrollerFor(container).style.maxHeight).toBe("");
   });
 });
