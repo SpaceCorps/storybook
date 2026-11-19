@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    branches: [main, development]
 
 # Without this, every push to a PR branch started a run and left the previous one going. This is a
 # private repo on a free org plan, where Actions minutes are a hard monthly allowance rather than a
