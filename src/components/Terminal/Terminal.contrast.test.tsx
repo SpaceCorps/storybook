@@ -122,12 +122,12 @@ describe("terminal.css", () => {
 
   it("paints the colour behind the emulator that the theme gives its rows", async () => {
     const { backdrop } = await renderTerminalColours();
-    const container = /(?:^|\n)\.ivy-terminal\s*\{([^}]*)\}/.exec(css)?.[1] ?? "";
+    const container = /(?:^|\n)\.sc-terminal\s*\{([^}]*)\}/.exec(css)?.[1] ?? "";
     const declared = /\bbackground:\s*(#[0-9a-f]{6})\s*;/i.exec(container)?.[1];
 
     // axe measures the text against the box terminal.css paints, while the measurement above reads
     // the theme's colour, and the two are written down separately.
-    expect(declared, "the .ivy-terminal background in terminal.css").toBeDefined();
+    expect(declared, "the .sc-terminal background in terminal.css").toBeDefined();
     expect(parseHex(declared!).rgb).toEqual(backdrop);
   });
 

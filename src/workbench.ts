@@ -1,9 +1,9 @@
-// Tendril Entrypoint for @spacecorps/components/tendril
-// Re-exports Tendril shell, agent viewers, inputs, plan widgets, and dashboard components
+// SpaceCorps Entrypoint for @spacecorps/components/workbench
+// Re-exports SpaceCorps shell, agent viewers, inputs, plan widgets, and dashboard components
 
 // Shell Components
 export {
-  TendrilShell,
+  WorkbenchShell,
   ShellNav,
   ShellTabs,
   ShellAgentButton,
@@ -73,12 +73,12 @@ export {
   type StatusWire,
 } from "./components/AgentViewer/index.ts";
 
-// Tendril Process Pipeline Viewer
+// SpaceCorps Process Pipeline Viewer
 export {
-  TendrilProcessViewer,
-  type IvyEventHandler,
-  type TendrilProcessViewerProps,
-} from "./components/TendrilProcessViewer/index.ts";
+  ProcessViewer,
+  type HostEventHandler,
+  type ProcessViewerProps,
+} from "./components/ProcessViewer/index.ts";
 
 // Inputs & Form Controls
 export { ContentInput } from "./components/ContentInput/index.ts";
@@ -139,9 +139,9 @@ export { getMarkdownPlugins, hasMath } from "./lib/math";
 export { rawHtmlSchema, hasRawHtml } from "./lib/rawHtml";
 export { getWidth, getHeight } from "./lib/styles";
 
-// Tendril Questions Widgets
+// SpaceCorps Questions Widgets
 export {
-  TendrilQuestions,
+  QuestionsPanel,
   QuestionsForm,
   ChatQuestionsBlock,
   DescriptionMarkdown,
@@ -153,14 +153,14 @@ export {
   hasEntries,
   submitNote,
   unansweredRequired,
-} from "./components/TendrilQuestions";
+} from "./components/QuestionsPanel";
 
 export type {
-  TendrilQuestionsProps,
+  QuestionsPanelProps,
   QuestionsFormProps,
   QuestionsSubmitAction,
   AnswerMap,
-} from "./components/TendrilQuestions";
+} from "./components/QuestionsPanel";
 
 // Plan Diff Components
 export {
@@ -206,9 +206,9 @@ export type {
   PlanGitViewProps,
 } from "./components/PlanGitView/index.ts";
 
-// Tendril Dashboard Components
+// SpaceCorps Dashboard Components
 export {
-  TendrilDashboard,
+  AgentDashboard,
   ActivityGrid,
   PillBars,
   TrendChart,
@@ -219,15 +219,15 @@ export {
   niceTicks,
   formatCurrencyTick,
   formatCountTick,
-} from "./components/TendrilDashboard/index.ts";
+} from "./components/AgentDashboard/index.ts";
 export type {
   DashboardKpiDto,
   DashboardMonthValueDto,
   DashboardActivityMonthDto,
   DashboardJobDto,
   DashboardTrendDto,
-  TendrilDashboardProps,
-} from "./components/TendrilDashboard/index.ts";
+  AgentDashboardProps,
+} from "./components/AgentDashboard/index.ts";
 
 // Web Viewer Component
 export { WebViewer, Toolbar } from "./components/WebViewer/index.ts";

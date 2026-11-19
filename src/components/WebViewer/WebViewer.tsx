@@ -449,7 +449,7 @@ export const WebViewer: React.FC<WebViewerProps> = ({
     }
   }, [url, navigate]);
 
-  // Report url changes back to Ivy so bindings update.
+  // Report url changes back to Host so bindings update.
   useEffect(() => {
     if (currentUrl) {
       emit("navigated", {
@@ -685,7 +685,7 @@ export const WebViewer: React.FC<WebViewerProps> = ({
     };
   }, [emit, viewerId]);
 
-  // ---- imperative command stream (Ivy -> widget) --------------------------
+  // ---- imperative command stream (Host -> widget) --------------------------
   const clearComments = useCallback(() => {
     setPending((prev) => (prev?.mode === "edit" ? null : prev));
     setComments([]);
@@ -751,7 +751,7 @@ export const WebViewer: React.FC<WebViewerProps> = ({
     }
 
     // Resolving source maps (via source-map.js in the frame or sourcemap-codec on our side)
-    // waits for the answer, so what Ivy is handed already names the file behind the element.
+    // waits for the answer, so what Host is handed already names the file behind the element.
     const id = nextMarkerId();
     const number = commentsRef.current.length + 1;
     const page = currentPageRef.current || "";
@@ -828,7 +828,7 @@ export const WebViewer: React.FC<WebViewerProps> = ({
   const loading = !!frameSrc && isFramingReady && loadedKey !== frameKey;
 
   return (
-    // remove-parent-padding is Ivy's opt-out for full-bleed widgets: the host layout zeroes
+    // remove-parent-padding is Host's opt-out for full-bleed widgets: the host layout zeroes
     // its own padding when a child carries it, so the viewport reaches the container edges.
     <div className="wvr-shell remove-parent-padding" style={shellStyle}>
       {toolbar && (
@@ -852,7 +852,7 @@ export const WebViewer: React.FC<WebViewerProps> = ({
       {proxyState === "unavailable" && (
         <div className="wvr-notice" role="status">
           Proxy unavailable -- framing this page directly. Element picking, screenshots and network
-          events need the Tendril proxy.
+          events need the SpaceCorps proxy.
         </div>
       )}
       <div className={"wvr-stage" + (dev.w ? " wvr-device" : "")}>

@@ -1,6 +1,6 @@
 import type React from "react";
 
-export type IvyEventHandler = (eventName: string, widgetId: string, args: unknown[]) => void;
+export type HostEventHandler = (eventName: string, widgetId: string, args: unknown[]) => void;
 
 export interface DashboardKpiDto {
   label: string;
@@ -42,12 +42,12 @@ export interface DashboardTrendDto {
   prevPlans: (number | null)[];
 }
 
-export interface TendrilDashboardProps {
+export interface AgentDashboardProps {
   id: string;
   width?: string;
   height?: string;
   events?: string[];
-  eventHandler: IvyEventHandler;
+  eventHandler: HostEventHandler;
   dateText?: string;
   greeting?: string;
   headline?: string;

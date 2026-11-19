@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { createElement } from "react";
 import type { ComponentType } from "react";
 import { describe, expect, it } from "vite-plus/test";
-import { CollapsedRail, FullAppShell } from "../src/components/Shell/TendrilShell.stories.tsx";
+import { CollapsedRail, FullAppShell } from "../src/components/Shell/WorkbenchShell.stories.tsx";
 import {
   ReorderableVerificationList,
   WithStatusBadges,
@@ -233,13 +233,13 @@ const shellDemoParagraph: Select = (container) =>
 
 const STORIES: { name: string; story: StoryExport; select: Select; found: number }[] = [
   {
-    name: "TendrilShell / Full App Shell",
+    name: "WorkbenchShell / Full App Shell",
     story: FullAppShell,
     select: shellDemoParagraph,
     found: 1,
   },
   {
-    name: "TendrilShell / Collapsed Rail",
+    name: "WorkbenchShell / Collapsed Rail",
     story: CollapsedRail,
     select: shellDemoParagraph,
     found: 1,

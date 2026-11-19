@@ -574,7 +574,7 @@ const SidebarInput = React.forwardRef<
   React.ComponentProps<typeof Input>
 >(({ className, onFocus, onClick, ...props }, ref) => {
   const openSmartSearch = () => {
-    window.dispatchEvent(new Event("ivy-docs-open-smart-search"));
+    window.dispatchEvent(new Event("sc-docs-open-smart-search"));
   };
 
   const handleFocus: React.FocusEventHandler<HTMLInputElement> = (event) => {

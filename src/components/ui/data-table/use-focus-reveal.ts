@@ -8,11 +8,11 @@ const TOLERANCE = 1;
  * hold the size of what sits on top of the scrolled content: the pinned columns on either side and
  * the sticky header above.
  */
-export const PIN_START_VAR = "--ivy-data-table-pin-start";
-export const PIN_END_VAR = "--ivy-data-table-pin-end";
-export const HEAD_HEIGHT_VAR = "--ivy-data-table-head-height";
+export const PIN_START_VAR = "--sc-data-table-pin-start";
+export const PIN_END_VAR = "--sc-data-table-pin-end";
+export const HEAD_HEIGHT_VAR = "--sc-data-table-head-height";
 /** The width the scroller shows, which a row's details stay inside while the table scrolls under them. */
-export const VIEWPORT_WIDTH_VAR = "--ivy-data-table-viewport";
+export const VIEWPORT_WIDTH_VAR = "--sc-data-table-viewport";
 
 function pinnedHeader(container: HTMLElement, side: "start" | "end"): HTMLElement | null {
   return container.querySelector<HTMLElement>(`thead th[data-pin="${side}"]`);

@@ -19,7 +19,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
 import "./sortable-verification-list.css";
 
-type IvyEventHandler = (eventName: string, widgetId: string, args: unknown[]) => void;
+type HostEventHandler = (eventName: string, widgetId: string, args: unknown[]) => void;
 
 export interface VerificationItem {
   name: string;
@@ -31,7 +31,7 @@ export interface SortableVerificationListProps {
   id: string;
   itemsJson?: string;
   events?: string[];
-  eventHandler?: IvyEventHandler;
+  eventHandler?: HostEventHandler;
 }
 
 const EMPTY_EVENTS: string[] = [];

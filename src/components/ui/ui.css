@@ -1,4 +1,4 @@
-/* Shared primitives for the Tendril widget bundle: one tooltip, one keyboard hint, one badge
+/* Shared primitives for the SpaceCorps widget bundle: one tooltip, one keyboard hint, one badge
    and one icon button, so every widget in the bundle presents the same control the same way.
    Every color derives from the host theme's variables; the literals are only fallbacks for a
    widget rendered outside a themed host. */

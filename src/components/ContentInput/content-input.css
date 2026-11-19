@@ -485,7 +485,7 @@
   line-height: 1;
 }
 
-/* Matches the Ivy Framework key cap (Kbd / ShortcutKeys, `inherit` variant):
+/* Matches the Host Framework key cap (Kbd / ShortcutKeys, `inherit` variant):
    16px tall, 10px text, 0.25rem corners, transparent fill with a current-color
    border, on a colored surface. Keep these values in sync with Kbd.tsx keyCapBase. */
 .civ-submit-shortcut {

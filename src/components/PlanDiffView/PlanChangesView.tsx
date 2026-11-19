@@ -7,7 +7,7 @@ import {
   getBasename,
   useIsNarrow,
   type DraftComment,
-  type IvyEventHandler,
+  type HostEventHandler,
 } from "./PlanDiffView";
 import { getWidth, getHeight } from "@/lib/styles";
 import "./plan-diff.css";
@@ -23,8 +23,8 @@ export interface PlanChangesViewProps {
   id: string;
   width?: string;
   height?: string;
-  eventHandler?: IvyEventHandler;
-  onIvyEvent?: IvyEventHandler;
+  eventHandler?: HostEventHandler;
+  onHostEvent?: HostEventHandler;
   events?: string[];
   files?: ChangedFile[];
   comments?: DraftComment[];
@@ -104,9 +104,9 @@ export function collapseFolderChain(folder: TreeFolder): { label: string; node: 
 function FileStats({ additions, deletions }: { additions: number; deletions: number }) {
   if (additions <= 0 && deletions <= 0) return null;
   return (
-    <span className="ivy-changes-tree-stats">
-      {additions > 0 && <span className="ivy-text-success">+{additions}</span>}
-      {deletions > 0 && <span className="ivy-text-destructive">-{deletions}</span>}
+    <span className="sc-changes-tree-stats">
+      {additions > 0 && <span className="sc-text-success">+{additions}</span>}
+      {deletions > 0 && <span className="sc-text-destructive">-{deletions}</span>}
     </span>
   );
 }
@@ -269,7 +269,7 @@ function FileTree({ root, selectedPath, collapsed, onToggleFolder, onSelectFile 
       ref={treeRef}
       role="tree"
       aria-label="Changed files"
-      className="ivy-changes-tree"
+      className="sc-changes-tree"
       onKeyDown={handleKeyDown}
     >
       {rows.map((row) => {
@@ -285,7 +285,7 @@ function FileTree({ root, selectedPath, collapsed, onToggleFolder, onSelectFile 
             aria-setsize={row.setSize}
             aria-posinset={row.posInSet}
             tabIndex={row.key === stopKey ? 0 : -1}
-            className={`ivy-changes-tree-row${isSelected ? " ivy-changes-tree-row-selected" : ""}`}
+            className={`sc-changes-tree-row${isSelected ? " sc-changes-tree-row-selected" : ""}`}
             style={{ paddingLeft: ROW_LEAD_PX + row.depth * INDENT_PX }}
             title={row.path}
             onFocus={() => setActiveKey(row.key)}
@@ -294,16 +294,16 @@ function FileTree({ root, selectedPath, collapsed, onToggleFolder, onSelectFile 
             {row.kind === "folder" ? (
               <>
                 {row.expanded ? (
-                  <ChevronDown className="ivy-changes-tree-chevron" />
+                  <ChevronDown className="sc-changes-tree-chevron" />
                 ) : (
-                  <ChevronRight className="ivy-changes-tree-chevron" />
+                  <ChevronRight className="sc-changes-tree-chevron" />
                 )}
-                <span className="ivy-changes-tree-name">{row.label}</span>
+                <span className="sc-changes-tree-name">{row.label}</span>
               </>
             ) : (
               <>
-                <Code className="ivy-changes-tree-icon" />
-                <span className="ivy-changes-tree-name">{row.label}</span>
+                <Code className="sc-changes-tree-icon" />
+                <span className="sc-changes-tree-name">{row.label}</span>
                 <FileStats additions={row.file!.additions} deletions={row.file!.deletions} />
               </>
             )}
@@ -319,13 +319,13 @@ export const PlanChangesView: React.FC<PlanChangesViewProps> = ({
   width,
   height,
   eventHandler,
-  onIvyEvent,
+  onHostEvent,
   files = [],
   comments = [],
   currentAuthor,
   showTree = true,
 }) => {
-  const dispatchEvent = eventHandler || onIvyEvent;
+  const dispatchEvent = eventHandler || onHostEvent;
   const [containerRef, isNarrow] = useIsNarrow();
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -373,7 +373,7 @@ export const PlanChangesView: React.FC<PlanChangesViewProps> = ({
     <div
       ref={containerRef}
       style={style}
-      className={`ivy-changes-view${isNarrow ? " ivy-changes-view-narrow" : ""}`}
+      className={`sc-changes-view${isNarrow ? " sc-changes-view-narrow" : ""}`}
     >
       {!isNarrow && showTree && (
         <FileTree
@@ -385,7 +385,7 @@ export const PlanChangesView: React.FC<PlanChangesViewProps> = ({
         />
       )}
       {isNarrow && (
-        <div className="ivy-changes-jump">
+        <div className="sc-changes-jump">
           <span className="text-xs text-[var(--muted-foreground)] shrink-0">
             {orderedFiles.length} files
           </span>
@@ -408,7 +408,7 @@ export const PlanChangesView: React.FC<PlanChangesViewProps> = ({
           </select>
         </div>
       )}
-      <div className="ivy-changes-diffs">
+      <div className="sc-changes-diffs">
         {orderedFiles.map((file) => (
           <PlanDiffView
             key={file.filePath}

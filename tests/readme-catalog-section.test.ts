@@ -15,8 +15,8 @@ describe("README Catalog Section Structure", () => {
     "Foundation",
     "UI Primitives",
     "Renderers",
-    "Tendril Shell",
-    "Tendril Widgets",
+    "SpaceCorps Shell",
+    "SpaceCorps Widgets",
     "Inputs & Controls",
     "Specialized Components",
   ];

@@ -39,8 +39,8 @@
   --violet: #6d28d9;
 
   /* Named palette colors */
-  --ivy-green: #00cc92;
-  --ivy-green-foreground: #000000;
+  --sc-green: #00cc92;
+  --sc-green-foreground: #000000;
   --slate: #334155;
   --slate-foreground: #ffffff;
   --gray: #374151;
@@ -101,9 +101,9 @@
   --destructive-100: #fee2e2;
   --destructive-200: #fecaca;
   --destructive-800: #991b1b;
-  --ivy-green-100: #d1f6eb;
-  --ivy-green-200: #adefdc;
-  --ivy-green-800: #004e37;
+  --sc-green-100: #d1f6eb;
+  --sc-green-200: #adefdc;
+  --sc-green-800: #004e37;
 
   /* Badge tint defaults (overridden inline per element by consumers) */
   --badge-tint-bg-light: var(--muted);
@@ -197,8 +197,8 @@
   --violet: #a78bfa;
 
   /* Named palette colors */
-  --ivy-green: #00cc92;
-  --ivy-green-foreground: #000000;
+  --sc-green: #00cc92;
+  --sc-green-foreground: #000000;
   --slate: #94a3b8;
   --slate-foreground: #000000;
   --gray: #9ca3af;
@@ -326,8 +326,8 @@
   --animate-indeterminate: indeterminate 1.5s ease-in-out infinite;
 
   /* Neutral colors */
-  --color-ivy-green: var(--ivy-green);
-  --color-ivy-green-foreground: var(--ivy-green-foreground);
+  --color-sc-green: var(--sc-green);
+  --color-sc-green-foreground: var(--sc-green-foreground);
   --color-slate: var(--slate);
   --color-slate-foreground: var(--slate-foreground);
   --color-gray: var(--gray);

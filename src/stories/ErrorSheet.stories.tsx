@@ -20,7 +20,7 @@ export const Interactive: Story = {
           showError({
             title: "NetworkTimeoutException",
             message: "Failed to fetch remote repository status within 30000ms.",
-            stackTrace: "at Ivy.Network.HttpTransport.SendAsync()\nat Ivy.Client.Fetch()",
+            stackTrace: "at Host.Network.HttpTransport.SendAsync()\nat Host.Client.Fetch()",
           });
         }}
       >

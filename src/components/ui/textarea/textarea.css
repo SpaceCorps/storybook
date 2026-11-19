@@ -1,15 +1,15 @@
 /* Textarea resizer: custom grip same as native (two diagonal lines), only color is theme var(--border). */
 @layer base {
-  textarea.ivy-textarea::-webkit-resizer {
+  textarea.sc-textarea::-webkit-resizer {
     appearance: none;
     background: transparent;
   }
-  .ivy-textarea-wrapper {
+  .sc-textarea-wrapper {
     position: relative;
     overflow: visible;
   }
-  .ivy-textarea-wrapper::before,
-  .ivy-textarea-wrapper::after {
+  .sc-textarea-wrapper::before,
+  .sc-textarea-wrapper::after {
     content: "";
     position: absolute;
     bottom: 4px;
@@ -22,26 +22,26 @@
     pointer-events: none;
     z-index: 10;
   }
-  .ivy-textarea-wrapper::after {
+  .sc-textarea-wrapper::after {
     width: 6px;
     bottom: 7px;
     right: 2px;
   }
-  .ivy-textarea-wrapper:has(.resize-none)::before,
-  .ivy-textarea-wrapper:has(.resize-none)::after {
+  .sc-textarea-wrapper:has(.resize-none)::before,
+  .sc-textarea-wrapper:has(.resize-none)::after {
     display: none;
   }
 
   /* Affixed textarea: grip belongs on the full input shell, not the field column. */
-  .ivy-textarea-affixed-shell {
+  .sc-textarea-affixed-shell {
     position: relative;
   }
-  .ivy-textarea-affixed-shell .ivy-textarea-wrapper::before,
-  .ivy-textarea-affixed-shell .ivy-textarea-wrapper::after {
+  .sc-textarea-affixed-shell .sc-textarea-wrapper::before,
+  .sc-textarea-affixed-shell .sc-textarea-wrapper::after {
     display: none;
   }
-  .ivy-textarea-affixed-shell::before,
-  .ivy-textarea-affixed-shell::after {
+  .sc-textarea-affixed-shell::before,
+  .sc-textarea-affixed-shell::after {
     content: "";
     position: absolute;
     bottom: 4px;
@@ -54,19 +54,19 @@
     pointer-events: none;
     z-index: 10;
   }
-  .ivy-textarea-affixed-shell::after {
+  .sc-textarea-affixed-shell::after {
     width: 6px;
     bottom: 7px;
     right: 2px;
   }
 
-  .ivy-textarea-affixed-shell .ivy-textarea-wrapper {
+  .sc-textarea-affixed-shell .sc-textarea-wrapper {
     display: flex;
     flex: 1;
     flex-direction: column;
     min-height: 0;
   }
-  .ivy-textarea-affixed-shell .ivy-textarea {
+  .sc-textarea-affixed-shell .sc-textarea {
     flex: 1;
     min-height: 0;
   }

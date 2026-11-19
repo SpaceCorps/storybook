@@ -39,7 +39,7 @@ describe("PlanDiffView", () => {
     render(
       <PlanDiffView
         id="pdv-1"
-        onIvyEvent={vi.fn()}
+        onHostEvent={vi.fn()}
         diff={diff}
         comments={[
           {
@@ -59,11 +59,11 @@ describe("PlanDiffView", () => {
   });
 
   it("allows editing and updating a comment", () => {
-    const onIvyEvent = vi.fn();
+    const onHostEvent = vi.fn();
     render(
       <PlanDiffView
         id="pdv-1"
-        onIvyEvent={onIvyEvent}
+        onHostEvent={onHostEvent}
         diff={diff}
         filePath="a.txt"
         comments={[
@@ -88,7 +88,7 @@ describe("PlanDiffView", () => {
     const updateButton = screen.getByRole("button", { name: /update comment/i });
     fireEvent.click(updateButton);
 
-    expect(onIvyEvent).toHaveBeenCalledWith("OnUpdateComment", "pdv-1", [
+    expect(onHostEvent).toHaveBeenCalledWith("OnUpdateComment", "pdv-1", [
       {
         filePath: "a.txt",
         changeKey: changeKey,
@@ -102,7 +102,7 @@ describe("PlanDiffView", () => {
     render(
       <PlanDiffView
         id="pdv-1"
-        onIvyEvent={vi.fn()}
+        onHostEvent={vi.fn()}
         diff={diff}
         comments={[
           {
@@ -123,7 +123,7 @@ describe("PlanDiffView", () => {
     render(
       <PlanDiffView
         id="pdv-1"
-        onIvyEvent={vi.fn()}
+        onHostEvent={vi.fn()}
         diff={diff}
         comments={[
           {
@@ -166,11 +166,11 @@ describe("PlanDiffView", () => {
   });
 
   it("passes currentAuthor when adding a new comment", () => {
-    const onIvyEvent = vi.fn();
+    const onHostEvent = vi.fn();
     render(
       <PlanDiffView
         id="pdv-add-author"
-        onIvyEvent={onIvyEvent}
+        onHostEvent={onHostEvent}
         diff={diff}
         filePath="a.txt"
         currentAuthor="Calm Niels"
@@ -188,7 +188,7 @@ describe("PlanDiffView", () => {
     const addButton = screen.getByRole("button", { name: /add comment/i });
     fireEvent.click(addButton);
 
-    expect(onIvyEvent).toHaveBeenCalledWith("OnAddComment", "pdv-add-author", [
+    expect(onHostEvent).toHaveBeenCalledWith("OnAddComment", "pdv-add-author", [
       {
         filePath: "a.txt",
         changeKey: changeKey,

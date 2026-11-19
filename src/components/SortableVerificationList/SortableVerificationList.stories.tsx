@@ -8,7 +8,7 @@ export default {
   component: SortableVerificationList,
 };
 
-const tendrilVerifications: VerificationItem[] = [
+const agentVerifications: VerificationItem[] = [
   { name: "NpmLint", enabled: true, required: true },
   { name: "NpmBuild", enabled: true, required: true },
   { name: "NpmTest", enabled: true, required: false },
@@ -16,7 +16,7 @@ const tendrilVerifications: VerificationItem[] = [
 ];
 
 export const ReorderableVerificationList = () => {
-  const [items, setItems] = useState<VerificationItem[]>(tendrilVerifications);
+  const [items, setItems] = useState<VerificationItem[]>(agentVerifications);
 
   return (
     <div style={{ maxWidth: 450, padding: 24 }}>

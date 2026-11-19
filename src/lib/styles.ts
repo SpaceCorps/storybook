@@ -650,7 +650,7 @@ export const getAlign = (orientation: Orientation, align?: Align): React.CSSProp
   return styles;
 };
 
-/** Same token rules as {@link getColor} (e.g. IvyGreen → ivy-green). */
+/** Same token rules as {@link getColor} (e.g. BrandGreen → sc-green). */
 export const colorNameToCssToken = (color: string): string =>
   color
     .trim()
@@ -667,8 +667,8 @@ export const getColor = (
 
   const trimmedColor = color.trim();
 
-  // Convert PascalCase to kebab-case so multi-word colors like "IvyGreen" → "ivy-green"
-  // match their CSS variable names (--ivy-green).
+  // Convert PascalCase to kebab-case so multi-word colors like "BrandGreen" → "sc-green"
+  // match their CSS variable names (--sc-green).
   const lowerColor = colorNameToCssToken(trimmedColor);
 
   // When a surface color is used as a text color (like Muted, Background, Card),
@@ -693,7 +693,7 @@ export const getColor = (
 };
 
 /**
- * Converts Ivy Size format to CSS Grid column/row value
+ * Converts Host Size format to CSS Grid column/row value
  * Example: "Px:100" -> "100px", "Fraction:1" -> "1fr"
  */
 export const convertSizeToGridValue = (size?: string): string => {
@@ -735,7 +735,7 @@ export const convertSizeToGridValue = (size?: string): string => {
   }
 };
 
-// Typography classes - shadcn typography with Ivy spacing
+// Typography classes - shadcn typography with Host spacing
 export const typography: Record<string, string> = {
   // Headings
   h1: `text-4xl font-semibold scroll-m-20 mb-3`,

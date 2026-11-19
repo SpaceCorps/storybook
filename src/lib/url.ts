@@ -1,11 +1,11 @@
 /**
- * Resolve a relative path against the ivy-host meta tag.
+ * Resolve a relative path against the sc-host meta tag.
  * Used for upload URLs when running behind a reverse proxy.
  */
 export function getFullUrl(path: string): string {
-  const ivyHostMeta = document.querySelector('meta[name="ivy-host"]');
-  if (ivyHostMeta) {
-    const host = ivyHostMeta.getAttribute("content");
+  const hostMeta = document.querySelector('meta[name="sc-host"]');
+  if (hostMeta) {
+    const host = hostMeta.getAttribute("content");
     return host + path;
   }
   return path;
@@ -253,7 +253,7 @@ export function validateLinkUrl(
     return url;
   }
 
-  // Allow app:// URLs (Ivy internal navigation), including optional #fragment for article deep links
+  // Allow app:// URLs (Host internal navigation), including optional #fragment for article deep links
   if (url.startsWith("app://")) {
     const rest = url.slice(6);
     if (rest.includes("://")) {
@@ -493,7 +493,7 @@ export function validateMediaUrl(
     }
   }
 
-  // Allow app:// URLs (Ivy internal navigation)
+  // Allow app:// URLs (Host internal navigation)
   if (url.startsWith("app://")) {
     // Validate app:// URLs don't contain dangerous characters
     // Pattern: app://[app-id][?query-params] where app-id has no colons/hashes, query-params have no #

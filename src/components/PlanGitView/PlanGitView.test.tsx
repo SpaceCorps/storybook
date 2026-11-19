@@ -24,7 +24,7 @@ function section(overrides: Partial<PlanWorktreeSection> = {}): PlanWorktreeSect
   return {
     name: "example-repo",
     path: "/plans/00637/Worktrees/example-repo",
-    branch: "tendril/00637",
+    branch: "agent/00637",
     shortHash: "1234567",
     hasUncommittedChanges: false,
     commits: [commit()],
@@ -221,7 +221,7 @@ describe("PlanGitView worktree sections", () => {
   it("reports the branch, head and uncommitted flag", () => {
     render(<PlanGitView data={data({ worktrees: [section({ hasUncommittedChanges: true })] })} />);
 
-    expect(screen.getByText("tendril/00637@1234567")).toBeInTheDocument();
+    expect(screen.getByText("agent/00637@1234567")).toBeInTheDocument();
     expect(screen.getByText("main@abcdef0")).toBeInTheDocument();
     expect(screen.getByText(/has uncommitted changes/)).toBeInTheDocument();
   });

@@ -10,7 +10,7 @@ export type WeekStart = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
 /** The named palette tokens, minus `black` and `white`, which are not colours an entry can wear. */
 export type CalendarColor =
-  | "ivy-green"
+  | "sc-green"
   | "slate"
   | "gray"
   | "zinc"

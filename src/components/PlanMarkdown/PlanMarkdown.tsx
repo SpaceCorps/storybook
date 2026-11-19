@@ -22,7 +22,7 @@ import { useAnchoredPosition } from "./useAnchoredPosition";
 import { SearchOverlay } from "./SearchOverlay";
 import { applySearchHighlights, clearSearchHighlights } from "./searchUtils";
 
-export type IvyEventHandler = (eventName: string, widgetId: string, args: unknown[]) => void;
+export type HostEventHandler = (eventName: string, widgetId: string, args: unknown[]) => void;
 
 export interface PlanMarkdownProps {
   id: string;
@@ -35,7 +35,7 @@ export interface PlanMarkdownProps {
   scrollTo?: { questionId: string; token: number } | null;
   currentAuthor?: string;
   events?: string[];
-  eventHandler?: IvyEventHandler;
+  eventHandler?: HostEventHandler;
   slots?: {
     StickyContent?: React.ReactNode[];
   };
@@ -432,7 +432,7 @@ export const PlanMarkdown: React.FC<PlanMarkdownProps> = ({
   );
 
   // react-markdown's default transform strips file:// URLs. When local files
-  // are allowed, route image sources through the host's /ivy/local-file proxy
+  // are allowed, route image sources through the host's /host/local-file proxy
   // (the browser cannot load file:// from a served page) and preserve file://
   // URLs on links so the anchor renderer / OnLinkClick can handle them.
   const urlTransform = useCallback(

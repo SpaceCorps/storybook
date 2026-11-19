@@ -139,9 +139,9 @@ describe("DataTable focus reveal", () => {
   it("publishes the pinned columns and the header as the scroller's scroll padding", () => {
     const { scroller } = setup();
 
-    expect(scroller.className).toContain("scroll-pl-[var(--ivy-data-table-pin-start,0px)]");
-    expect(scroller.className).toContain("scroll-pr-[var(--ivy-data-table-pin-end,0px)]");
-    expect(scroller.className).toContain("scroll-pt-[var(--ivy-data-table-head-height,0px)]");
+    expect(scroller.className).toContain("scroll-pl-[var(--sc-data-table-pin-start,0px)]");
+    expect(scroller.className).toContain("scroll-pr-[var(--sc-data-table-pin-end,0px)]");
+    expect(scroller.className).toContain("scroll-pt-[var(--sc-data-table-head-height,0px)]");
 
     act(() => resize?.());
 

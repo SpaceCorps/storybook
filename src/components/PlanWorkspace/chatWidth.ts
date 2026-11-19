@@ -1,4 +1,4 @@
-export const CHAT_WIDTH_STORAGE_KEY = "tendril.plan.chatWidth";
+export const CHAT_WIDTH_STORAGE_KEY = "spacecorps.plan.chatWidth";
 export const MIN_CHAT_WIDTH = 320;
 /** The chat never takes more than this share of the workspace; the plan stays readable beside it. */
 export const MAX_CHAT_SHARE = 0.6;

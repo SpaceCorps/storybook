@@ -391,8 +391,8 @@ describe("Visual regression package scripts", () => {
 });
 
 describe("Committed baseline inventory", () => {
-  // 126 before the Ivy branding was removed: 3 baselines went with their deleted stories, and 10 more
-  // (Icon, BadgeSelect, CopyToClipboardButton) were dropped because the pixels showed Ivy names. The
+  // 126 before the Host branding was removed: 3 baselines went with their deleted stories, and 10 more
+  // (Icon, BadgeSelect, CopyToClipboardButton) were dropped because the pixels showed Host names. The
   // Visual Baseline Refresh workflow regenerates those 10 from the current stories; raise this back
   // to 126 once it has.
   const MINIMUM_BASELINE_COUNT = 116;

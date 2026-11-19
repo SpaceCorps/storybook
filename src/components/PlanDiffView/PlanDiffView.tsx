@@ -11,7 +11,7 @@ import {
 import "react-diff-view/style/index.css";
 import "./plan-diff.css";
 import Markdown from "react-markdown";
-export type IvyEventHandler = (eventName: string, widgetId: string, args: any[]) => void;
+export type HostEventHandler = (eventName: string, widgetId: string, args: any[]) => void;
 import { getWidth, getHeight } from "@/lib/styles";
 import { getMarkdownPlugins } from "@/lib/math";
 import { MessageSquare } from "lucide-react";
@@ -483,9 +483,9 @@ export interface PlanDiffViewProps {
   id: string;
   width?: string;
   height?: string;
-  eventHandler?: IvyEventHandler;
+  eventHandler?: HostEventHandler;
   /** Legacy/test alias for eventHandler. */
-  onIvyEvent?: IvyEventHandler;
+  onHostEvent?: HostEventHandler;
   events?: string[];
   diff?: string;
   viewType?: "Unified" | "Split";
@@ -606,7 +606,7 @@ const CommentWidgetContainer: React.FC<CommentWidgetContainerProps> = ({
                       {comment.author?.trim() ? comment.author.trim() : "Agent Instruction (Draft)"}
                     </span>
                     {isResolved && (
-                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 text-[10px] font-medium rounded bg-success/10 ivy-text-success border border-success/20">
+                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 text-[10px] font-medium rounded bg-success/10 sc-text-success border border-success/20">
                         ✓ Resolved
                       </span>
                     )}
@@ -631,7 +631,7 @@ const CommentWidgetContainer: React.FC<CommentWidgetContainerProps> = ({
                           className={`hover:underline cursor-pointer ${
                             isResolved
                               ? "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-                              : "ivy-text-success font-medium"
+                              : "sc-text-success font-medium"
                           }`}
                           onClick={() =>
                             onUpdateComment({
@@ -649,7 +649,7 @@ const CommentWidgetContainer: React.FC<CommentWidgetContainerProps> = ({
                     {canDelete && (
                       <button
                         type="button"
-                        className="hover:underline ivy-text-destructive cursor-pointer"
+                        className="hover:underline sc-text-destructive cursor-pointer"
                         onClick={() => onDeleteComment(comment)}
                         title="Delete comment"
                       >
@@ -731,7 +731,7 @@ export const PlanDiffView: React.FC<PlanDiffViewProps> = ({
   width,
   height,
   eventHandler,
-  onIvyEvent,
+  onHostEvent,
   diff,
   viewType = "Unified",
   language,
@@ -747,7 +747,7 @@ export const PlanDiffView: React.FC<PlanDiffViewProps> = ({
   customExtensionMappings,
 }) => {
   useCustomExtensionMappings(customExtensionMappings);
-  const dispatchEvent = eventHandler || onIvyEvent;
+  const dispatchEvent = eventHandler || onHostEvent;
   const files = useMemo(() => {
     if (!diff) return [];
     try {
@@ -994,7 +994,7 @@ export const PlanDiffView: React.FC<PlanDiffViewProps> = ({
     <div
       ref={containerRef}
       style={style}
-      className={`ivy-diff-view text-sm${effectiveWordWrap ? " diff-wrap" : ""}`}
+      className={`sc-diff-view text-sm${effectiveWordWrap ? " diff-wrap" : ""}`}
     >
       {showFileDropdown && (
         <div className="sticky top-0 z-20 flex items-center gap-2 px-3 py-1.5 bg-[var(--muted)] border-b border-[var(--border)] font-sans">
@@ -1074,7 +1074,7 @@ export const PlanDiffView: React.FC<PlanDiffViewProps> = ({
           <div
             key={fileIndex}
             id={elementId}
-            className={`ivy-diff-file border border-[var(--border)] rounded-md ${isCollapsed ? "mb-0" : "mb-1.5"} bg-[var(--background)] overflow-clip`}
+            className={`sc-diff-file border border-[var(--border)] rounded-md ${isCollapsed ? "mb-0" : "mb-1.5"} bg-[var(--background)] overflow-clip`}
             style={{ scrollMarginTop: showFileDropdown ? "2rem" : 0 }}
           >
             {hasHeader && (
@@ -1123,8 +1123,8 @@ export const PlanDiffView: React.FC<PlanDiffViewProps> = ({
                   {/* Additions / Deletions count */}
                   <span className="flex items-center gap-1 font-mono text-xs tabular-nums">
                     <span className="flex items-center justify-end gap-1 min-w-[4.5rem]">
-                      {additions > 0 && <span className="ivy-text-success">+{additions}</span>}
-                      {deletions > 0 && <span className="ivy-text-destructive">-{deletions}</span>}
+                      {additions > 0 && <span className="sc-text-success">+{additions}</span>}
+                      {deletions > 0 && <span className="sc-text-destructive">-{deletions}</span>}
                     </span>
                     {renderDiffSquares(additions, deletions)}
                   </span>

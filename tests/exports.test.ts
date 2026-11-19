@@ -2,7 +2,7 @@ import { describe, expect, expectTypeOf, it } from "vitest";
 import * as root from "../src/index";
 import * as ui from "../src/ui";
 import * as renderers from "../src/renderers";
-import * as tendril from "../src/tendril";
+import * as workbench from "../src/workbench";
 
 /**
  * What a consumer imports for forms, dates, times, calendars, gamepad input and focus handling, in
@@ -94,12 +94,12 @@ describe("Package Exports", () => {
       expect(root.MarkdownRenderer).toBeDefined();
     });
 
-    it("should export primary Tendril widgets", () => {
-      expect(root.TendrilShell).toBeDefined();
+    it("should export primary SpaceCorps widgets", () => {
+      expect(root.WorkbenchShell).toBeDefined();
       expect(root.AgentViewer).toBeDefined();
       expect(root.PlanMarkdown).toBeDefined();
-      expect(root.TendrilDashboard).toBeDefined();
-      expect(root.TendrilQuestions).toBeDefined();
+      expect(root.AgentDashboard).toBeDefined();
+      expect(root.QuestionsPanel).toBeDefined();
     });
 
     it("should export density context and scale", () => {
@@ -214,100 +214,100 @@ describe("Package Exports", () => {
     });
   });
 
-  describe("Tendril Export (@spacecorps/components/tendril)", () => {
+  describe("SpaceCorps Export (@spacecorps/components/workbench)", () => {
     it("should export shell components", () => {
-      expect(tendril.TendrilShell).toBeDefined();
-      expect(tendril.ShellNav).toBeDefined();
-      expect(tendril.ShellTabs).toBeDefined();
-      expect(tendril.ShellAgentButton).toBeDefined();
-      expect(tendril.ShellNewPlanButton).toBeDefined();
-      expect(tendril.ShellSettingsButton).toBeDefined();
-      expect(tendril.ShellSidebarHeader).toBeDefined();
-      expect(tendril.ShellSidebarSection).toBeDefined();
-      expect(tendril.BrandIcon).toBeDefined();
-      expect(tendril.brandIcons).toBeDefined();
+      expect(workbench.WorkbenchShell).toBeDefined();
+      expect(workbench.ShellNav).toBeDefined();
+      expect(workbench.ShellTabs).toBeDefined();
+      expect(workbench.ShellAgentButton).toBeDefined();
+      expect(workbench.ShellNewPlanButton).toBeDefined();
+      expect(workbench.ShellSettingsButton).toBeDefined();
+      expect(workbench.ShellSidebarHeader).toBeDefined();
+      expect(workbench.ShellSidebarSection).toBeDefined();
+      expect(workbench.BrandIcon).toBeDefined();
+      expect(workbench.brandIcons).toBeDefined();
     });
 
     it("should export shell rail flyout, section items, and tooltip", () => {
-      expect(tendril.ShellRailFlyout).toBeDefined();
-      expect(tendril.ShellSectionItems).toBeDefined();
-      expect(tendril.ShellTooltip).toBeDefined();
-      expect(tendril.sectionItemIcons).toBeDefined();
-      expect(tendril.formatShortcut).toBeDefined();
+      expect(workbench.ShellRailFlyout).toBeDefined();
+      expect(workbench.ShellSectionItems).toBeDefined();
+      expect(workbench.ShellTooltip).toBeDefined();
+      expect(workbench.sectionItemIcons).toBeDefined();
+      expect(workbench.formatShortcut).toBeDefined();
     });
 
     it("should export the plan workspace split-pane layout", () => {
-      expect(tendril.PlanWorkspace).toBeDefined();
+      expect(workbench.PlanWorkspace).toBeDefined();
     });
 
     it("should export shared hooks", () => {
-      expect(tendril.useResizableSidebar).toBeDefined();
-      expect(typeof tendril.useResizableSidebar).toBe("function");
+      expect(workbench.useResizableSidebar).toBeDefined();
+      expect(typeof workbench.useResizableSidebar).toBe("function");
     });
 
     it("should export agent and execution visualizers", () => {
-      expect(tendril.AgentViewer).toBeDefined();
-      expect(tendril.TendrilProcessViewer).toBeDefined();
+      expect(workbench.AgentViewer).toBeDefined();
+      expect(workbench.ProcessViewer).toBeDefined();
     });
 
     it("should export inputs and form controls", () => {
-      expect(tendril.ContentInput).toBeDefined();
-      expect(tendril.BadgeSelect).toBeDefined();
-      expect(tendril.SortableVerificationList).toBeDefined();
+      expect(workbench.ContentInput).toBeDefined();
+      expect(workbench.BadgeSelect).toBeDefined();
+      expect(workbench.SortableVerificationList).toBeDefined();
     });
 
     it("should export plan markdown components", () => {
-      expect(tendril.PlanMarkdown).toBeDefined();
-      expect(tendril.DraftMarkdown).toBeDefined();
-      expect(tendril.AlertBlockquote).toBeDefined();
-      expect(tendril.AnnotationPopover).toBeDefined();
-      expect(tendril.QuestionsCallout).toBeDefined();
-      expect(tendril.SearchOverlay).toBeDefined();
+      expect(workbench.PlanMarkdown).toBeDefined();
+      expect(workbench.DraftMarkdown).toBeDefined();
+      expect(workbench.AlertBlockquote).toBeDefined();
+      expect(workbench.AnnotationPopover).toBeDefined();
+      expect(workbench.QuestionsCallout).toBeDefined();
+      expect(workbench.SearchOverlay).toBeDefined();
     });
 
     it("should export plan diff components", () => {
-      expect(tendril.PlanDiffView).toBeDefined();
-      expect(tendril.getLanguageFromFilePath).toBeDefined();
-      expect(tendril.registerExtensionMapping).toBeDefined();
-      expect(tendril.registerExtensionMappings).toBeDefined();
-      expect(tendril.clearCustomExtensionMappings).toBeDefined();
-      expect(tendril.customExtensionRegistry).toBeDefined();
+      expect(workbench.PlanDiffView).toBeDefined();
+      expect(workbench.getLanguageFromFilePath).toBeDefined();
+      expect(workbench.registerExtensionMapping).toBeDefined();
+      expect(workbench.registerExtensionMappings).toBeDefined();
+      expect(workbench.clearCustomExtensionMappings).toBeDefined();
+      expect(workbench.customExtensionRegistry).toBeDefined();
     });
 
     it("should export plan changes view and its file tree helper", () => {
-      expect(tendril.PlanChangesView).toBeDefined();
-      expect(tendril.buildFileTree).toBeDefined();
+      expect(workbench.PlanChangesView).toBeDefined();
+      expect(workbench.buildFileTree).toBeDefined();
     });
 
     it("should export plan git view", () => {
-      expect(tendril.PlanGitView).toBeDefined();
+      expect(workbench.PlanGitView).toBeDefined();
     });
 
     it("should export dashboard components", () => {
-      expect(tendril.TendrilDashboard).toBeDefined();
-      expect(tendril.ActivityGrid).toBeDefined();
-      expect(tendril.PillBars).toBeDefined();
-      expect(tendril.TrendChart).toBeDefined();
-      expect(tendril.HoverTip).toBeDefined();
+      expect(workbench.AgentDashboard).toBeDefined();
+      expect(workbench.ActivityGrid).toBeDefined();
+      expect(workbench.PillBars).toBeDefined();
+      expect(workbench.TrendChart).toBeDefined();
+      expect(workbench.HoverTip).toBeDefined();
     });
 
     it("should export web viewer", () => {
-      expect(tendril.WebViewer).toBeDefined();
+      expect(workbench.WebViewer).toBeDefined();
     });
 
-    it("should export tendril questions widgets and helpers", () => {
-      expect(tendril.TendrilQuestions).toBeDefined();
-      expect(tendril.QuestionsForm).toBeDefined();
-      expect(tendril.ChatQuestionsBlock).toBeDefined();
-      expect(tendril.DescriptionMarkdown).toBeDefined();
-      expect(tendril.buildAnswersSummary).toBeDefined();
-      expect(tendril.canSubmitAnswers).toBeDefined();
-      expect(tendril.documentAnswers).toBeDefined();
-      expect(tendril.documentOtherOpen).toBeDefined();
-      expect(tendril.entryTitle).toBeDefined();
-      expect(tendril.hasEntries).toBeDefined();
-      expect(tendril.submitNote).toBeDefined();
-      expect(tendril.unansweredRequired).toBeDefined();
+    it("should export workbench questions widgets and helpers", () => {
+      expect(workbench.QuestionsPanel).toBeDefined();
+      expect(workbench.QuestionsForm).toBeDefined();
+      expect(workbench.ChatQuestionsBlock).toBeDefined();
+      expect(workbench.DescriptionMarkdown).toBeDefined();
+      expect(workbench.buildAnswersSummary).toBeDefined();
+      expect(workbench.canSubmitAnswers).toBeDefined();
+      expect(workbench.documentAnswers).toBeDefined();
+      expect(workbench.documentOtherOpen).toBeDefined();
+      expect(workbench.entryTitle).toBeDefined();
+      expect(workbench.hasEntries).toBeDefined();
+      expect(workbench.submitNote).toBeDefined();
+      expect(workbench.unansweredRequired).toBeDefined();
     });
   });
 });

@@ -44,7 +44,7 @@ describe("unsupportedEnvironmentError", () => {
     vi.stubGlobal("AudioWorkletNode", class {});
 
     expect(unsupportedEnvironmentError()).toBe(MEDIA_DEVICES_UNAVAILABLE_ERROR);
-    expect(MEDIA_DEVICES_UNAVAILABLE_ERROR).toContain("tendril --web");
+    expect(MEDIA_DEVICES_UNAVAILABLE_ERROR).toContain("app --web");
   });
 
   it("reports an unsupported browser when AudioWorkletNode is absent", () => {

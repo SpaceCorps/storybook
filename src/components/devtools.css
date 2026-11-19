@@ -1,5 +1,5 @@
 /* DevTools Styles - theme-aware using design system variables */
-.ivy-devtools-overlay {
+.sc-devtools-overlay {
   position: fixed;
   background: color-mix(in srgb, var(--primary) 25%, transparent);
   border: 2px solid var(--primary);
@@ -11,7 +11,7 @@
     box-shadow 0.15s ease;
 }
 
-.ivy-devtools-overlay--selected {
+.sc-devtools-overlay--selected {
   border-style: solid;
   border-width: 2px;
   background: color-mix(in srgb, var(--primary) 15%, transparent);
@@ -19,7 +19,7 @@
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 40%, transparent);
 }
 
-.ivy-devtools-label {
+.sc-devtools-label {
   position: absolute;
   top: 0;
   right: 0;
@@ -37,11 +37,11 @@
   pointer-events: none;
 }
 
-.ivy-devtools-label-type {
+.sc-devtools-label-type {
   font-weight: 500;
 }
 
-.ivy-devtools-dialog {
+.sc-devtools-dialog {
   position: fixed;
   z-index: 100001;
   background: var(--popover);
@@ -59,7 +59,7 @@
   font-family: var(--font-sans);
 }
 
-.ivy-devtools-input {
+.sc-devtools-input {
   flex: 1;
   border: none;
   background: transparent;
@@ -70,11 +70,11 @@
   padding: 0 8px;
 }
 
-.ivy-devtools-input::placeholder {
+.sc-devtools-input::placeholder {
   color: var(--muted-foreground);
 }
 
-.ivy-devtools-icon-btn {
+.sc-devtools-icon-btn {
   width: 32px;
   height: 32px;
   border: none;
@@ -89,7 +89,7 @@
   transition: all 0.15s;
 }
 
-.ivy-devtools-icon-btn:hover {
+.sc-devtools-icon-btn:hover {
   color: var(--foreground);
   background: var(--accent);
 }

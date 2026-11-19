@@ -1,6 +1,6 @@
-import type { IvyEventHandler } from "../TendrilProcessViewer/types";
+import type { HostEventHandler } from "../ProcessViewer/types";
 
-export type { IvyEventHandler };
+export type { HostEventHandler };
 
 export interface PlanActionDto {
   tag: string;
@@ -55,7 +55,7 @@ export interface PlanWorkspaceProps {
   /** Unanswered questions; a dot marks the Questions icon until its dropdown is opened for this plan. */
   unansweredQuestions?: number;
   events?: string[];
-  eventHandler?: IvyEventHandler;
+  eventHandler?: HostEventHandler;
   slots?: PlanWorkspaceSlots;
 }
 

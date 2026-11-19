@@ -3,7 +3,7 @@
  * shrink-wraps its content gives the fit addon nothing to measure and the terminal opens at its
  * default 24x80 regardless of the space available.
  */
-.ivy-terminal {
+.sc-terminal {
   width: 100%;
   height: 100%;
   min-height: 0;
@@ -15,20 +15,20 @@
   box-sizing: border-box;
 }
 
-.ivy-terminal .xterm {
+.sc-terminal .xterm {
   height: 100%;
 }
 
 /* xterm's own viewport scrollbar, toned down to match the app's. */
-.ivy-terminal .xterm-viewport::-webkit-scrollbar {
+.sc-terminal .xterm-viewport::-webkit-scrollbar {
   width: 10px;
 }
 
-.ivy-terminal .xterm-viewport::-webkit-scrollbar-thumb {
+.sc-terminal .xterm-viewport::-webkit-scrollbar-thumb {
   background: #3f3f46;
   border-radius: 5px;
 }
 
-.ivy-terminal .xterm-viewport::-webkit-scrollbar-track {
+.sc-terminal .xterm-viewport::-webkit-scrollbar-track {
   background: transparent;
 }

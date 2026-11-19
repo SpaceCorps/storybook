@@ -172,7 +172,7 @@ export function registerShortcut(registration: ShortcutRegistration): void {
       (r) => r.id !== registration.id && serializeShortcut(r.shortcut) === key,
     );
     if (conflicts.length > 0) {
-      console.warn(`[Tendril] Shortcut conflict: "${key}" is registered by multiple widgets:`, [
+      console.warn(`[SpaceCorps] Shortcut conflict: "${key}" is registered by multiple widgets:`, [
         registration.id,
         ...conflicts.map((c) => c.id),
       ]);

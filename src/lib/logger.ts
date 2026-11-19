@@ -4,7 +4,7 @@
  */
 
 // Local storage key for developer options
-const DEVELOPER_OPTIONS_KEY = "ivy-developer-options";
+const DEVELOPER_OPTIONS_KEY = "sc-developer-options";
 
 // Global developer options state (cached from localStorage)
 let developerOptions = {

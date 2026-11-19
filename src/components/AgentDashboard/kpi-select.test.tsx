@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vite-plus/test";
 import "@testing-library/jest-dom";
 
-import { TendrilDashboard } from "./TendrilDashboard";
+import { AgentDashboard } from "./AgentDashboard";
 import type { DashboardKpiDto } from "./types";
 
 const identified: DashboardKpiDto[] = [
@@ -18,7 +18,7 @@ const unidentified: DashboardKpiDto[] = [
 function renderDashboard(kpis: DashboardKpiDto[], events: string[]) {
   const eventHandler = vi.fn();
   render(
-    <TendrilDashboard
+    <AgentDashboard
       id="dashboard-under-test"
       events={events}
       eventHandler={eventHandler}

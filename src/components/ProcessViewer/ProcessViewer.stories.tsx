@@ -1,16 +1,16 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { TendrilProcessViewer } from "./TendrilProcessViewer.tsx";
+import { ProcessViewer } from "./ProcessViewer.tsx";
 
-const meta: Meta<typeof TendrilProcessViewer> = {
-  title: "Components/TendrilProcessViewer",
-  component: TendrilProcessViewer,
+const meta: Meta<typeof ProcessViewer> = {
+  title: "Components/ProcessViewer",
+  component: ProcessViewer,
   parameters: {
     layout: "centered",
   },
 };
 
 export default meta;
-type Story = StoryObj<typeof TendrilProcessViewer>;
+type Story = StoryObj<typeof ProcessViewer>;
 
 export const InitialDraftState: Story = {
   args: {

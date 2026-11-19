@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { TendrilDashboard } from "./TendrilDashboard.tsx";
+import { AgentDashboard } from "./AgentDashboard.tsx";
 import type {
   DashboardActivityMonthDto,
   DashboardJobDto,
@@ -104,13 +104,13 @@ const mockJobs: DashboardJobDto[] = [
   {
     id: "job-001",
     planId: "00064",
-    title: "Port Tendril Dashboard Analytics and Web Viewer",
+    title: "Port SpaceCorps Dashboard Analytics and Web Viewer",
     status: "running",
   },
   {
     id: "job-002",
     planId: "00062",
-    title: "Port Tendril Plan Markdown and Diff Inspection Widgets",
+    title: "Port SpaceCorps Plan Markdown and Diff Inspection Widgets",
     status: "running",
   },
   {
@@ -121,16 +121,16 @@ const mockJobs: DashboardJobDto[] = [
   },
 ];
 
-const meta: Meta<typeof TendrilDashboard> = {
-  title: "Components/TendrilDashboard",
-  component: TendrilDashboard,
+const meta: Meta<typeof AgentDashboard> = {
+  title: "Components/AgentDashboard",
+  component: AgentDashboard,
   parameters: {
     layout: "fullscreen",
   },
 };
 
 export default meta;
-type Story = StoryObj<typeof TendrilDashboard>;
+type Story = StoryObj<typeof AgentDashboard>;
 
 export const Default: Story = {
   args: {
@@ -141,7 +141,7 @@ export const Default: Story = {
     },
     dateText: "Saturday, September 5, 2026",
     greeting: "Good morning, Operator",
-    headline: "Tendril Autonomous Execution Fleet",
+    headline: "SpaceCorps Autonomous Execution Fleet",
     draftCount: 8,
     inProgressCount: 5,
     reviewCount: 3,
@@ -161,7 +161,7 @@ export const EmptyState: Story = {
     events: [],
     eventHandler: () => {},
     dateText: "Saturday, September 5, 2026",
-    greeting: "Welcome to Tendril",
+    greeting: "Welcome to SpaceCorps",
     headline: "System Initialized",
     draftCount: 0,
     inProgressCount: 0,

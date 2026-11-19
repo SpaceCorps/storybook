@@ -99,7 +99,7 @@ const SheetContent = React.forwardRef<
                 // sheet, as CardContent does: in dark the sheet is a step above the page, so such a table
                 // falling back to the page colour would be a dark patch on it. A bordered table, the
                 // default, sets the page colour itself and stays a recessed inset.
-                "[--ivy-data-table-surface:var(--card)]",
+                "[--sc-data-table-surface:var(--card)]",
                 className,
               )}
               {...props}
