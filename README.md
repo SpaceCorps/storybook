@@ -10,11 +10,35 @@
 
 ## Hosted Storybook
 
+**URL: https://storybook.spacecorps.tech**
+
 The static Storybook is built from the `main` branch and served by a small nginx container on the
 SpaceCorps Sliplane server (see `Dockerfile` and `deploy/`). Work lands on `development`; merging to
 `main` releases, and Sliplane rebuilds on every push to `main`. The site has no login (the
 `STORYBOOK_*` env vars are no longer used). This replaces the GitHub Pages workflow, which cannot publish
 from a private repo on the free plan.
+
+Run the same image locally (port 80 in the container):
+
+```bash
+docker build -t spacecorps-storybook .
+docker run --rm -p 6006:80 spacecorps-storybook   # http://localhost:6006, health check at /healthz
+```
+
+`.github/workflows/docker.yml` builds and smoke-tests this image on every PR and on `main`, so a
+broken Dockerfile is caught before Sliplane deploys it.
+
+### Domain setup (DNS is managed outside this repo)
+
+1. In Sliplane, open the Storybook service, go to its domain settings and add the custom domain
+   `storybook.spacecorps.tech`. Sliplane shows the target hostname to point at.
+2. In the `spacecorps.tech` DNS zone create:
+
+   | Type  | Name        | Value                                       |
+   | ----- | ----------- | ------------------------------------------- |
+   | CNAME | `storybook` | the hostname Sliplane shows for the service |
+
+3. Wait for Sliplane to issue the TLS certificate; `https://storybook.spacecorps.tech/healthz` returns `ok` when it is live.
 
 ## Architecture & Subpath Exports
 
@@ -52,7 +76,7 @@ vp install @spacecorps/components
 
 ## Setup
 
-Import the CSS stylesheet in your application entry point:
+Import the CSS stylesheet in your application entry point (Tailwind v4 projects; this includes the design tokens):
 
 ```css
 @import "@spacecorps/components/styles/index.css";
@@ -63,6 +87,30 @@ Or in JavaScript/TypeScript:
 ```ts
 import "@spacecorps/components/styles/index.css";
 ```
+
+Projects without Tailwind can import the precompiled bundle instead (tokens, utilities and component styles in one file):
+
+```ts
+import "@spacecorps/components/style.css";
+```
+
+Geist fonts are optional; see [Font Setup](#3-font-setup).
+
+### Consuming from another SpaceCorps site (pnpm / vite-plus)
+
+```bash
+# once per consuming repo: route the @spacecorps scope to GitHub Packages
+printf '@spacecorps:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
+' > .npmrc
+export GITHUB_TOKEN=<token with read:packages>   # locally; never commit it
+pnpm add @spacecorps/components                  # or: vp install @spacecorps/components
+```
+
+- **Local dev:** a classic personal access token with `read:packages` (and access to this repo, since the package is `restricted`).
+- **GitHub Actions in the consumer repo:** `permissions: packages: read` and `NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}`. The consumer repo must first be granted access in this package's _Package settings → Manage Actions access_.
+- **Docker builds:** pass the token as a build secret (`RUN --mount=type=secret,id=gh_token ...`), never as a build arg or in a committed `.npmrc`.
+- Peer dependencies: `react` and `react-dom` ^19.
 
 ## Usage Examples
 
@@ -845,11 +893,14 @@ When embedding in desktop webviews (such as Tauri), clicking external links shou
 
 ### 5. Private CI & Artifact Consumption
 
-For reproducible consumption in private CI environments:
+Every release also attaches the packed `.tgz` to its GitHub Release, so a consumer that cannot reach
+GitHub Packages can depend on the tarball URL instead. Prefer the registry install above.
 
-- Build and pack release tarballs via `pnpm pack`.
-- Attach the generated `.tgz` archive to GitHub Releases or consume via tarball URL in `Tendril-App`.
-- This ensures reproducible builds without committing private tokens or registry credentials.
+## Releasing
+
+1. Land the work on `development`, then merge `development` into `main` (this redeploys the hosted Storybook).
+2. On `main`, run `pnpm run bump` (bumpp) to set the version, commit, and tag `vX.Y.Z`; push the tag.
+3. The `Release` workflow lints, builds, tests, publishes `@spacecorps/components` to GitHub Packages, and creates the GitHub Release with the tarball and generated notes. Run it manually from the Actions tab (`dry-run` is on by default) to rehearse.
 
 ## Storybook Catalog Showcase
 
