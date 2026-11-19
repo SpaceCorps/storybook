@@ -226,7 +226,7 @@ export function Terminal({
   return (
     <div
       ref={containerRef}
-      className={`ivy-terminal${className ? ` ${className}` : ""}`}
+      className={`sc-terminal${className ? ` ${className}` : ""}`}
       data-testid="terminal"
     />
   );

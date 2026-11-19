@@ -897,7 +897,7 @@ const priorityTimeColumns: DataTableColumn<TimeEntry>[] = timeColumns.map((colum
  * A raised cap on the truncating columns' width, so the full set of columns is about as wide as the
  * widest frame instead of 20rem of message text pushing it past.
  */
-const compactTruncation = "[--ivy-data-table-truncate-width:14rem]";
+const compactTruncation = "[--sc-data-table-truncate-width:14rem]";
 
 interface FrameProps {
   label: string;
@@ -1428,12 +1428,12 @@ const pinnedFitColumns: DataTableColumn<TimeEntry>[] = timeColumns.map((column) 
 
 /**
  * The library cannot know that a truncating column is wider than its `width`: a cell that is cut off
- * with an ellipsis is as wide as its text up to `--ivy-data-table-truncate-width` (20rem), whatever
+ * with an ellipsis is as wide as its text up to `--sc-data-table-truncate-width` (20rem), whatever
  * `width` says. So the cap is set to what the widths above claim (Project says 130px, Message 200px,
  * the cap is 128px), and the truth is then the same as the declaration. A table that leaves the cap
  * at 20rem and declares 130px for a column of long names is the one that overflows.
  */
-const honestTruncation = "[--ivy-data-table-truncate-width:8rem]";
+const honestTruncation = "[--sc-data-table-truncate-width:8rem]";
 
 const pinnedRowLabel = (entry: TimeEntry) => `${entry.date} ${entry.project}`;
 
@@ -1451,7 +1451,7 @@ interface PinnedFrameProps {
   selectable?: boolean;
   /** Windowed rows (all 27 entries) instead of the first four. */
   virtualized?: boolean;
-  /** The table's `className`, which is where `--ivy-data-table-truncate-width` is set. */
+  /** The table's `className`, which is where `--sc-data-table-truncate-width` is set. */
   className?: string;
   onRowAction?: (event: DataTableRowActionEvent<TimeEntry>) => void;
 }
@@ -1867,7 +1867,7 @@ export const PinnedColumnsDensities: StoryObj = {
 // ---------------------------------------------------------------------------------------------
 
 /** The cap a phone-sized table puts on its truncating cells, as the accounting app does. */
-const phoneTruncation = "[--ivy-data-table-truncate-width:5rem]";
+const phoneTruncation = "[--sc-data-table-truncate-width:5rem]";
 
 /**
  * Labels longer than their cells need. Counterparty and Description truncate (their cells are cut off

@@ -5,9 +5,9 @@ export function cn(...inputs: ClassValue[]): string {
   return twMerge(clsx(inputs));
 }
 
-export function getIvyBasePath(): string {
+export function getHostBasePath(): string {
   if (typeof document === "undefined") return "";
-  return document.querySelector('meta[name="ivy-path-base"]')?.getAttribute("content") ?? "";
+  return document.querySelector('meta[name="sc-path-base"]')?.getAttribute("content") ?? "";
 }
 
 export function getShellParam(): boolean {
@@ -34,7 +34,7 @@ export function convertAppUrlToPath(appUrl: string): string {
 
   const [appPath, existingQueryString] = beforeHash.split("?");
 
-  const basePath = getIvyBasePath();
+  const basePath = getHostBasePath();
   let path = basePath ? `${basePath}/${appPath}` : `/${appPath}`;
 
   const isShellFalse = !getShellParam();
@@ -53,27 +53,27 @@ export function convertAppUrlToPath(appUrl: string): string {
   return path;
 }
 
-export function getIvyHost(): string {
+export function getHostOrigin(): string {
   if (typeof document === "undefined") return "";
-  const metaHost = document.querySelector('meta[name="ivy-host"]')?.getAttribute("content");
+  const metaHost = document.querySelector('meta[name="sc-host"]')?.getAttribute("content");
   if (metaHost) {
-    return metaHost + getIvyBasePath();
+    return metaHost + getHostBasePath();
   }
   if (typeof window !== "undefined" && window.location) {
-    return window.location.origin + getIvyBasePath();
+    return window.location.origin + getHostBasePath();
   }
   return "";
 }
 
 export function isLocalFilesEnabled(): boolean {
   if (typeof document === "undefined") return false;
-  const meta = document.querySelector('meta[name="ivy-dangerously-allow-local-files"]');
+  const meta = document.querySelector('meta[name="sc-dangerously-allow-local-files"]');
   return meta?.getAttribute("content") === "true";
 }
 
 export function isDevToolsEnabled(): boolean {
   if (typeof document === "undefined") return false;
-  const meta = document.querySelector('meta[name="ivy-enable-dev-tools"]');
+  const meta = document.querySelector('meta[name="sc-enable-dev-tools"]');
   return meta?.getAttribute("content") === "true";
 }
 

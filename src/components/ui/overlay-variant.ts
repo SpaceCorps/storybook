@@ -14,7 +14,7 @@ import { cva } from "class-variance-authority";
  * dark mode lifts a step above the page: 1.08:1 and 1.09:1, and the panel reads as a surface instead
  * of a hole. A Card inside a dialog is on the same colour as its panel then, and keeps its edge from
  * `--border` alone. Dialog, AlertDialog, Popover and Sheet name their fill as
- * `--ivy-data-table-surface`, so an `embedded` DataTable placed directly in one joins it; a bordered
+ * `--sc-data-table-surface`, so an `embedded` DataTable placed directly in one joins it; a bordered
  * table, the default, paints the page colour inside its own edge and is a slightly recessed inset.
  */
 export const overlayVariant = cva(

@@ -83,7 +83,7 @@ describe("Storybook dev server runner", () => {
     expect(wrapper).not.toContain("--exact-port");
   });
 
-  it("discovers the ported Tendril component stories", () => {
+  it("discovers the ported SpaceCorps component stories", () => {
     for (const story of [
       "../src/components/ContentInput/ContentInput.stories.tsx",
       "../src/components/BadgeSelect/BadgeSelect.stories.tsx",

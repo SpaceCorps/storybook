@@ -1,9 +1,9 @@
-export type IvyEventHandler = (eventName: string, widgetId: string, args: unknown[]) => void;
+export type HostEventHandler = (eventName: string, widgetId: string, args: unknown[]) => void;
 
 export interface ShellWidgetProps {
   id: string;
   events?: string[];
-  eventHandler: IvyEventHandler;
+  eventHandler: HostEventHandler;
 }
 
 export interface ShellNavItemDto {
@@ -17,7 +17,7 @@ export interface ShellNavItemDto {
 export interface ShellBadgeDto {
   label: string;
   kind: "project" | "success" | "warning" | "neutral" | "color";
-  /** An Ivy color name the host assigned (e.g. "Blue"); tints the badge when `kind` is "color". */
+  /** A host color name the host assigned (e.g. "Blue"); tints the badge when `kind` is "color". */
   color?: string;
 }
 

@@ -5,7 +5,7 @@ export interface ShellContextValue {
   toggle: () => void;
 }
 
-/** Shared collapse state for every widget rendered inside a TendrilShell.
+/** Shared collapse state for every widget rendered inside a WorkbenchShell.
     Defaults keep the widgets usable when hosted standalone (samples, tests). */
 export const ShellContext = createContext<ShellContextValue>({
   collapsed: false,

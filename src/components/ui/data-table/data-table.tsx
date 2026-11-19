@@ -205,7 +205,7 @@ export interface DataTableProps<TRow> extends Omit<
    *   be selected. This is inherent to windowing.
    * - The table switches to `table-layout: fixed`, so column widths stay put instead of twitching
    *   as longer content scrolls in. Zero-width selection and row-action columns get real widths;
-   *   override the latter with the `--ivy-data-table-actions-width` custom property.
+   *   override the latter with the `--sc-data-table-actions-width` custom property.
    */
   virtualized?: DataTableVirtualized;
   /** Rendered-row count above which `virtualized="auto"` engages. Defaults to 50. */
@@ -244,7 +244,7 @@ export interface DataTableProps<TRow> extends Omit<
    * shows a second border inside the card's) and `"bordered"` everywhere else. Inside
    * `<CardContent flush>` the embedded table also runs edge to edge, with its first and last column
    * inset by the card padding. An embedded table paints its pinned columns with
-   * `--ivy-data-table-surface` (the page background if unset); set it when the host is not the page
+   * `--sc-data-table-surface` (the page background if unset); set it when the host is not the page
    * colour.
    */
   variant?: DataTableVariant;
@@ -649,7 +649,7 @@ function DataTableInner<TRow>(
    * row-action columns and painting their controls over the neighbouring cell. Windowed tables get
    * the width the fit reserves for them instead (the same numbers, so what the fit counts is what the
    * layout gives); auto layout keeps `w-0`'s shrink-to-fit behaviour. The actions width is the
-   * `--ivy-data-table-actions-width` custom property when a consumer sets it, else what the cell needs.
+   * `--sc-data-table-actions-width` custom property when a consumer sets it, else what the cell needs.
    */
   const fitColumn = (
     kind: "select" | "actions",
@@ -1040,7 +1040,7 @@ function DataTableInner<TRow>(
             ? // The card's own border frames the table; the divider only separates it from the
               // card header above.
               cardLayout === "flush" && "border-t border-border"
-            : "rounded-box border border-border bg-background [--ivy-data-table-surface:var(--background)]",
+            : "rounded-box border border-border bg-background [--sc-data-table-surface:var(--background)]",
         )}
       >
         {caption && showCaption ? (
@@ -1081,25 +1081,25 @@ function DataTableInner<TRow>(
             rowFocus.handleBlurWithin(event);
           }}
           className={cn(
-            "ivy-data-table",
+            "sc-data-table",
             // Sticky header: survives the scroll container `Table` wraps every table in. The
             // background is opaque so windowed rows do not scroll visibly through it, and it sits
             // above the pinned body cells (z-1) with the pinned header corners above it. Utilities
             // rather than a stylesheet, so they reach apps that only scan the compiled JS.
-            "[&_thead_th]:sticky [&_thead_th]:top-0 [&_thead_th]:z-[2] [&_thead_th]:bg-[color:var(--ivy-data-table-surface,var(--background))] [&_thead_th[data-pin]]:z-[3]",
+            "[&_thead_th]:sticky [&_thead_th]:top-0 [&_thead_th]:z-[2] [&_thead_th]:bg-[color:var(--sc-data-table-surface,var(--background))] [&_thead_th[data-pin]]:z-[3]",
             // Flush: the first and last column carry the card's padding, so text lines up with the
             // card header and the pinned columns keep it while scrolled.
             inset && "[&_tr>:first-child]:ps-6 [&_tr>:last-child]:pe-6",
             // Windowed: fixed layout takes widths from `column.width` (or an equal split) and holds
             // them, so columns do not twitch as longer content scrolls into the window.
-            virtualization.active && "ivy-data-table-virtualized table-fixed",
+            virtualization.active && "sc-data-table-virtualized table-fixed",
           )}
           // The scroller: wide content scrolls here instead of overflowing the card, and a scroll
           // that hits an end does not chain to the page. The scrollbar takes its colours from the
           // tokens: a native one stays light in the dark theme and glares against the card. The
           // `scroll-p*` utilities read the size of the pinned columns and the sticky header that
           // `useRevealFocus` measures, so a focused control is scrolled out from under them.
-          containerClassName="min-w-0 max-w-full overscroll-x-contain scroll-pl-[var(--ivy-data-table-pin-start,0px)] scroll-pr-[var(--ivy-data-table-pin-end,0px)] scroll-pt-[var(--ivy-data-table-head-height,0px)] [scrollbar-color:var(--muted-foreground)_transparent] [scrollbar-width:thin]"
+          containerClassName="min-w-0 max-w-full overscroll-x-contain scroll-pl-[var(--sc-data-table-pin-start,0px)] scroll-pr-[var(--sc-data-table-pin-end,0px)] scroll-pt-[var(--sc-data-table-head-height,0px)] [scrollbar-color:var(--muted-foreground)_transparent] [scrollbar-width:thin]"
           containerRef={scrollContainerRef}
           containerStyle={virtualization.containerStyle}
           {...tableProps}

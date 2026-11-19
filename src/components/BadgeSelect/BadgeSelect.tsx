@@ -13,7 +13,7 @@ import {
 import { findByTypeahead, isTypeaheadKey, useTypeahead } from "../keyboard/typeahead";
 import "./badge-select.css";
 
-type IvyEventHandler = (eventName: string, widgetId: string, args: unknown[]) => void;
+type HostEventHandler = (eventName: string, widgetId: string, args: unknown[]) => void;
 
 export interface BadgeSelectOption {
   value: string;
@@ -33,7 +33,7 @@ export interface BadgeSelectProps {
   width?: string;
   actions?: BadgeSelectOption[];
   events?: string[];
-  eventHandler?: IvyEventHandler;
+  eventHandler?: HostEventHandler;
 }
 
 const EMPTY_OPTIONS: BadgeSelectOption[] = [];

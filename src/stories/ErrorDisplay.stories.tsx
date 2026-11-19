@@ -20,6 +20,6 @@ export const Default: Story = {
     title: "System.InvalidOperationException",
     message: "Sequence contains no matching element.",
     stackTrace:
-      "   at System.Linq.ThrowHelper.ThrowNoMatchException()\n   at System.Linq.Enumerable.First[TSource](IEnumerable`1 source, Func`2 predicate)\n   at IvyFramework.Services.PlanRunner.ExecuteAsync(PlanContext context) in /src/Services/PlanRunner.cs:line 142",
+      "   at System.Linq.ThrowHelper.ThrowNoMatchException()\n   at System.Linq.Enumerable.First[TSource](IEnumerable`1 source, Func`2 predicate)\n   at HostFramework.Services.PlanRunner.ExecuteAsync(PlanContext context) in /src/Services/PlanRunner.cs:line 142",
   },
 };

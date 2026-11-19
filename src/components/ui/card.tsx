@@ -84,7 +84,7 @@ const CardContent = React.forwardRef<HTMLDivElement, CardContentProps>(
         className={cn(
           // Hands the card fill to descendants that need an opaque surface of their own (a table's
           // pinned columns and sticky header) so they match the card rather than the page.
-          "[--ivy-data-table-surface:var(--card)]",
+          "[--sc-data-table-surface:var(--card)]",
           flush
             ? "overflow-hidden p-0 first:rounded-t-[calc(var(--radius-boxes)-1px)] last:rounded-b-[calc(var(--radius-boxes)-1px)]"
             : "p-6 pt-0",

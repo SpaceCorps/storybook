@@ -72,7 +72,7 @@
 }
 
 /* ─── Typography ─────────────────────────────────────────────────────────
-   Replicates the Ivy framework Markdown widget's `typography` map (and the
+   Replicates the host framework Markdown widget's `typography` map (and the
    `article` variant) using the host design-system CSS variables, since the
    widget bundle's Tailwind build does not emit utility classes for the
    markdown content. Keep in sync with the host styles in src/lib/styles.ts. */
@@ -413,9 +413,9 @@
 }
 
 /* ─── Collapsible sections (<details>/<summary>) ──────────────────────────
-   Tendril promptware emits GitHub-style <details> blocks (the plan "Questions"
+   SpaceCorps promptware emits GitHub-style <details> blocks (the plan "Questions"
    section), parsed by rehype-raw and sanitised before reaching the DOM — see
-   frontend/src/rawHtml.ts. Mirrors the Ivy framework's `typography.details`
+   frontend/src/rawHtml.ts. Mirrors the host framework's `typography.details`
    and `typography.summary`. */
 .pmv-markdown details {
   border-radius: 0.5rem;

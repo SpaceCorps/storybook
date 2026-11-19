@@ -4,7 +4,7 @@ import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 const sampleMarkdown = `
 # Markdown Renderer
 
-This is an **interactive demonstration** of the Ivy markdown rendering engine.
+This is an **interactive demonstration** of the Host markdown rendering engine.
 
 > [!NOTE]
 > Helpful note callout with custom icon and border styling.

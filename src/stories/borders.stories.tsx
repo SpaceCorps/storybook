@@ -419,7 +419,7 @@ export const DarkSubtreeInLightPage: StoryObj = {
 
 /*
  * Tables on raised surfaces. In dark, Popover, Sheet, Dialog and AlertDialog sit a step above the page,
- * and each names its fill as `--ivy-data-table-surface`. A table that draws no box of its own
+ * and each names its fill as `--sc-data-table-surface`. A table that draws no box of its own
  * (`variant="embedded"`) paints its header and rows with that name, so it joins the host. A bordered
  * table, the default, is a box of its own and always sets the page colour: inside a raised host it is a
  * deliberate, slightly recessed inset with a visible edge, not a patch that failed to follow.

@@ -120,12 +120,12 @@ export { ErrorDisplay, type ErrorDisplayProps } from "./components/ErrorDisplay"
 export { ErrorSheet } from "./components/ErrorSheet";
 export { DevTools, type WidgetInfo } from "./components/DevTools";
 
-// Primary Tendril Widgets
-export { TendrilShell } from "./components/Shell/index.ts";
+// Primary SpaceCorps Widgets
+export { WorkbenchShell } from "./components/Shell/index.ts";
 export { AgentViewer } from "./components/AgentViewer/index.ts";
 export { PlanMarkdown } from "./components/PlanMarkdown";
-export { TendrilDashboard } from "./components/TendrilDashboard/index.ts";
-export { TendrilQuestions, type TendrilQuestionsProps } from "./components/TendrilQuestions";
+export { AgentDashboard } from "./components/AgentDashboard/index.ts";
+export { QuestionsPanel, type QuestionsPanelProps } from "./components/QuestionsPanel";
 export { PlanWorkspace } from "./components/PlanWorkspace/index.ts";
 
 export function fn() {

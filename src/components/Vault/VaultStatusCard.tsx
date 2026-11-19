@@ -22,7 +22,7 @@ export interface VaultStatusCardProps {
   gate?: VaultGate;
 }
 
-/** `https://github.com/acme/Tendril-Vault.git` reads as `acme/Tendril-Vault` in the UI. */
+/** `https://github.com/acme/Team-Vault.git` reads as `acme/Team-Vault` in the UI. */
 export function formatVaultRepo(status: VaultStatus): string {
   if (status.repoUrl) {
     return status.repoUrl.replace("https://github.com/", "").replace(/\.git$/, "");

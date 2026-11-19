@@ -3,10 +3,10 @@ import { debugLog } from "./debug-log";
 export type VoiceStatus = "idle" | "connecting" | "recording" | "processing";
 
 export const INSECURE_CONTEXT_ERROR =
-  "Voice input needs a secure connection. Open Tendril over HTTPS or on localhost, then try again.";
+  "Voice input needs a secure connection. Open SpaceCorps over HTTPS or on localhost, then try again.";
 
 export const MEDIA_DEVICES_UNAVAILABLE_ERROR =
-  "Voice input is not available in this window. On macOS, quit and reopen Ivy Tendril after updating, then allow microphone access when prompted. You can also run 'tendril --web' and use voice input in your browser.";
+  "Voice input is not available in this window. On macOS, quit and reopen SpaceCorps after updating, then allow microphone access when prompted. You can also run 'app --web' and use voice input in your browser.";
 
 export const AUDIO_CAPTURE_UNSUPPORTED_ERROR = "This browser cannot capture audio for voice input.";
 
@@ -153,7 +153,7 @@ export class VoiceRecorder {
       if (err instanceof DOMException) {
         if (err.name === "NotAllowedError") {
           errorMessage =
-            "Microphone access was denied. Allow microphone access for Ivy Tendril in System Settings > Privacy and Security > Microphone, then try again.";
+            "Microphone access was denied. Allow microphone access for SpaceCorps in System Settings > Privacy and Security > Microphone, then try again.";
         } else if (err.name === "NotFoundError") {
           errorMessage = "No microphone was found. Connect an input device and try again.";
         }

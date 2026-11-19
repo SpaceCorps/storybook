@@ -5,12 +5,12 @@ import "@testing-library/jest-dom/vitest";
 import { BadgeSelect, type BadgeSelectOption } from "./BadgeSelect";
 
 const projectOptions: BadgeSelectOption[] = [
-  { value: "Tendril-Services", label: "Tendril-Services" },
+  { value: "Platform-Services", label: "Platform-Services" },
   { value: "lots-of-dev-tools", label: "lots-of-dev-tools" },
 ];
 
 const addProjectAction: BadgeSelectOption[] = [
-  { value: "__tendril_add_project__", label: "Add Project", icon: "Plus" },
+  { value: "__add_project__", label: "Add Project", icon: "Plus" },
 ];
 
 describe("BadgeSelect actions", () => {
@@ -22,7 +22,7 @@ describe("BadgeSelect actions", () => {
     const optionLabels = screen.getAllByRole("option").map((el) => el.textContent);
     const actionButton = screen.getByText("Add Project");
 
-    expect(optionLabels).toEqual(["Tendril-Services", "lots-of-dev-tools"]);
+    expect(optionLabels).toEqual(["Platform-Services", "lots-of-dev-tools"]);
     expect(actionButton).toBeInTheDocument();
     expect(actionButton).not.toHaveAttribute("role", "option");
   });
@@ -42,7 +42,7 @@ describe("BadgeSelect actions", () => {
     fireEvent.click(screen.getByRole("combobox", { name: /select/i }));
     fireEvent.click(screen.getByText("Add Project"));
 
-    expect(eventHandler).toHaveBeenCalledWith("OnAction", "bs-1", ["__tendril_add_project__"]);
+    expect(eventHandler).toHaveBeenCalledWith("OnAction", "bs-1", ["__add_project__"]);
     expect(eventHandler).not.toHaveBeenCalledWith("OnChange", "bs-1", expect.anything());
   });
 
@@ -78,11 +78,11 @@ describe("BadgeSelect actions", () => {
     );
 
     fireEvent.click(screen.getByRole("combobox", { name: /select/i }));
-    fireEvent.click(screen.getByText("Tendril-Services"));
+    fireEvent.click(screen.getByText("Platform-Services"));
 
-    expect(eventHandler).toHaveBeenCalledWith("OnChange", "bs-1", [["Tendril-Services"]]);
+    expect(eventHandler).toHaveBeenCalledWith("OnChange", "bs-1", [["Platform-Services"]]);
     const [, , args] = eventHandler.mock.calls[0];
-    expect((args as string[][])[0]).not.toContain("__tendril_add_project__");
+    expect((args as string[][])[0]).not.toContain("__add_project__");
   });
 
   it("renders no separator and no extra row when actions is omitted", () => {

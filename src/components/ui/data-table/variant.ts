@@ -23,13 +23,13 @@ export const dataTableCellAlignVariant = cva("", {
  * scrolling under it show through, and `bg-muted/50` (the `TableRow` default) is translucent: the
  * pinned cells would sit white on a tinted hovered or selected row.
  *
- * `--ivy-data-table-surface` is the fill the table sits on (the card, inside a card) and falls back to
+ * `--sc-data-table-surface` is the fill the table sits on (the card, inside a card) and falls back to
  * the page background. The class strings are spelled out in full because Tailwind finds classes by
  * scanning source text, so a string assembled from parts would never reach the stylesheet.
  */
 const ROW_BACKGROUND = [
-  "[--row-bg:var(--ivy-data-table-surface,var(--background))] bg-[color:var(--row-bg)]",
-  "hover:[--row-bg:color-mix(in_oklab,var(--ivy-data-table-surface,var(--background)),var(--muted)_50%)] hover:bg-[color:var(--row-bg)]",
+  "[--row-bg:var(--sc-data-table-surface,var(--background))] bg-[color:var(--row-bg)]",
+  "hover:[--row-bg:color-mix(in_oklab,var(--sc-data-table-surface,var(--background)),var(--muted)_50%)] hover:bg-[color:var(--row-bg)]",
   // A selected row stays selected under the pointer instead of lightening to the hover tint.
   "data-[state=selected]:[--row-bg:var(--muted)] data-[state=selected]:bg-[color:var(--row-bg)] data-[state=selected]:hover:[--row-bg:var(--muted)]",
 ].join(" ");
@@ -85,7 +85,7 @@ export const dataTableRowVariant = cva(`${ROW_BACKGROUND} ${ROW_FOCUS_PINNED} ${
  * it is a target. The `font-medium` comes from the `TableFooter` section.
  */
 export const DATA_TABLE_FOOTER_ROW =
-  "[--row-bg:color-mix(in_oklab,var(--ivy-data-table-surface,var(--background)),var(--muted)_50%)] bg-[color:var(--row-bg)] hover:bg-[color:var(--row-bg)]";
+  "[--row-bg:color-mix(in_oklab,var(--sc-data-table-surface,var(--background)),var(--muted)_50%)] bg-[color:var(--row-bg)] hover:bg-[color:var(--row-bg)]";
 
 /**
  * Pinned edge columns. The selection column sticks to the left and the row-action column to the
@@ -135,11 +135,11 @@ const CELL_NOWRAP = "whitespace-nowrap";
 // never truncates anything and one long message stretches the whole table. The cap is what makes the
 // ellipsis real; it is a custom property so a table that wants longer lines can raise it.
 const CELL_TRUNCATE =
-  "max-w-[var(--ivy-data-table-truncate-width,20rem)] overflow-hidden text-ellipsis whitespace-nowrap";
+  "max-w-[var(--sc-data-table-truncate-width,20rem)] overflow-hidden text-ellipsis whitespace-nowrap";
 // The header of a truncating column takes the same cap. Without it the label and its sort icon, which
 // do not wrap, set the column's minimum width however short the cap makes the cells, and the column
 // ends up wider than the fit assumed. The label inside is what gives way, see `DataTableColumnHeader`.
-const HEADER_TRUNCATE = "max-w-[var(--ivy-data-table-truncate-width,20rem)]";
+const HEADER_TRUNCATE = "max-w-[var(--sc-data-table-truncate-width,20rem)]";
 
 type CellWrapColumn<TRow> = Pick<DataTableColumn<TRow>, "nowrap" | "wrapText" | "align">;
 

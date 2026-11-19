@@ -7,7 +7,7 @@
 // occupies that position (looking, to the reviewer, entirely legitimate).
 //
 // Derived here and nowhere else. The widget stamps the result onto every comment and hands the
-// same string to Ivy, so the C# side groups by plain string equality instead of re-deriving any
+// same string to Host, so the C# side groups by plain string equality instead of re-deriving any
 // of this. The ViewToken grammar is already parsed in three places; this does not need to
 // become a fourth thing to keep in step.
 export function canonicalPageUrl(input: string): string {

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import type { IvyEventHandler } from "../TendrilProcessViewer/types";
+import type { HostEventHandler } from "../ProcessViewer/types";
 import { parseQuestions } from "../PlanMarkdown/questionsSchema";
 import { QuestionsForm } from "./QuestionsForm";
 import {
@@ -11,12 +11,12 @@ import {
   submitNote,
 } from "./answers";
 import type { AnswerMap } from "./answers";
-import "./tendril-questions.css";
+import "./questions-panel.css";
 
-export interface TendrilQuestionsProps {
+export interface QuestionsPanelProps {
   id: string;
   events?: string[];
-  eventHandler: IvyEventHandler;
+  eventHandler: HostEventHandler;
   /** The body of a `questions` fence: YAML in the plan questions schema. */
   content?: string;
   readOnly?: boolean;
@@ -30,7 +30,7 @@ export interface TendrilQuestionsProps {
  * entry list of the question it belongs to; OnSubmit additionally sends every answer at once with a
  * markdown summary, for hosts that want the decisions in one message.
  */
-export const TendrilQuestions: React.FC<TendrilQuestionsProps> = ({
+export const QuestionsPanel: React.FC<QuestionsPanelProps> = ({
   id,
   events = [],
   eventHandler,

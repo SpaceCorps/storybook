@@ -1,4 +1,4 @@
-export { TendrilShell } from "./TendrilShell.tsx";
+export { WorkbenchShell } from "./WorkbenchShell.tsx";
 export { ShellNav } from "./ShellNav.tsx";
 export { ShellTabs } from "./ShellTabs.tsx";
 export { ShellAgentButton } from "./ShellAgentButton.tsx";
@@ -15,7 +15,7 @@ export { ShellSectionItems, sectionItemIcons } from "./ShellSectionItems.tsx";
 export { ShellTooltip, formatShortcut } from "./ShellTooltip.tsx";
 export type { ShellTooltipProps } from "./ShellTooltip.tsx";
 export type {
-  IvyEventHandler,
+  HostEventHandler,
   ShellBadgeDto,
   ShellItemState,
   ShellNavItemDto,

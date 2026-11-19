@@ -1,6 +1,6 @@
 /**
  * Default values for chart configuration objects.
- * These match the C# backend defaults in Ivy.Widgets.Charts.Shared.
+ * These match the C# backend defaults in Host.Widgets.Charts.Shared.
  * When values equal the C# default, they are not serialized, so we must apply them here.
  */
 

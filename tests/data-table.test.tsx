@@ -573,7 +573,7 @@ describe("DataTable cell wrapping", () => {
     expect(table.className).toContain("[&_thead_th]:sticky");
     // Opaque, and the table's surface rather than the page, so a header inside a card matches the card.
     expect(table.className).toContain(
-      "[&_thead_th]:bg-[color:var(--ivy-data-table-surface,var(--background))]",
+      "[&_thead_th]:bg-[color:var(--sc-data-table-surface,var(--background))]",
     );
   });
 });
@@ -994,12 +994,12 @@ describe("DataTable variant", () => {
   it("only a bordered table sets its own surface fill; an embedded one inherits the host's", () => {
     const bordered = render(table());
     expect(surfaceOf(bordered.container).className).toContain(
-      "[--ivy-data-table-surface:var(--background)]",
+      "[--sc-data-table-surface:var(--background)]",
     );
     bordered.unmount();
 
     const embedded = render(table({ variant: "embedded" }));
-    expect(surfaceOf(embedded.container).className).not.toContain("--ivy-data-table-surface");
+    expect(surfaceOf(embedded.container).className).not.toContain("--sc-data-table-surface");
   });
 
   it("lets the table shrink inside a flex or grid parent", () => {
@@ -1145,7 +1145,7 @@ describe("DataTable scroll containment and pinned columns", () => {
 
     const row = container.querySelector<HTMLElement>('tbody tr[data-row-id="r1"]')!;
     expect(row.className).toContain("bg-[color:var(--row-bg)]");
-    expect(row.className).toContain("[--row-bg:var(--ivy-data-table-surface,var(--background))]");
+    expect(row.className).toContain("[--row-bg:var(--sc-data-table-surface,var(--background))]");
     expect(row.className).toContain("hover:[--row-bg:color-mix(");
     expect(row.className).toContain("data-[state=selected]:[--row-bg:var(--muted)]");
     // The translucent TableRow defaults are merged away, or they would beat the opaque fill.
@@ -1208,7 +1208,7 @@ describe("DataTable truncation", () => {
     { name: "id", header: "Id", nowrap: true },
     { name: "score", header: "Score", align: "Right" },
   ];
-  const CAP = "max-w-[var(--ivy-data-table-truncate-width,20rem)]";
+  const CAP = "max-w-[var(--sc-data-table-truncate-width,20rem)]";
 
   function stubOverflow(cell: HTMLElement, scrollWidth: number, clientWidth: number) {
     Object.defineProperty(cell, "scrollWidth", { configurable: true, value: scrollWidth });
@@ -1301,7 +1301,7 @@ describe("DataTable header truncation", () => {
     { name: "score", header: "Score including VAT", align: "Right" },
     { name: "note", header: "Note", help: "Free text" },
   ];
-  const CAP = "max-w-[var(--ivy-data-table-truncate-width,20rem)]";
+  const CAP = "max-w-[var(--sc-data-table-truncate-width,20rem)]";
 
   const headerOf = (container: HTMLElement, text: string): HTMLElement => {
     const cell = Array.from(container.querySelectorAll<HTMLElement>("thead th")).find(

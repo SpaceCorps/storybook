@@ -63,7 +63,7 @@ function contrast(a: string, b: string): number {
 }
 
 describe("plan-diff.css selected file in the changed-files tree", () => {
-  const bar = () => rule(".ivy-changes-tree-row-selected::before");
+  const bar = () => rule(".sc-changes-tree-row-selected::before");
 
   it("marks the selected row with a bar, not only a tint", () => {
     expect(bar()).toMatch(/content:\s*""/);
@@ -71,7 +71,7 @@ describe("plan-diff.css selected file in the changed-files tree", () => {
     expect(bar()).toMatch(/left:\s*0\s*;/);
     // At least 3px, so it reads as a mark rather than a hairline.
     expect(Number(bar().match(/width:\s*(\d+)px/)?.[1])).toBeGreaterThanOrEqual(3);
-    expect(rule(".ivy-changes-tree-row")).toMatch(/position:\s*relative\s*;/);
+    expect(rule(".sc-changes-tree-row")).toMatch(/position:\s*relative\s*;/);
   });
 
   it("draws the bar in the text colour, which is at least 3:1 on the tint in both themes", () => {
@@ -88,7 +88,7 @@ describe("plan-diff.css selected file in the changed-files tree", () => {
 
   it("keeps the bar in forced-colors mode, where a custom colour is dropped, in a system colour", () => {
     const start = css.indexOf(
-      "@media (forced-colors: active) {\n  .ivy-changes-tree-row-selected::before",
+      "@media (forced-colors: active) {\n  .sc-changes-tree-row-selected::before",
     );
     expect(start).toBeGreaterThan(-1);
     const block = css.slice(start, css.indexOf("\n}\n", start));

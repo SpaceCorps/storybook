@@ -297,7 +297,7 @@ describe("CreateVaultDialog", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Create Vault" }));
     expect(onSubmit).toHaveBeenCalledWith({
-      name: "Tendril-Vault",
+      name: "Team-Vault",
       isPrivate: true,
       owner: "acme",
     });
@@ -313,7 +313,7 @@ describe("CreateVaultDialog", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Create Vault" }));
     expect(onSubmit).toHaveBeenCalledWith({
-      name: "Tendril-Vault",
+      name: "Team-Vault",
       isPrivate: true,
       owner: "acme",
     });
@@ -323,10 +323,10 @@ describe("CreateVaultDialog", () => {
 describe("ConnectVaultDialog", () => {
   const discovered = [
     {
-      fullName: "acme/Tendril-Vault",
-      repoUrl: "https://github.com/acme/Tendril-Vault.git",
+      fullName: "acme/Team-Vault",
+      repoUrl: "https://github.com/acme/Team-Vault.git",
       owner: "acme",
-      name: "Tendril-Vault",
+      name: "Team-Vault",
       accountType: "Organization",
       isPrivate: true,
     },
@@ -355,20 +355,20 @@ describe("ConnectVaultDialog", () => {
 
     openSelect(screen.getByRole("combobox", { name: "Detected GitHub Vaults" }));
     fireEvent.click(
-      screen.getByRole("option", { name: "acme/Tendril-Vault (Organization, private)" }),
+      screen.getByRole("option", { name: "acme/Team-Vault (Organization, private)" }),
     );
 
     expect(screen.getByLabelText("Git Repository URL")).toHaveValue(
-      "https://github.com/acme/Tendril-Vault.git",
+      "https://github.com/acme/Team-Vault.git",
     );
-    expect(screen.getByLabelText("Display Name (Optional)")).toHaveValue("acme/Tendril-Vault");
+    expect(screen.getByLabelText("Display Name (Optional)")).toHaveValue("acme/Team-Vault");
 
     const submit = screen.getByRole("button", { name: "Connect Vault" });
     expect(submit).not.toHaveAttribute("aria-disabled");
     fireEvent.click(submit);
     expect(onSubmit).toHaveBeenCalledWith({
-      repoUrl: "https://github.com/acme/Tendril-Vault.git",
-      displayName: "acme/Tendril-Vault",
+      repoUrl: "https://github.com/acme/Team-Vault.git",
+      displayName: "acme/Team-Vault",
     });
   });
 
@@ -539,7 +539,7 @@ describe("PushToVaultDialog", () => {
       <PushToVaultDialog
         open
         onClose={vi.fn()}
-        vaultDisplayName="acme/Tendril-Vault"
+        vaultDisplayName="acme/Team-Vault"
         availableProjects={["Alpha"]}
         assets={assets}
         onSubmit={onSubmit}
@@ -563,7 +563,7 @@ describe("PushToVaultDialog", () => {
       <PushToVaultDialog
         open
         onClose={vi.fn()}
-        vaultDisplayName="acme/Tendril-Vault"
+        vaultDisplayName="acme/Team-Vault"
         targetVaultId="default"
         availableProjects={["Alpha"]}
         assets={assets}
@@ -596,7 +596,7 @@ describe("PushToVaultDialog", () => {
       <PushToVaultDialog
         open
         onClose={vi.fn()}
-        vaultDisplayName="acme/Tendril-Vault"
+        vaultDisplayName="acme/Team-Vault"
         availableProjects={["Alpha"]}
         assets={assets}
         onSubmit={onSubmit}

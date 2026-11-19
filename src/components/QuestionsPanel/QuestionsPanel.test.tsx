@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, within } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import "@testing-library/jest-dom";
-import { TendrilQuestions } from "./TendrilQuestions";
+import { QuestionsPanel } from "./QuestionsPanel";
 import { QuestionsForm } from "./QuestionsForm";
 import { parseQuestions } from "../PlanMarkdown/questionsSchema";
 import { buildAnswersSummary, unansweredRequired } from "./answers";
@@ -86,9 +86,9 @@ const questionsOf = (content: string) => {
   return parsed.questions;
 };
 
-describe("TendrilQuestions widget", () => {
+describe("QuestionsPanel widget", () => {
   it("renders single-select option cards with descriptions and the recommended badge", () => {
-    render(<TendrilQuestions id="q" eventHandler={vi.fn()} content={singleSelect} />);
+    render(<QuestionsPanel id="q" eventHandler={vi.fn()} content={singleSelect} />);
 
     expect(screen.getByText("How should we proceed?")).toBeInTheDocument();
     expect(
@@ -102,12 +102,7 @@ describe("TendrilQuestions widget", () => {
   it("selects an option on card click and reports it through OnAnswer", () => {
     const handler = vi.fn();
     render(
-      <TendrilQuestions
-        id="q"
-        events={["OnAnswer"]}
-        eventHandler={handler}
-        content={singleSelect}
-      />,
+      <QuestionsPanel id="q" events={["OnAnswer"]} eventHandler={handler} content={singleSelect} />,
     );
 
     fireEvent.click(screen.getByText("Review the diff first"));
@@ -123,12 +118,7 @@ describe("TendrilQuestions widget", () => {
   it("toggles multi-select options and keeps every selected entry in the answer", () => {
     const handler = vi.fn();
     render(
-      <TendrilQuestions
-        id="q"
-        events={["OnAnswer"]}
-        eventHandler={handler}
-        content={multiSelect}
-      />,
+      <QuestionsPanel id="q" events={["OnAnswer"]} eventHandler={handler} content={multiSelect} />,
     );
 
     expect(screen.getByText("Select all that apply")).toBeInTheDocument();
@@ -147,7 +137,7 @@ describe("TendrilQuestions widget", () => {
   it("opens the Other field and reports the typed text as the answer", () => {
     const handler = vi.fn();
     render(
-      <TendrilQuestions id="q" events={["OnAnswer"]} eventHandler={handler} content={withOther} />,
+      <QuestionsPanel id="q" events={["OnAnswer"]} eventHandler={handler} content={withOther} />,
     );
 
     expect(screen.getByText("Deployment")).toBeInTheDocument();
@@ -172,7 +162,7 @@ describe("TendrilQuestions widget", () => {
   it("renders a free-text question with the optional tag and reports typing", () => {
     const handler = vi.fn();
     render(
-      <TendrilQuestions id="q" events={["OnAnswer"]} eventHandler={handler} content={freeText} />,
+      <QuestionsPanel id="q" events={["OnAnswer"]} eventHandler={handler} content={freeText} />,
     );
 
     expect(screen.getByText("Optional")).toBeInTheDocument();
@@ -187,7 +177,7 @@ describe("TendrilQuestions widget", () => {
   it("submits every answer with a markdown summary and clears on request", () => {
     const handler = vi.fn();
     render(
-      <TendrilQuestions
+      <QuestionsPanel
         id="q"
         events={["OnAnswer", "OnSubmit"]}
         eventHandler={handler}
@@ -219,7 +209,7 @@ describe("TendrilQuestions widget", () => {
   });
 
   it("presents settled answers read-only, naming the option and the unanswered optional one", () => {
-    render(<TendrilQuestions id="q" eventHandler={vi.fn()} content={answered} readOnly />);
+    render(<QuestionsPanel id="q" eventHandler={vi.fn()} content={answered} readOnly />);
 
     expect(screen.queryByRole("radio")).not.toBeInTheDocument();
     expect(screen.getByText("Review the diff first")).toHaveClass("tq-answer-value");
@@ -227,14 +217,12 @@ describe("TendrilQuestions widget", () => {
   });
 
   it("falls back to the raw text when the body is not a questions block", () => {
-    render(
-      <TendrilQuestions id="q" eventHandler={vi.fn()} content={"Just a note for the reader"} />,
-    );
+    render(<QuestionsPanel id="q" eventHandler={vi.fn()} content={"Just a note for the reader"} />);
     expect(screen.getByText("Just a note for the reader")).toHaveClass("tq-static");
   });
 
   it("stays disabled with a note until something is answered, then enables and names what is left", () => {
-    render(<TendrilQuestions id="q" eventHandler={vi.fn()} content={twoRequired} showSubmit />);
+    render(<QuestionsPanel id="q" eventHandler={vi.fn()} content={twoRequired} showSubmit />);
 
     const submit = screen.getByRole("button", { name: "Submit response" });
     expect(submit).toBeDisabled();

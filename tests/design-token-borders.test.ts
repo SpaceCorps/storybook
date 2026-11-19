@@ -216,7 +216,7 @@ describe("an invalid control keeps a border stronger than a valid one in dark", 
 
 describe("lifted dark surfaces hand their fill to an embedded table", () => {
   // In dark, --card and --popover are a step above --background. A table that is not a bordered box of
-  // its own (`variant="embedded"`) paints its rows with `--ivy-data-table-surface`, falling back to
+  // its own (`variant="embedded"`) paints its rows with `--sc-data-table-surface`, falling back to
   // the page, so a host that is lifted has to name its fill or the table reads as a dark patch on it
   // (CardContent already does). The default bordered table sets its own surface and is not covered by
   // this: see "a table takes the fill of the raised surface that hosts it" below.
@@ -224,7 +224,7 @@ describe("lifted dark surfaces hand their fill to an embedded table", () => {
     render(createElement(Popover, { open: true }, createElement(PopoverContent, null, "Body")));
 
     expect(tokens(document.querySelector('[data-slot="popover-content"]')!.className)).toContain(
-      "[--ivy-data-table-surface:var(--popover)]",
+      "[--sc-data-table-surface:var(--popover)]",
     );
   });
 
@@ -244,22 +244,22 @@ describe("lifted dark surfaces hand their fill to an embedded table", () => {
 
     const list = tokens(screen.getByRole("dialog").className);
     expect(list).toContain("bg-card");
-    expect(list).toContain("[--ivy-data-table-surface:var(--card)]");
+    expect(list).toContain("[--sc-data-table-surface:var(--card)]");
   });
 });
 
 describe("a table takes the fill of the raised surface that hosts it", () => {
   // The hand-off above is only a class on the host; what matters is which fill a table ends up with.
-  // That is the nearest `[--ivy-data-table-surface:...]` on the way up from the table's own surface
+  // That is the nearest `[--sc-data-table-surface:...]` on the way up from the table's own surface
   // element, which is how the custom property inherits in the browser. The table's own element is
   // included, because a bordered table sets the property there and that is what stops the walk.
   const surfaceFor = (table: Element): string | undefined => {
     for (let node: Element | null = table; node !== null; node = node.parentElement) {
       const named = tokens(node.getAttribute("class") ?? "").find((token) =>
-        token.startsWith("[--ivy-data-table-surface:"),
+        token.startsWith("[--sc-data-table-surface:"),
       );
       if (named !== undefined) {
-        return named.slice("[--ivy-data-table-surface:".length, -1);
+        return named.slice("[--sc-data-table-surface:".length, -1);
       }
     }
     return undefined;
@@ -505,7 +505,7 @@ describe("modal panels are raised surfaces", () => {
     const panel = tokens(screen.getByRole("dialog").className);
     expect(panel).toContain("bg-popover");
     expect(panel).not.toContain("bg-background");
-    expect(panel).toContain("[--ivy-data-table-surface:var(--popover)]");
+    expect(panel).toContain("[--sc-data-table-surface:var(--popover)]");
 
     const header = tokens(screen.getByText("Book payment").closest(".sticky")!.className);
     expect(header).toContain("bg-popover");
@@ -529,6 +529,6 @@ describe("modal panels are raised surfaces", () => {
     const panel = tokens(screen.getByRole("alertdialog").className);
     expect(panel).toContain("bg-popover");
     expect(panel).not.toContain("bg-background");
-    expect(panel).toContain("[--ivy-data-table-surface:var(--popover)]");
+    expect(panel).toContain("[--sc-data-table-surface:var(--popover)]");
   });
 });

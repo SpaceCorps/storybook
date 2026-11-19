@@ -12,10 +12,10 @@ export interface WidgetInfo {
   callSite?: CallSite;
 }
 
-const TEXT_EDITABLE_TYPES = ["Ivy.TextBlock", "Ivy.Markdown"];
+const TEXT_EDITABLE_TYPES = ["Host.TextBlock", "Host.Markdown"];
 
 function getWidgetBounds(wrapperElement: HTMLElement): DOMRect {
-  if (wrapperElement.tagName !== "IVY-WIDGET") {
+  if (wrapperElement.tagName !== "SC-WIDGET") {
     return wrapperElement.getBoundingClientRect();
   }
 
@@ -41,7 +41,7 @@ function getWidgetBounds(wrapperElement: HTMLElement): DOMRect {
 }
 
 function formatWidgetType(type: string): string {
-  return type.replace(/^Ivy\./, "");
+  return type.replace(/^Host\./, "");
 }
 
 function getDialogPosition(clickPos: { x: number; y: number }) {
@@ -109,9 +109,8 @@ export function DevTools() {
   const dialogRef = useRef<HTMLDivElement>(null);
 
   const getWidgetInfo = useCallback((element: HTMLElement): WidgetInfo => {
-    const widgetId = element.getAttribute("data-ivy-widget-id") || element.getAttribute("id")!;
-    const widgetType =
-      element.getAttribute("data-ivy-widget-type") || element.getAttribute("type")!;
+    const widgetId = element.getAttribute("data-sc-widget-id") || element.getAttribute("id")!;
+    const widgetType = element.getAttribute("data-sc-widget-type") || element.getAttribute("type")!;
     const bounds = getWidgetBounds(element);
     const callSite = widgetCallSiteRegistry.get(widgetId);
     return { id: widgetId, type: widgetType, element, bounds, callSite };
@@ -170,13 +169,11 @@ export function DevTools() {
       if (dialogWidget) return;
 
       const target = e.target as HTMLElement;
-      if (target.closest(".ivy-devtools")) return;
+      if (target.closest(".sc-devtools")) return;
 
       e.stopPropagation();
 
-      const widgetWrapper = target.closest(
-        "ivy-widget, [data-ivy-widget-id]",
-      ) as HTMLElement | null;
+      const widgetWrapper = target.closest("sc-widget, [data-sc-widget-id]") as HTMLElement | null;
       if (!widgetWrapper) {
         dispatchDev({ highlightedWidget: null, widgetStack: [] });
         return;
@@ -187,7 +184,7 @@ export function DevTools() {
       while (current) {
         stack.push(current);
         current = current.parentElement?.closest(
-          "ivy-widget, [data-ivy-widget-id]",
+          "sc-widget, [data-sc-widget-id]",
         ) as HTMLElement | null;
       }
       dispatchDev({
@@ -203,7 +200,7 @@ export function DevTools() {
       if (widgetStack.length === 0 || dialogWidget) return;
 
       const target = e.target as HTMLElement;
-      if (target.closest(".ivy-devtools")) return;
+      if (target.closest(".sc-devtools")) return;
 
       e.stopPropagation();
 
@@ -231,7 +228,7 @@ export function DevTools() {
       if (dialogWidget) return;
 
       const target = e.target as HTMLElement;
-      if (target.closest(".ivy-devtools")) return;
+      if (target.closest(".sc-devtools")) return;
 
       e.preventDefault();
       e.stopPropagation();
@@ -334,7 +331,7 @@ export function DevTools() {
 
     const isSelected = !!dialogWidget;
     const overlay = document.createElement("div");
-    overlay.className = `ivy-devtools ivy-devtools-overlay${isSelected ? " ivy-devtools-overlay--selected" : ""}`;
+    overlay.className = `sc-devtools sc-devtools-overlay${isSelected ? " sc-devtools-overlay--selected" : ""}`;
     Object.assign(overlay.style, {
       top: `${bounds.top}px`,
       left: `${bounds.left}px`,
@@ -343,8 +340,8 @@ export function DevTools() {
     });
 
     const label = document.createElement("div");
-    label.className = "ivy-devtools-label";
-    label.innerHTML = `<div class="ivy-devtools-label-type">${formatWidgetType(type)}</div>`;
+    label.className = "sc-devtools-label";
+    label.innerHTML = `<div class="sc-devtools-label-type">${formatWidgetType(type)}</div>`;
     overlay.appendChild(label);
     document.body.appendChild(overlay);
 
@@ -352,11 +349,11 @@ export function DevTools() {
   }, [enabled, highlightedWidget, dialogWidget]);
 
   return enabled ? (
-    <div className="ivy-devtools-container">
+    <div className="sc-devtools-container">
       {dialogWidget && (
         <div
           ref={dialogRef}
-          className="ivy-devtools ivy-devtools-dialog"
+          className="sc-devtools sc-devtools-dialog"
           style={getDialogPosition(clickPosition)}
         >
           <input
@@ -365,17 +362,17 @@ export function DevTools() {
             value={dialogText}
             onChange={(e) => dispatchDev({ dialogText: e.target.value })}
             placeholder="Write anything..."
-            className="ivy-devtools-input"
+            className="sc-devtools-input"
           />
-          <button onClick={handleSend} className="ivy-devtools-icon-btn" title="Send (Enter)">
+          <button onClick={handleSend} className="sc-devtools-icon-btn" title="Send (Enter)">
             <LuSend size={14} />
           </button>
-          <button onClick={handleAdd} className="ivy-devtools-icon-btn" title="Queue (Shift+Enter)">
+          <button onClick={handleAdd} className="sc-devtools-icon-btn" title="Queue (Shift+Enter)">
             <LuPlus size={14} />
           </button>
           <button
             onClick={handleSelectParent}
-            className="ivy-devtools-icon-btn"
+            className="sc-devtools-icon-btn"
             title="Select parent"
           >
             <LuChevronUp size={14} />

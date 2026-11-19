@@ -48,7 +48,7 @@ broken Dockerfile is caught before Sliplane deploys it.
 - **`@spacecorps/components/ui`** — 38+ Radix UI & shadcn/ui primitives (Button, Input, Card, Dialog, etc.)
 - **`@spacecorps/components/renderers`** — Rich content renderers (Markdown, JSON, XML, HTML, Code, Chat, ErrorBoundary)
 - **`@spacecorps/components/diagrams`** — Diagram renderers (Mermaid, Graphviz) that lazy-load mermaid and @hpcc-js/wasm-graphviz on first render
-- **`@spacecorps/components/tendril`** — Tendril execution widgets, Shell layout, diff inspection, and dashboard analytics
+- **`@spacecorps/components/workbench`** — SpaceCorps execution widgets, Shell layout, diff inspection, and dashboard analytics
 - **`@spacecorps/components/styles/*`** — Design system tokens and stylesheets (`index.css`, `markdown-spacing.css`)
 
 ## Installation
@@ -408,19 +408,19 @@ function ContentDemo() {
 }
 ```
 
-### 4. Tendril Widgets
+### 4. SpaceCorps Widgets
 
 ```tsx
 import {
-  TendrilShell,
+  WorkbenchShell,
   AgentViewer,
   PlanMarkdown,
-  TendrilDashboard,
+  AgentDashboard,
   ContentInput,
   BadgeSelect,
-} from "@spacecorps/components/tendril";
+} from "@spacecorps/components/workbench";
 
-function TendrilApp() {
+function MyApp() {
   const dashboardData = {
     kpis: [
       { label: "Plans", value: 42, trend: "up", change: 12 },
@@ -432,14 +432,14 @@ function TendrilApp() {
   };
 
   return (
-    <TendrilShell
+    <WorkbenchShell
       id="shell"
       eventHandler={(eventName, widgetId, args) => console.log(eventName, widgetId, args)}
       slots={{
         SidebarBody: <nav aria-label="Main">{/* ShellNav and section widgets */}</nav>,
         Content: (
           <div className="space-y-6">
-            <TendrilDashboard {...dashboardData} />
+            <AgentDashboard {...dashboardData} />
 
             <AgentViewer events={[]} isStreaming={false} />
 
@@ -580,7 +580,7 @@ each. Additive props and new components are in the sections above.
   grows past 768 px, and `Sidebar` takes `mobileLabel` (default "Navigation") for the drawer's
   accessible name.
 - **The icon-button and shell tooltip** (the one behind `IconButton` and `StatusLine`, and exported
-  from `/tendril` as `ShellTooltip`; the `Tooltip` exported by `/ui` is the plain Radix wrapper and
+  from `/workbench` as `ShellTooltip`; the `Tooltip` exported by `/ui` is the plain Radix wrapper and
   did not change): `triggerDisabled` is deprecated and ignored. A natively disabled `IconButton` no
   longer has an unnamed focusable wrapper as a tab stop; use `focusableWhenDisabled` for a disabled
   icon button that stays reachable. With empty `content` an element child stays mounted, so a control
@@ -630,7 +630,7 @@ each. Additive props and new components are in the sections above.
   sideways (the wheel too) with its scrollbar hidden, instead of shrinking the tabs to nothing; a tab
   has a native `title`, a 24px close hit area and 36px of right padding, and keeps its highlight while
   its X is hovered. Closing the last tab with focus in the strip leaves a lone new-session button
-  holding focus until focus moves on (`TendrilShell` keeps the Tabs row mounted for that long after
+  holding focus until focus moves on (`WorkbenchShell` keeps the Tabs row mounted for that long after
   `hasTabs` turns false).
 - **`Slider`**: `aria-label` no longer reaches the root `span`; it goes to the thumb, or to the group
   for a range (`thumbLabels` names each thumb).
@@ -717,15 +717,15 @@ each. Additive props and new components are in the sections above.
     and a cell that was handed spare room does not read wider), `--spacing`, the root font size and the
     rendered checkbox. The measurement only ever raises the actions width above the model, and it looks
     at the first 25 rows: a text-labelled action that first appears in row 40 of a page is not seen, so
-    give such a table `collapseRowActionsBelow` or `--ivy-data-table-actions-width`. A root font size
+    give such a table `collapseRowActionsBelow` or `--sc-data-table-actions-width`. A root font size
     changed while the page is open is picked up at the table's next render, not at once. In jsdom
     nothing is laid out and the model alone applies.
   - **Undeclared widths are still estimates.** A column counts as its `width` when that is a plain px
     or rem length, else 128px (8rem, following the root font size). A column whose cells truncate (one
     that is not right-aligned, `nowrap` or `wrapText`) is as wide as its text up to
-    `--ivy-data-table-truncate-width` (20rem), whatever its `width` says: the table cannot know that a
+    `--sc-data-table-truncate-width` (20rem), whatever its `width` says: the table cannot know that a
     column declared 130px holds names 250px long. Declare the width the text really needs, or set the
-    cap to what the `width`s claim (`className="[--ivy-data-table-truncate-width:8rem]"`).
+    cap to what the `width`s claim (`className="[--sc-data-table-truncate-width:8rem]"`).
   - **A header is part of its column's width.** The header of a column whose cells truncate (one that
     is not right-aligned, `nowrap` or `wrapText`) now truncates too, at the same cap: the label gets an
     ellipsis and the sort icon stays. The whole label is still the name of the sort button, and is
@@ -784,7 +784,7 @@ each. Additive props and new components are in the sections above.
     actions").
   - **Windowed tables** (`table-layout: fixed`) size their pinned columns from the same model and the
     same measurement, as inline widths, whether or not a column is ranked or the actions fold: the
-    actions column is `var(--ivy-data-table-actions-width, <needed>px)`, so the property still
+    actions column is `var(--sc-data-table-actions-width, <needed>px)`, so the property still
     overrides it, and it counts in the fit only here, since no other layout reads it. It was a fixed
     5rem (80px) before, which two icon buttons did not fit in, so the buttons spilled into the
     neighbouring column. Only the rows in view are in the DOM, so the widest actions cell seen is kept
@@ -809,7 +809,7 @@ each. Additive props and new components are in the sections above.
   `dataTableRowVariant` now includes the background and focus classes. The select-all
   checkbox reports mixed when only some rows of the page are selected. With `manualPagination`,
   `aria-rowindex` is offset by the page like a client-paged table. Cells that truncate are capped at
-  `--ivy-data-table-truncate-width` (20rem; `column.width` is only a preferred width), so a long text
+  `--sc-data-table-truncate-width` (20rem; `column.width` is only a preferred width), so a long text
   column no longer stretches the table. Right-aligned cells use tabular numerals.
 
 **New since 0.1.2, so nothing to migrate (behaviour worth knowing)**
@@ -835,36 +835,36 @@ warns in development). `GAMEPAD_STEP_ATTRIBUTE` (`data-gamepad-step`) is exporte
   Existing offenders are listed in the test's `ALLOWLIST` and `CSS_ALLOWLIST`; a new one fails the
   suite.
 
-## Tendril Consumer Integration & Setup
+## SpaceCorps Consumer Integration & Setup
 
-`@spacecorps/components` serves as a core UI dependency for `SpaceCorps/Tendril-App` (a desktop Rust and Tauri application).
+`@spacecorps/components` serves as the core UI dependency for SpaceCorps desktop and web host applications.
 
 ### 1. Stylesheet Import
 
 Import the standalone compiled CSS bundle at the root of your application:
 
 ```ts
-import "@spacecorps/@spacecorps/components/style.css";
+import "@spacecorps/components/style.css";
 ```
 
 This single stylesheet includes compiled design system tokens, Tailwind CSS utility classes, `@layer base` styles, and component CSS rules.
 
-### 2. Tendril Entrypoint
+### 2. SpaceCorps Entrypoint
 
-Import Tendril widgets directly from the `./tendril` subpath:
+Import SpaceCorps widgets directly from the `./workbench` subpath:
 
 ```tsx
 import {
-  TendrilShell,
+  WorkbenchShell,
   PlanMarkdown,
   PlanDiffView,
   AgentViewer,
-  TendrilProcessViewer,
+  ProcessViewer,
   ContentInput,
   BadgeSelect,
   SortableVerificationList,
-  TendrilDashboard,
-} from "@spacecorps/@spacecorps/components/tendril";
+  AgentDashboard,
+} from "@spacecorps/components/workbench";
 ```
 
 ### 3. Font Setup
@@ -950,8 +950,8 @@ The Storybook catalog is organized into the following sections:
 - **Foundation** — Theme provider, typography, design tokens
 - **UI Primitives** — All 38+ base components with variants and states
 - **Renderers** — Content rendering components (Markdown, Mermaid, Graphviz, JSON, XML, HTML)
-- **Tendril Shell** — Navigation, tabs, sidebar components
-- **Tendril Widgets** — Agent viewer, plan markdown, diff view, dashboard, web viewer
+- **SpaceCorps Shell** — Navigation, tabs, sidebar components
+- **SpaceCorps Widgets** — Agent viewer, plan markdown, diff view, dashboard, web viewer
 - **Inputs & Controls** — ContentInput, BadgeSelect, SortableVerificationList
 - **Specialized Components** — Chat bubbles, error boundaries, loading states
 
@@ -1222,11 +1222,11 @@ will not fix the `vp check` failure.
 
 ### Windows: MAX_PATH budget
 
-Windows process creation fails at 260 characters, independently of the `LongPathsEnabled` registry flag. Tendril worktrees inherit this ceiling: the native TypeScript compiler (`tsc.exe`) that `vp pack` spawns sits at `<checkout-path> + 116-character suffix`, so a checkout path of 144 characters or more breaks builds with `The system cannot find the path specified.`
+Windows process creation fails at 260 characters, independently of the `LongPathsEnabled` registry flag. SpaceCorps worktrees inherit this ceiling: the native TypeScript compiler (`tsc.exe`) that `vp pack` spawns sits at `<checkout-path> + 116-character suffix`, so a checkout path of 144 characters or more breaks builds with `The system cannot find the path specified.`
 
-Tendril's worst-case worktree path for this repo is 126 characters (`D:\.tendril\Plans\` + a 66-character plan folder + `\Worktrees\SpaceCorps\@spacecorps/components`), giving a 242-character target with 17 characters of headroom. `virtualStoreDirMaxLength: 40` in `pnpm-workspace.yaml` caps pnpm's virtual store directory names at 40 characters instead of the Windows default of 60, but does not shorten platform-specific package directories like `@typescript/typescript-win32-x64` that already fit under the cap. The binding constraint is the native compiler's path length, not the virtual store depth.
+The worst-case worktree path for this repo is 126 characters (`D:\.workbench\Plans\` + a 66-character plan folder + `\Worktrees\SpaceCorps\@spacecorps/components`), giving a 242-character target with 17 characters of headroom. `virtualStoreDirMaxLength: 40` in `pnpm-workspace.yaml` caps pnpm's virtual store directory names at 40 characters instead of the Windows default of 60, but does not shorten platform-specific package directories like `@typescript/typescript-win32-x64` that already fit under the cap. The binding constraint is the native compiler's path length, not the virtual store depth.
 
-`tests/max-path-budget.test.ts` enforces the budget with three guards: (1) the declared and installed `virtualStoreDirMaxLength` agree, (2) every executable this repo spawns fits inside MAX_PATH from a maximum-depth Tendril worktree, and (3) a ratchet assertion that the deepest executable path in the tree has not grown. The test runs on Linux CI too, so the constraint is portable.
+`tests/max-path-budget.test.ts` enforces the budget with three guards: (1) the declared and installed `virtualStoreDirMaxLength` agree, (2) every executable this repo spawns fits inside MAX_PATH from a maximum-depth SpaceCorps worktree, and (3) a ratchet assertion that the deepest executable path in the tree has not grown. The test runs on Linux CI too, so the constraint is portable.
 
 To measure your current path length, run the diagnostic command (reports `targetLength` without modifying anything):
 
@@ -1262,7 +1262,7 @@ vp pack
 
 This command:
 
-- Bundles all entrypoints (`index.ts`, `ui.ts`, `renderers.ts`, `tendril.ts`, `diagrams.ts`,
+- Bundles all entrypoints (`index.ts`, `ui.ts`, `renderers.ts`, `workbench.ts`, `diagrams.ts`,
   `charts.ts`, `theme.ts`) to ESM modules
 - Generates TypeScript declaration files (`.d.mts`) with `tsgo`
 - Outputs to `dist/` directory with sourcemaps
@@ -1274,7 +1274,7 @@ ls dist/
 # index.mjs        index.d.mts
 # ui.mjs           ui.d.mts
 # renderers.mjs    renderers.d.mts
-# tendril.mjs      tendril.d.mts
+# workbench.mjs      workbench.d.mts
 # diagrams.mjs     diagrams.d.mts
 # charts.mjs       charts.d.mts
 # theme.mjs        theme.d.mts
@@ -1300,13 +1300,13 @@ This rebuilds the library automatically on file changes.
 │   ├── index.ts              # Root entrypoint
 │   ├── ui.ts                 # UI primitives entrypoint
 │   ├── renderers.ts          # Renderers entrypoint
-│   ├── tendril.ts            # Tendril widgets entrypoint
+│   ├── workbench.ts            # SpaceCorps widgets entrypoint
 │   ├── components/           # Component implementations
 │   │   ├── ui/               # 38+ Radix/shadcn primitives
-│   │   ├── Shell/            # Tendril shell components
+│   │   ├── Shell/            # SpaceCorps shell components
 │   │   ├── AgentViewer/      # Agent execution visualizer
 │   │   ├── PlanMarkdown/     # Plan markdown renderer
-│   │   ├── TendrilDashboard/ # Analytics dashboard
+│   │   ├── AgentDashboard/ # Analytics dashboard
 │   │   └── ...
 │   ├── lib/                  # Utility functions
 │   ├── hooks/                # Custom React hooks

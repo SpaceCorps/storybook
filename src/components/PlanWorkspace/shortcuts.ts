@@ -77,7 +77,7 @@ export interface ShortcutBinding {
   label?: string;
 }
 
-/** A modal layer owned by the host (an Ivy dialog or sheet) takes the keyboard; page shortcuts stay quiet under it. */
+/** A modal layer owned by the host (a host dialog or sheet) takes the keyboard; page shortcuts stay quiet under it. */
 const hostModalOpen = (): boolean =>
   !!document.querySelector(
     '[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]',

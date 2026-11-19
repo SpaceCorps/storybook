@@ -38,7 +38,7 @@ function ThemeDemo() {
     <div className="p-6 max-w-4xl mx-auto space-y-8 bg-background text-foreground transition-colors duration-200">
       <div className="flex items-center justify-between border-b pb-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Ivy Design System Foundation</h1>
+          <h1 className="text-2xl font-bold tracking-tight">SpaceCorps Design System Foundation</h1>
           <p className="text-muted-foreground text-sm">React 19 + Tailwind CSS + Design Tokens</p>
         </div>
         <div className="flex items-center space-x-2">

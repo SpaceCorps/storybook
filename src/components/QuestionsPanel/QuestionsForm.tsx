@@ -4,7 +4,7 @@ import type { PlanQuestion, QuestionOption } from "../PlanMarkdown/questionsSche
 import { DescriptionMarkdown } from "./DescriptionMarkdown";
 import { entryTitle, hasEntries, unansweredRequired } from "./answers";
 import type { AnswerMap } from "./answers";
-import "./tendril-questions.css";
+import "./questions-panel.css";
 
 export interface QuestionsSubmitAction {
   label?: string;

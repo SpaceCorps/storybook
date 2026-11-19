@@ -14,7 +14,7 @@ export interface PinnedMetrics {
   unfoldedActionsPx: number | null;
   /** What the cell needed the last time its actions were folded into one menu button, else `null`. */
   foldedActionsPx: number | null;
-  /** The width a consumer set for the actions column with `--ivy-data-table-actions-width`, else `null`. */
+  /** The width a consumer set for the actions column with `--sc-data-table-actions-width`, else `null`. */
   configuredActionsPx: number | null;
 }
 
@@ -32,7 +32,7 @@ export const DEFAULT_PINNED_METRICS: PinnedMetrics = {
 /** How many rows are measured: the first ones on screen. The model covers the rest. */
 const MEASURED_ROWS = 25;
 
-export const ACTIONS_WIDTH_VAR = "--ivy-data-table-actions-width";
+export const ACTIONS_WIDTH_VAR = "--sc-data-table-actions-width";
 
 /** `4.32px` or `0.27rem` as px; anything else (a `calc()`, nothing) is not a length this can use. */
 export function parseCssLength(value: string, remPx: number): number | null {

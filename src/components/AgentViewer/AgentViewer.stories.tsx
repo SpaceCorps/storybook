@@ -75,14 +75,14 @@ const mockCompletedLines = [
   JSON.stringify({
     kind: "text",
     timestamp: "2026-09-05T08:30:01Z",
-    text: "Starting execution of **Plan 00060: Port Tendril Agent and Execution Visualizers**.",
+    text: "Starting execution of **Plan 00060: Port SpaceCorps Agent and Execution Visualizers**.",
     delta: false,
   }),
   JSON.stringify({
     kind: "thinking",
     timestamp: "2026-09-05T08:30:02Z",
     content:
-      "All source files found in Ivy.Tendril.Widgets. Beginning port into @spacecorps/components.",
+      "All source files found in the widget library. Beginning port into @spacecorps/components.",
   }),
   JSON.stringify({
     kind: "status",
@@ -137,7 +137,7 @@ const mockCompletedLines = [
   JSON.stringify({
     kind: "text",
     timestamp: "2026-09-05T08:30:09Z",
-    text: "### Summary of Implementation\n\nAll components and unit tests ported cleanly.\n\n- Ported `AgentViewer` with autoscroll and tool grouping\n- Ported `TendrilProcessViewer` with pipeline lifecycle stages\n- Exported public APIs from `src/index.ts`",
+    text: "### Summary of Implementation\n\nAll components and unit tests ported cleanly.\n\n- Ported `AgentViewer` with autoscroll and tool grouping\n- Ported `ProcessViewer` with pipeline lifecycle stages\n- Exported public APIs from `src/index.ts`",
     delta: false,
   }),
   JSON.stringify({

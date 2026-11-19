@@ -11,10 +11,10 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 // Measured: CreateProcess fails at 260, succeeds at 259
 const USABLE_MAX_PATH = 259;
 
-// Tendril's worst-case worktree path for this repo:
-// D:\.tendril\Plans\ (18) + NNNNN- + 60-char SafeTitle (66) +
+// SpaceCorps' worst-case worktree path for this repo:
+// D:\.workbench\Plans\ (18) + NNNNN- + 60-char SafeTitle (66) +
 // \Worktrees\SpaceCorps\components-storybook (42) = 126
-const TENDRIL_WORKTREE_BASE = 126;
+const WORKTREE_BASE = 126;
 
 // Windows shim extensions (.exe, .CMD, .ps1) are all 4 characters
 const WIN_SHIM_EXT = 4;
@@ -29,7 +29,7 @@ describe("MAX_PATH budget", () => {
       throw new Error(
         "virtualStoreDirMaxLength is missing from pnpm-workspace.yaml; " +
           "without it, virtual store directory names grow to 60 characters " +
-          "and exceed MAX_PATH in deep Tendril worktrees",
+          "and exceed MAX_PATH in deep SpaceCorps worktrees",
       );
     }
 
@@ -41,7 +41,7 @@ describe("MAX_PATH budget", () => {
     if (declared > 40) {
       throw new Error(
         `virtualStoreDirMaxLength is ${declared}, exceeding the safe maximum of 40; ` +
-          `virtual store directories longer than 40 characters exceed MAX_PATH in Tendril worktrees`,
+          `virtual store directories longer than 40 characters exceed MAX_PATH in SpaceCorps worktrees`,
       );
     }
 
@@ -65,7 +65,7 @@ describe("MAX_PATH budget", () => {
     }
   });
 
-  it("every executable this repo spawns fits inside MAX_PATH from a maximum-depth Tendril worktree", () => {
+  it("every executable this repo spawns fits inside MAX_PATH from a maximum-depth SpaceCorps worktree", () => {
     const candidates: Array<{ path: string; length: number }> = [];
 
     // Helper to add a candidate with normalized length
@@ -147,7 +147,7 @@ describe("MAX_PATH budget", () => {
 
     // Find the maximum length
     const maxCandidate = candidates.reduce((max, c) => (c.length > max.length ? c : max));
-    const worstCaseTarget = TENDRIL_WORKTREE_BASE + 1 + maxCandidate.length;
+    const worstCaseTarget = WORKTREE_BASE + 1 + maxCandidate.length;
 
     expect(worstCaseTarget).toBeLessThanOrEqual(USABLE_MAX_PATH);
 
@@ -161,9 +161,9 @@ describe("MAX_PATH budget", () => {
 
       throw new Error(
         `the longest spawned executable path is ${worstCaseTarget - USABLE_MAX_PATH} chars over ` +
-          `the Windows spawn limit from a maximum-depth Tendril worktree (limit ${USABLE_MAX_PATH}):\n` +
+          `the Windows spawn limit from a maximum-depth SpaceCorps worktree (limit ${USABLE_MAX_PATH}):\n` +
           `\nTop 5 longest executables:\n${top5}\n\n` +
-          `To fix: lower virtualStoreDirMaxLength in pnpm-workspace.yaml, or flatten the Tendril worktree path.`,
+          `To fix: lower virtualStoreDirMaxLength in pnpm-workspace.yaml, or flatten the SpaceCorps worktree path.`,
       );
     }
   });

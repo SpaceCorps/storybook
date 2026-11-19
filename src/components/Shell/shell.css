@@ -1,6 +1,6 @@
-/* Tendril app shell — design tokens and component styles.
+/* SpaceCorps app shell — design tokens and component styles.
    Light values are the exact colors from the Figma prototype (claude-code-prototype);
-   dark values map onto the Ivy theme tokens so the shell follows the host theme. */
+   dark values map onto the Host theme tokens so the shell follows the host theme. */
 
 .tsh-root,
 .tsh-section,

@@ -6,51 +6,51 @@ import { describe, expect, it } from "vitest";
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 describe("Bundle Exports and Code-Splitting", () => {
-  const tendrilMjsPath = join(repoRoot, "dist", "tendril.mjs");
+  const workbenchMjsPath = join(repoRoot, "dist", "workbench.mjs");
 
-  it("verifies dist/tendril.mjs exists", () => {
-    expect(existsSync(tendrilMjsPath)).toBe(true);
+  it("verifies dist/workbench.mjs exists", () => {
+    expect(existsSync(workbenchMjsPath)).toBe(true);
   });
 
   it("does not contain static imports of pdfjs-dist", () => {
-    const content = readFileSync(tendrilMjsPath, "utf-8");
+    const content = readFileSync(workbenchMjsPath, "utf-8");
     const staticPdfJs =
       /import\s+(?:(?:\*\s+as\s+\w+|\{[^}]*\}|\w+)\s+from\s+)?["']pdfjs-dist["'];?/g;
     expect(content).not.toMatch(staticPdfJs);
   });
 
   it("does not contain static imports of pdfjs worker url", () => {
-    const content = readFileSync(tendrilMjsPath, "utf-8");
+    const content = readFileSync(workbenchMjsPath, "utf-8");
     const staticWorker =
       /import\s+(?:(?:\*\s+as\s+\w+|\{[^}]*\}|\w+)\s+from\s+)?["']pdfjs-dist\/build\/pdf\.worker\.mjs\?url["'];?/g;
     expect(content).not.toMatch(staticWorker);
   });
 
   it("does not contain static imports of refractor/all", () => {
-    const content = readFileSync(tendrilMjsPath, "utf-8");
+    const content = readFileSync(workbenchMjsPath, "utf-8");
     const staticRefractorAll =
       /import\s+(?:(?:\*\s+as\s+\w+|\{[^}]*\}|\w+)\s+from\s+)?["']refractor\/all["'];?/g;
     expect(content).not.toMatch(staticRefractorAll);
   });
 
   it("uses refractor/core instead of refractor/all", () => {
-    const content = readFileSync(tendrilMjsPath, "utf-8");
+    const content = readFileSync(workbenchMjsPath, "utf-8");
     expect(content).toContain('from "refractor/core"');
   });
 
   // CodeBlock and ErrorDisplay both render the Prism highlighter, and both are
-  // eagerly reachable from the tendril entrypoint, so a static import here pulls
+  // eagerly reachable from the workbench entrypoint, so a static import here pulls
   // react-syntax-highlighter and the whole refractor language set onto the
   // consuming app's initial load. Both load it through lazyWithRetry instead.
   it("does not contain static imports of react-syntax-highlighter", () => {
-    const content = readFileSync(tendrilMjsPath, "utf-8");
+    const content = readFileSync(workbenchMjsPath, "utf-8");
     const staticHighlighter =
       /import\s+(?:(?:\*\s+as\s+\w+|\{[^}]*\}|\w+)\s+from\s+)?["']react-syntax-highlighter["'];?/g;
     expect(content).not.toMatch(staticHighlighter);
   });
 
   it("does not statically import the diagram renderer chunk", () => {
-    const content = readFileSync(tendrilMjsPath, "utf-8");
+    const content = readFileSync(workbenchMjsPath, "utf-8");
     const staticDiagramRenderer = /from\s+["']\.\/(?:Mermaid|Graphviz)Renderer-[\w-]+\.mjs["']/;
     expect(content).not.toMatch(staticDiagramRenderer);
   });
@@ -58,7 +58,7 @@ describe("Bundle Exports and Code-Splitting", () => {
   // echarts is around a megabyte, so the chart components have their own entrypoint. Nothing an
   // application loads eagerly may reach it.
   describe("echarts stays on the charts entrypoint", () => {
-    const eagerEntrypoints = ["ui", "tendril", "index", "renderers", "theme", "diagrams"];
+    const eagerEntrypoints = ["ui", "workbench", "index", "renderers", "theme", "diagrams"];
 
     for (const entry of eagerEntrypoints) {
       it(`dist/${entry}.mjs does not import echarts`, () => {

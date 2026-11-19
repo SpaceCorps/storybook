@@ -9,7 +9,7 @@ import { hasRawHtml, rawHtmlSchema } from "./rawHtml";
 type MarkdownPlugins = Required<Pick<Options, "remarkPlugins" | "rehypePlugins">>;
 
 /**
- * The only delimiter that marks math in Tendril markdown: `$$...$$`.
+ * The only delimiter that marks math in SpaceCorps markdown: `$$...$$`.
  *
  * Single-dollar text math is deliberately not recognised (see
  * `singleDollarTextMath` below), so a lone `$` is not a math signal.
@@ -25,16 +25,16 @@ export const hasMath = (content: string): boolean => MATH_DELIMITER.test(content
  * on the content keeps both extra tree walks off the render path for the
  * overwhelming majority of plan markdown, notes and agent output.
  *
- * `singleDollarTextMath: false` is required, not a preference: Tendril markdown
+ * `singleDollarTextMath: false` is required, not a preference: SpaceCorps markdown
  * is full of prose dollar signs (`$env:PORT`, `$IsMacOS`, prices), and with
  * single-dollar math enabled remark-math pairs them up and renders the text
  * between two unrelated dollars as math. Inline math therefore also uses
  * `$$...$$`, which remark-math renders inline when it sits inside a paragraph
  * and as a centered display block when it stands on its own line. This matches
- * the Ivy framework's own Markdown widget, so math behaves the same in
- * `Text.Markdown` and in the Tendril widgets.
+ * the host framework's own Markdown widget, so math behaves the same in
+ * `Text.Markdown` and in the SpaceCorps widgets.
  *
- * KaTeX's stylesheet and web fonts are deliberately not bundled here: the Ivy
+ * KaTeX's stylesheet and web fonts are deliberately not bundled here: the Host
  * host page already loads them eagerly (its `vendor-markdown-*.css` carries the
  * `.katex` rules and all `KaTeX_*` `@font-face` declarations), so the widget
  * bundle inherits them and only needs the plugins.

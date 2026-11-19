@@ -101,22 +101,22 @@ describe("Tauri Safe Link Navigation in PlanMarkdown", () => {
     expect(window.open).not.toHaveBeenCalled();
   });
 
-  it("supports legacy Ivy OnLinkClick eventHandler for external links", () => {
+  it("supports legacy Host OnLinkClick eventHandler for external links", () => {
     const eventHandler = vi.fn();
     render(
       React.createElement(PlanMarkdown, {
         id: "plan-test",
-        content: "[Ivy Action](https://example.com/ivy)",
+        content: "[Host Action](https://example.com/host)",
         events: ["OnLinkClick"],
         eventHandler,
       }),
     );
 
-    const link = screen.getByRole("link", { name: "Ivy Action" });
+    const link = screen.getByRole("link", { name: "Host Action" });
     fireEvent.click(link);
 
     expect(eventHandler).toHaveBeenCalledWith("OnLinkClick", "plan-test", [
-      "https://example.com/ivy",
+      "https://example.com/host",
     ]);
     expect(window.open).not.toHaveBeenCalled();
   });

@@ -5,7 +5,7 @@
  * `resolveTsgolintExecutable` in vite-plus tries `<vite-plus>/node_modules/.bin/tsgolint.exe`
  * before `tsgolint.cmd`. pnpm only writes the `.CMD` shim, and that shim hands cmd.exe an
  * unnormalized `..`-laden path into the virtual store - which blows past the 260 character Windows
- * MAX_PATH limit once the checkout itself sits deep in a Tendril worktree, and lint dies with
+ * MAX_PATH limit once the checkout itself sits deep in a SpaceCorps worktree, and lint dies with
  * "The system cannot find the path specified.". Dropping the real binary next to the shim removes
  * cmd.exe, the shim and the double descent from the picture.
  *

@@ -10,8 +10,8 @@ describe("localFiles", () => {
   };
 
   beforeEach(() => {
-    setMeta("ivy-host", "http://localhost:5000");
-    setMeta("ivy-dangerously-allow-local-files", "true");
+    setMeta("sc-host", "http://localhost:5000");
+    setMeta("sc-dangerously-allow-local-files", "true");
   });
 
   afterEach(() => {
@@ -22,28 +22,30 @@ describe("localFiles", () => {
     it("transforms Unix file:// URL to proxy URL with absolute path", () => {
       const input = "file:///Users/foo/image.png";
       const result = transformLocalFileUrl(input, "src");
-      expect(result).toBe("http://localhost:5000/ivy/local-file?path=%2FUsers%2Ffoo%2Fimage.png");
+      expect(result).toBe("http://localhost:5000/host/local-file?path=%2FUsers%2Ffoo%2Fimage.png");
     });
 
     it("transforms Windows file:// URL to proxy URL without leading slash", () => {
       const input = "file:///C:/Users/foo/image.png";
       const result = transformLocalFileUrl(input, "src");
       expect(result).toBe(
-        "http://localhost:5000/ivy/local-file?path=C%3A%2FUsers%2Ffoo%2Fimage.png",
+        "http://localhost:5000/host/local-file?path=C%3A%2FUsers%2Ffoo%2Fimage.png",
       );
     });
 
     it("transforms bare Windows path to proxy URL", () => {
       const input = "D:\\Screenshots\\img.png";
       const result = transformLocalFileUrl(input, "src");
-      expect(result).toBe("http://localhost:5000/ivy/local-file?path=D%3A%2FScreenshots%2Fimg.png");
+      expect(result).toBe(
+        "http://localhost:5000/host/local-file?path=D%3A%2FScreenshots%2Fimg.png",
+      );
     });
 
     it("handles URL-encoded characters in Unix paths", () => {
       const input = "file:///Users/foo/image%20with%20spaces.png";
       const result = transformLocalFileUrl(input, "src");
       expect(result).toBe(
-        "http://localhost:5000/ivy/local-file?path=%2FUsers%2Ffoo%2Fimage%20with%20spaces.png",
+        "http://localhost:5000/host/local-file?path=%2FUsers%2Ffoo%2Fimage%20with%20spaces.png",
       );
     });
 
@@ -51,7 +53,7 @@ describe("localFiles", () => {
       const input = "file:///C:/Users/foo/image%20with%20spaces.png";
       const result = transformLocalFileUrl(input, "src");
       expect(result).toBe(
-        "http://localhost:5000/ivy/local-file?path=C%3A%2FUsers%2Ffoo%2Fimage%20with%20spaces.png",
+        "http://localhost:5000/host/local-file?path=C%3A%2FUsers%2Ffoo%2Fimage%20with%20spaces.png",
       );
     });
 

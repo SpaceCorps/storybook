@@ -35,7 +35,7 @@ export const CreateVaultDialog: React.FC<CreateVaultDialogProps> = ({
   error,
   isBusy = false,
 }) => {
-  const [name, setName] = React.useState("Tendril-Vault");
+  const [name, setName] = React.useState("Team-Vault");
   const [owner, setOwner] = React.useState("");
   const [isPrivate, setIsPrivate] = React.useState(true);
 
@@ -52,7 +52,7 @@ export const CreateVaultDialog: React.FC<CreateVaultDialogProps> = ({
       open={open}
       onClose={onClose}
       title="Create Team Vault on GitHub"
-      description="Create a private GitHub repository to share Tendril project configs, custom skills, and MCP servers with your team."
+      description="Create a private GitHub repository to share SpaceCorps project configs, custom skills, and MCP servers with your team."
       testId="create-vault-dialog"
       error={error}
       submitLabel="Create Vault"
@@ -79,7 +79,7 @@ export const CreateVaultDialog: React.FC<CreateVaultDialogProps> = ({
         <Input
           id="create-vault-name"
           value={name}
-          placeholder="Tendril-Vault"
+          placeholder="Team-Vault"
           onChange={(event) => setName(event.target.value)}
         />
       </div>

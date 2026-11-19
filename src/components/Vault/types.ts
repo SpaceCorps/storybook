@@ -1,6 +1,6 @@
 /**
- * The vault DTOs, mirroring the JSON `tendril-core`'s `vault::models` serializes (camelCase, see
- * `crates/tendril-core/src/vault/models.rs`).
+ * The vault DTOs, mirroring the JSON the backend core serializes (camelCase, see
+ * the backend's vault models).
  *
  * They are declared here rather than in the app because these components are presentational and the
  * components package must not import from a consumer. The app re-exports them from `types/api.ts`.

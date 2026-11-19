@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import * as Charts from "../src/charts";
 import * as UI from "../src/index";
 import * as Renderers from "../src/renderers";
-import * as Tendril from "../src/tendril";
+import * as SpaceCorps from "../src/workbench";
 
 /**
  * echarts is roughly a megabyte, so the charts live on `./charts` and nowhere else — the same rule
@@ -61,9 +61,9 @@ describe("charts export", () => {
     }
   });
 
-  it("does NOT export any chart from the tendril entrypoint", () => {
+  it("does NOT export any chart from the workbench entrypoint", () => {
     for (const name of CHART_NAMES) {
-      expect(name in Tendril, name).toBe(false);
+      expect(name in SpaceCorps, name).toBe(false);
     }
   });
 
@@ -74,10 +74,10 @@ describe("charts export", () => {
       }
     });
 
-    it("is gone from the renderers and tendril entrypoints", () => {
+    it("is gone from the renderers and workbench entrypoints", () => {
       for (const name of REMOVED_STUB_NAMES) {
         expect(name in Renderers, name).toBe(false);
-        expect(name in Tendril, name).toBe(false);
+        expect(name in SpaceCorps, name).toBe(false);
       }
     });
 

@@ -142,7 +142,7 @@ export interface ContentInputProps {
   submitLabel?: string;
   menuOptions?: string[];
   autoFocus?: boolean;
-  onIvyEvent?: (eventName: string, id: string, argumentsArray: unknown[]) => void;
+  onHostEvent?: (eventName: string, id: string, argumentsArray: unknown[]) => void;
   eventHandler?: (eventName: string, id: string, argumentsArray: unknown[]) => void;
   events?: string[];
   slots?: {
@@ -205,11 +205,11 @@ export const ContentInput: React.FC<ContentInputProps> = ({
   autoFocus = false,
   submitLabel,
   menuOptions = [],
-  onIvyEvent,
+  onHostEvent,
   eventHandler,
   slots,
 }) => {
-  const dispatchEvent = onIvyEvent || eventHandler;
+  const dispatchEvent = onHostEvent || eventHandler;
 
   const parsed = parseValue(value);
   const [text, setText] = useState(parsed.cleanText);
